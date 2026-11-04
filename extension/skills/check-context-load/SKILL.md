@@ -16,4 +16,4 @@ Run from the workspace root; `<tools>` is the harness tools folder named in your
 3. If there are warnings (the load grew noticeably since the last check, or takes a large share of the window), state the cost per request and the fixes: move rarely used skills into the Frontier HVE library (loaded per task within a budget, evaluated with `ARIA skill-evaluator`), merge duplicates, narrow `applyTo`, disable unused plugins or MCP servers.
 4. Change nothing yourself; the user decides. VS Code's own system prompt and built-in tools are not counted.
 
-The report is saved to `.hve/context_load.json`; the next check compares against it.
+The report is saved to `.aria/context_load.json`; the next check compares against it.

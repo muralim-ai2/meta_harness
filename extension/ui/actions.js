@@ -91,7 +91,7 @@ async function editPlan(mc) {
 async function revealAsk(mc) {
   const state = snapshot(mc.target().uri.fsPath, mc.selected);
   if (!state.ask) throw new Error('There is no ask to show.');
-  await vscode.commands.executeCommand('revealInExplorer', vscode.Uri.file(containedPath(state.workspace, path.join('.hve', 'asks', state.ask.id))));
+  await vscode.commands.executeCommand('revealInExplorer', vscode.Uri.file(containedPath(state.workspace, path.join('.aria', 'asks', state.ask.id))));
 }
 
 /** Confirm and record a human sign-off through the guarded review commands.
@@ -157,7 +157,7 @@ async function openFile(mc, relative) {
   const root = mc.target().uri.fsPath;
   const state = snapshot(root, mc.selected);
   const listed = [...state.files, ...(mc.state.activity?.session?.files.map(file => file.path) || []),
-    ...state.skills.map(skill => path.join('.hve', 'skills', skill.name, 'SKILL.md')), ...(state.ask ? treeFiles(askTree(root, state.ask.id).entries) : []), ...evaluationFiles(root)]
+    ...state.skills.map(skill => path.join('.aria', 'skills', skill.name, 'SKILL.md')), ...(state.ask ? treeFiles(askTree(root, state.ask.id).entries) : []), ...evaluationFiles(root)]
     .map(file => path.normalize(file));
   if (!listed.includes(path.normalize(relative))) throw new Error('That file is not listed in Mission Control.');
   const uri = vscode.Uri.file(containedPath(state.workspace, relative));

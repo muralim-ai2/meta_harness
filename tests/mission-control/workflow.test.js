@@ -65,7 +65,7 @@ test('accepting unfinished work is refused before any confirmation or write', as
 test('a stale view cannot record a review after the project changes', async t => {
   const fixture = mission(t);
   const state = await create(fixture, 'stale');
-  fs.appendFileSync(path.join(fixture.root, '.hve', 'asks', state.ask.id, 'plan.md'), '\nAnother requirement.');
+  fs.appendFileSync(path.join(fixture.root, '.aria', 'asks', state.ask.id, 'plan.md'), '\nAnother requirement.');
   await assert.rejects(fixture.controls.provider.execute({ action: 'review', item: 'stage:deliver', value: 'changes', revision: state.revision }),
     /state changed/);
   assert.equal(snapshot(fixture.root).reviews[0].decision, 'open');

@@ -17,7 +17,7 @@ from route import candidates  # noqa: E402
 WORKSPACE = Path.cwd()
 SOURCES = [ROOT / "templates" / "lifecycles", *sorted(ROOT.glob("plugins/*/lifecycles")),
            *sorted(p for p in WORKSPACE.glob("plugins/*/lifecycles") if not (p.parent / "hve-plugin.json").is_file()),
-           WORKSPACE / ".hve" / "lifecycles"]
+           WORKSPACE / ".aria" / "lifecycles"]
 STAGE_FIELDS = {"name", "goal", "agent", "skills", "plugin_skills", "templates", "exit", "skip_when"}
 OPTIONAL_STAGE_FIELDS = {"evidence", "rework", "loop"}
 

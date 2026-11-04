@@ -21,7 +21,7 @@ CURSOR_EVENTS = {"sessionStart": "SessionStart", "beforeSubmitPrompt": "UserProm
                  "postToolUse": "PostToolUse", "stop": "Stop"}
 PROJECT_DIR_ENV = {"claude": "CLAUDE_PROJECT_DIR", "cursor": "CURSOR_PROJECT_DIR"}
 USAGE = ("usage: agent_compat.py [--ask-only] <claude|cursor|codex|copilot> <script under the runtime> [KEY=VALUE ...] [-- script args]\n"
-         "  --ask-only: do nothing unless the project has an open Frontier HVE ask (.hve/asks/active.json), for hook files every session runs")
+         "  --ask-only: do nothing unless the project has an open Frontier HVE ask (.aria/asks/active.json), for hook files every session runs")
 
 
 def ask_answers(tool_input: Json, response: Any) -> Json:
@@ -119,7 +119,7 @@ def main() -> None:
     project = Path(os.environ[PROJECT_DIR_ENV[client]]) if client in PROJECT_DIR_ENV else Path(payload["cwd"])
     hook_payload = to_vscode(payload, client)  # type: ignore[arg-type]
     event = hook_payload["hook_event_name"]
-    if ask_only and not (project / ".hve" / "asks" / "active.json").is_file():
+    if ask_only and not (project / ".aria" / "asks" / "active.json").is_file():
         if client == "codex" and event == "Stop":
             print("{}")
         return

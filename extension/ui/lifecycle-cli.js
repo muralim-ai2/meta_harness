@@ -95,7 +95,7 @@ async function packs(connection, workspace) {
   });
 }
 
-/** Build or refresh the workspace's solution map (.hve/map/) and return its size class and counts.
+/** Build or refresh the workspace's solution map (.aria/map/) and return its size class and counts.
  * @param {Runtime} connection
  * @param {string} workspace
  * @returns {Promise<{sizeClass: string, files: number, concepts: number, page: string}>}
@@ -105,7 +105,7 @@ async function buildMap(connection, workspace) {
   const result = record(await runTool(connection, workspace, script, ['build']), 'Solution map build');
   const size = record(result.size, 'Map size');
   return { sizeClass: text(size.class, 'Map size class'), files: integer(size.files, 'Map files'), concepts: integer(result.concepts, 'Map concepts'),
-    page: path.join(workspace, '.hve', 'map', 'explorer.html') };
+    page: path.join(workspace, '.aria', 'map', 'explorer.html') };
 }
 
 /** Return the title of the bundled direct lifecycle after checking the catalogue runs.

@@ -1,4 +1,4 @@
-"""Append hook interventions (denies, blocks, stops) to the session log and blindspot-coded ones to .hve/blindspots/."""
+"""Append hook interventions (denies, blocks, stops) to the session log and blindspot-coded ones to .aria/blindspots/."""
 
 import json
 import re
@@ -10,7 +10,7 @@ SESSION_ID = re.compile(r"^[\w-]+$")
 
 
 def record(session_id: str, hook: str, kind: str, detail: str, blindspot: str | None = None) -> None:
-    """Append one intervention to .hve/runs/<session_id>.interventions.jsonl, and to the blindspot log when coded."""
+    """Append one intervention to .aria/runs/<session_id>.interventions.jsonl, and to the blindspot log when coded."""
     if not SESSION_ID.match(session_id):
         raise ValueError(f"unsafe session_id {session_id!r}")
     entry = {"ts_ms": time.time() * 1000, "session_id": session_id, "hook": hook, "kind": kind, "detail": detail, "blindspot": blindspot}

@@ -12,10 +12,10 @@ const ASK = '20261028-1200-onboarding';
  * @returns {string}
  */
 function project(root) {
-  const folder = path.join('.hve', 'asks', ASK);
+  const folder = path.join('.aria', 'asks', ASK);
   const plan = '# Workspace policy\n\nReject invalid configuration.\n';
-  json(root, '.hve\\project\\project.json', { name: 'Client onboarding', goal: 'Build the onboarding workspace', asks: [ASK] });
-  json(root, '.hve\\asks\\active.json', { active: ASK });
+  json(root, '.aria\\project\\project.json', { name: 'Client onboarding', goal: 'Build the onboarding workspace', asks: [ASK] });
+  json(root, '.aria\\asks\\active.json', { active: ASK });
   json(root, path.join(folder, 'contract.json'), {
     ask: ASK, request: 'Build the onboarding workspace', agent: 'ARIA Lite', lifecycle: 'direct', current: 'deliver', created: '2026-10-28T12:00:00+00:00',
     stages: [{ name: 'deliver', goal: 'Deliver the workspace policy', agent: 'self', status: 'done' }],
@@ -27,8 +27,8 @@ function project(root) {
   });
   fs.writeFileSync(path.join(root, folder, 'plan.md'), plan);
   fs.writeFileSync(path.join(root, folder, 'request.md'), 'Build the onboarding workspace');
-  json(root, '.hve\\project\\feature_list.json', [{ name: 'policy', description: 'Reject invalid workspace configuration', verify: 'node policy.test.js', passes: true }]);
-  json(root, '.hve\\project\\state.json', { lock: { policy: { ask: ASK, verify: 'node policy.test.js' } } });
+  json(root, '.aria\\project\\feature_list.json', [{ name: 'policy', description: 'Reject invalid workspace configuration', verify: 'node policy.test.js', passes: true }]);
+  json(root, '.aria\\project\\state.json', { lock: { policy: { ask: ASK, verify: 'node policy.test.js' } } });
   json(root, path.join(folder, 'loop', 'prs', 'policy.json'), {
     feature: 'policy', verify: { command: 'node policy.test.js', exit_code: 0, output_tail: '3 checks passed' },
   });

@@ -229,14 +229,14 @@ def test_routing_contract_and_load() -> None:
         assert data["decisions"][0]["stage"] == "packs" and "oracle-offering" in data["decisions"][0]["choice"]
         plan = (ws / data["paths"]["plan"]).read_text(encoding="utf-8")
         assert "Expertise packs (" in plan and "| oracle-offering 1.0.0 |" in plan
-        assert (ws / ".hve" / "skills" / "oracle-offering__oracle-schema-design" / "SKILL.md").is_file()
+        assert (ws / ".aria" / "skills" / "oracle-offering__oracle-schema-design" / "SKILL.md").is_file()
         brief = lifecycle(ws, "brief", "oracle-offering:oracle-db-architect", "stage=assess")
         assert brief.returncode == 0, brief.stderr
-        assert ".hve/skills/oracle-offering__oracle-schema-design/SKILL.md" in brief.stdout and "Pack agent for this stage" in brief.stdout
+        assert ".aria/skills/oracle-offering__oracle-schema-design/SKILL.md" in brief.stdout and "Pack agent for this stage" in brief.stdout
         assert "Oracle migration process map" in brief.stdout and "Common Oracle migration fixes" not in brief.stdout
         hook(ws, {"hook_event_name": "UserPromptSubmit", "prompt": "Start the assessment"})
         read = {"hook_event_name": "PreToolUse", "tool_name": "read_file"}
-        allowed = hook(ws, read | {"tool_input": {"filePath": ".hve/skills/oracle-offering__oracle-schema-design/SKILL.md"}})
+        allowed = hook(ws, read | {"tool_input": {"filePath": ".aria/skills/oracle-offering__oracle-schema-design/SKILL.md"}})
         assert allowed is None or allowed["hookSpecificOutput"].get("permissionDecision") != "deny", allowed
         other = store.folder(store.enabled()["postgres-offering"]) / "skills" / "oracle-schema-design" / "SKILL.md"
         denied = hook(ws, read | {"tool_input": {"filePath": other.as_posix()}})
@@ -259,7 +259,7 @@ def test_routing_contract_and_load() -> None:
 
 def write_input(project: Path, name: str, value: object) -> Path:
     """Write an agent input file and return its path."""
-    path = project / ".hve" / "evaluations" / "input" / name
+    path = project / ".aria" / "evaluations" / "input" / name
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value), encoding="utf-8")
     return path
@@ -299,7 +299,7 @@ def test_rubric_composition() -> None:
         assert "needs --plugin-contract" in raises(ValueError, workflow.prepare, project, core_path, project / "request.md", "cli", 0,
                                                    None, write_input(project, "sel.json", good))
         run = workflow.prepare(project, core_path, project / "request.md", "cli", 0, contract_path, write_input(project, "sel.json", good))
-        folder = project / ".hve" / "evaluations" / run["runId"]
+        folder = project / ".aria" / "evaluations" / run["runId"]
         snapshot = json.loads((folder / "contract.json").read_text(encoding="utf-8"))
         assert [r["id"] for r in snapshot["rubrics"]][:3] == ["migration-completeness", "data-integrity", "rollback-readiness"]
         assert json.loads((folder / "manifest.json").read_text(encoding="utf-8"))["rubricSelection"] == chosen

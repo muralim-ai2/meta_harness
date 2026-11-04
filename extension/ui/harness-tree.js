@@ -1,13 +1,13 @@
 'use strict';
-/** The Harness files pane: everything under the workspace's .hve/ and .harness/ folders as a native, lazily expanded tree; links are listed but never followed. */
+/** The Harness files pane: everything under the workspace's .aria/ and .harness/ folders as a native, lazily expanded tree; links are listed but never followed. */
 const vscode = require('vscode');
 const fs = require('node:fs');
 const path = require('node:path');
 const { containedPath } = require('./file-access');
 const { listAsks } = require('./asks');
 const { errorText } = require('./validate');
-const ROOTS = ['.hve', '.harness'];
-const OPEN = ['.hve', '.harness', '.hve/asks'];
+const ROOTS = ['.aria', '.harness'];
+const OPEN = ['.aria', '.harness', '.aria/asks'];
 const FOLDER_LIMIT = 500;
 
 /** @typedef {{path: string, name: string, kind: 'folder' | 'file' | 'other' | 'more', size: number, modified: string | null}} Node */
@@ -26,7 +26,7 @@ function size(bytes) {
  * @returns {Node[]}
  */
 function entries(root, relative) {
-  const asks = relative === '.hve/asks';
+  const asks = relative === '.aria/asks';
   const nodes = fs.readdirSync(containedPath(root, relative), { withFileTypes: true }).map(entry => {
     const child = `${relative}/${entry.name}`;
     const stat = fs.lstatSync(path.join(root, child));
@@ -111,7 +111,7 @@ class HarnessTree {
       item.command = { command: 'vscode.open', title: 'Open', arguments: [uri] };
       return item;
     }
-    const ask = node.path.startsWith('.hve/asks/') && node.path.split('/').length === 3 ? this.asks.get(node.name) : undefined;
+    const ask = node.path.startsWith('.aria/asks/') && node.path.split('/').length === 3 ? this.asks.get(node.name) : undefined;
     item.iconPath = vscode.ThemeIcon.Folder;
     item.collapsibleState = OPEN.includes(node.path) || ask?.active ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed;
     if (ask) {

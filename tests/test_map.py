@@ -23,7 +23,7 @@ FILES = {
     "tests/test_billing.py": '"""Tests of billing."""\nfrom src import billing\n\n\ndef test_charge() -> None:\n    """Charging adds tax."""\n    assert billing.charge(1) == 2\n',
     "docs/decisions.md": "# Decisions\n\n## D-001: tax doubles\nSee src/tax.py.\n\n## D-002: carts in TypeScript\nSee web/cart.ts.\n",
     "scripts/broken.py": "for x in range(3):\nprint(x)\n",
-    ".hve/skills/copied/scripts/tool.py": "def broken(:\n",
+    ".aria/skills/copied/scripts/tool.py": "def broken(:\n",
 }
 
 
@@ -57,7 +57,7 @@ def test_generic_map_without_config() -> None:
         assert nodes["system"]["purpose"] == "Shop: A small shop with billing and a web front end."
         broken = nodes["file:scripts/broken.py"]
         assert broken["error"].startswith("does not parse as Python") and broken["purpose"].startswith("Not mapped")
-        assert not [n for n in nodes if ".hve/" in n] and "could not read" in map_build.overview(data)
+        assert not [n for n in nodes if ".aria/" in n] and "could not read" in map_build.overview(data)
 
 
 def test_concepts_explain_and_impact() -> None:

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
-RUNS_DIR = ROOT / ".hve" / "runs"
+RUNS_DIR = ROOT / ".aria" / "runs"
 ROT_WINDOW = 10
 ROT_DROP = 0.2
 BAR_TOKENS = 5000

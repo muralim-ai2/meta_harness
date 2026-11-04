@@ -72,7 +72,7 @@ async function newAsk(mc, preset = {}) {
   for (;;) {
     const choice = await vscode.window.showWarningMessage(`Create ask “${brief.title}” in ${path.basename(root)}?`, { modal: true, detail: [
       scope.verdict === 'new-workspace' ? 'You chose to keep it in this project.' : `Where it lands: ${scope.why}.`,
-      `Folder: .hve/asks/<UTC date-time>-${slug}/ with your request, the contract, the plan and the loop records. Features and progress stay shared across the project.`,
+      `Folder: .aria/asks/<UTC date-time>-${slug}/ with your request, the contract, the plan and the loop records. Features and progress stay shared across the project.`,
       open ? `The open ask “${open.title}” stays on disk, unfinished items included, but is no longer active.` : '',
       'A Copilot Chat then opens for it. No agent starts until you send a message.'].filter(Boolean).join('\n\n') }, 'Create ask', 'Change folder name…');
     if (choice === 'Create ask') break;
@@ -87,7 +87,7 @@ async function newAsk(mc, preset = {}) {
   await flow.createAsk(root, scope.revision, slug, askRequest(brief));
   await mc.view(null);
   const created = listAsks(root).find(ask => ask.active);
-  if (!created) throw new Error('The new ask was created but is not active. Inspect .hve/asks/active.json.');
+  if (!created) throw new Error('The new ask was created but is not active. Inspect .aria/asks/active.json.');
   await pickChat(mc, created, 'new', brief);
 }
 
@@ -160,7 +160,7 @@ async function chooseChat(mc, ask, kind, brief) {
 async function startChat(mc, ask, kind, brief, choice) {
   const root = mc.target().uri.fsPath;
   const query = starterPrompt(kind, ask, brief);
-  const attachFiles = ['request.md', 'plan.md'].map(name => path.join(root, '.hve', 'asks', ask.id, name)).filter(file => fs.existsSync(file))
+  const attachFiles = ['request.md', 'plan.md'].map(name => path.join(root, '.aria', 'asks', ask.id, name)).filter(file => fs.existsSync(file))
     .map(file => vscode.Uri.file(file));
   if (choice.target === 'new') {
     await mc.context.workspaceState.update('pendingChat', { ask: ask.id, at: new Date().toISOString() });

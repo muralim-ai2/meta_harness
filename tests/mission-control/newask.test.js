@@ -64,12 +64,12 @@ test('the ask is named from the title, saves the title as its heading, and shows
   const [ask] = listAsks(fixture.root);
   assert.match(ask.id, /^\d{8}-\d{4}-dog-profile-badges$/);
   assert.equal(ask.title, 'Dog profile badges');
-  const saved = fs.readFileSync(path.join(fixture.root, '.hve', 'asks', ask.id, 'request.md'), 'utf8').replace(/\r\n/g, '\n').trim();
+  const saved = fs.readFileSync(path.join(fixture.root, '.aria', 'asks', ask.id, 'request.md'), 'utf8').replace(/\r\n/g, '\n').trim();
   assert.equal(saved, '# Dog profile badges\n\nCome up with 3 creative badge ideas for dog profiles and build them');
   assert.equal(snapshot(fixture.root).ask.title, 'Dog profile badges');
   const [confirm] = confirmations(fixture.controls);
   assert.equal(confirm[1], `Create ask “Dog profile badges” in ${path.basename(fixture.root)}?`);
-  assert.match(confirm[2].detail, /\.hve\/asks\/<UTC date-time>-dog-profile-badges\//);
+  assert.match(confirm[2].detail, /\.aria\/asks\/<UTC date-time>-dog-profile-badges\//);
   assert.deepEqual(confirm.slice(3), ['Create ask', 'Change folder name…']);
   assert.equal(fixture.controls.commands.get('frontierHve.missionControlModel')().snapshot.ask.title, 'Dog profile badges');
 });
@@ -82,7 +82,7 @@ test('a title alone is enough, and the folder name can still be changed', async 
   const [ask] = listAsks(fixture.root);
   assert.match(ask.id, /-pitch$/);
   assert.equal(ask.title, 'Investor pitch deck');
-  assert.equal(fs.readFileSync(path.join(fixture.root, '.hve', 'asks', ask.id, 'request.md'), 'utf8').trim(), '# Investor pitch deck');
+  assert.equal(fs.readFileSync(path.join(fixture.root, '.aria', 'asks', ask.id, 'request.md'), 'utf8').trim(), '# Investor pitch deck');
   assert.equal(inputs(fixture.controls).at(-1).title, 'Ask folder name');
 });
 
@@ -97,7 +97,7 @@ test('the harness reads the description to spot a follow-up, and the question na
   const asks = listAsks(fixture.root);
   assert.deepEqual(asks.map(ask => ask.title).sort(), ['Dog profile badges', 'Pawstagram']);
   assert.equal(asks.find(ask => ask.active).title, 'Dog profile badges');
-  assert.ok(fs.existsSync(path.join(fixture.root, '.hve', 'asks', first.id, 'contract.json')));
+  assert.ok(fs.existsSync(path.join(fixture.root, '.aria', 'asks', first.id, 'contract.json')));
 });
 
 test('cancelling at either box creates nothing', async t => {
@@ -120,7 +120,7 @@ test('an ask whose files were deleted is reported clearly, and New ask forgets i
   const fixture = mission(t);
   await create(fixture, 'Creative ideas', 'Come up with 3 creative ideas for the feed');
   const [gone] = listAsks(fixture.root);
-  const folder = path.join(fixture.root, '.hve', 'asks', gone.id);
+  const folder = path.join(fixture.root, '.aria', 'asks', gone.id);
   for (const name of fs.readdirSync(folder)) fs.rmSync(path.join(folder, name), { recursive: true });
   assert.throws(() => snapshot(fixture.root), new RegExp(`Ask ${gone.id} has no contract.json: its files were deleted`));
   await fixture.controls.commands.get('frontierHve.newAsk')();
@@ -131,7 +131,7 @@ test('an ask whose files were deleted is reported clearly, and New ask forgets i
   assert.ok(fs.existsSync(folder));
   await create(fixture, 'Dog profile badges', 'Add breed badges to the dog profile', ['Forget and continue', 'Create ask']);
   assert.ok(!fs.existsSync(folder));
-  const project = JSON.parse(fs.readFileSync(path.join(fixture.root, '.hve', 'project', 'project.json'), 'utf8'));
+  const project = JSON.parse(fs.readFileSync(path.join(fixture.root, '.aria', 'project', 'project.json'), 'utf8'));
   assert.ok(!project.asks.includes(gone.id));
   assert.equal(snapshot(fixture.root).ask.title, 'Dog profile badges');
 });
@@ -141,7 +141,7 @@ test('the harness refuses to forget an ask that still has its contract or owns f
   await create(fixture, 'Creative ideas', 'Come up with 3 creative ideas for the feed');
   const [kept] = listAsks(fixture.root);
   await assert.rejects(lifecycle(bundled(), fixture.root, ['forget', kept.id]), /still has its contract\.json/);
-  fs.rmSync(path.join(fixture.root, '.hve', 'asks', kept.id, 'contract.json'));
-  json(fixture.root, '.hve\\project\\state.json', { lock: { feed: { ask: kept.id, verify: 'node feed.test.js' } } });
+  fs.rmSync(path.join(fixture.root, '.aria', 'asks', kept.id, 'contract.json'));
+  json(fixture.root, '.aria\\project\\state.json', { lock: { feed: { ask: kept.id, verify: 'node feed.test.js' } } });
   await assert.rejects(lifecycle(bundled(), fixture.root, ['forget', kept.id]), /owns features feed; restore its folder/);
 });

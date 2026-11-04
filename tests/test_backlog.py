@@ -84,7 +84,7 @@ def test_each_rule_fails() -> None:
 
 def test_paths_stay_in_workspace() -> None:
     """A PRD path outside the workspace or in harness state is rejected."""
-    for prd in ("../PRD.md", ".hve/PRD.md"):
+    for prd in ("../PRD.md", ".aria/PRD.md"):
         try:
             errors_for({**VALID, "prd": prd})
         except ValueError:

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 SKILLS_DIR = Path(__file__).resolve().parents[2] / "skills"
-USER_REGISTRY = Path.cwd() / ".hve" / "skills-registry.json"
+USER_REGISTRY = Path.cwd() / ".aria" / "skills-registry.json"
 STATUS_ORDER = {"admitted": 0, "provisional": 1}
 STOP_WORDS = {"the", "and", "for", "then", "with", "from", "that", "this", "our", "your", "into", "each", "before", "after", "are",
               "was", "not", "can", "how", "what", "why", "all", "any", "one", "use", "make", "want", "need", "please"}
@@ -46,7 +46,7 @@ def relevance(prompt: str, entry: Json, categories: list[str], frequency: Counte
 
 
 def skill_dir(name: str) -> str:
-    """Return the .hve/skills folder name of a skill ('<pack>:<skill>' becomes '<pack>__<skill>')."""
+    """Return the .aria/skills folder name of a skill ('<pack>:<skill>' becomes '<pack>__<skill>')."""
     return name.replace(":", "__")
 
 
@@ -82,7 +82,7 @@ def rank(prompt: str, min_status: MinStatus, required: tuple[str, ...] = (), pac
         if len(matches) != 1 or matches[0]["status"] not in allowed:
             found = [f"{e['path']} ({e['status']})" for e in matches] or "none"
             raise ValueError(f"required skill {name!r} must resolve uniquely with status allowed by {min_status}; found {found}. "
-                             f"A workspace skill (.hve/skills-registry.json) with the same name as a library skill is ambiguous")
+                             f"A workspace skill (.aria/skills-registry.json) with the same name as a library skill is ambiguous")
         if name not in {e["name"] for e in reserved}:
             reserved.append(matches[0])
     frequency = Counter(s for e in library for s in skill_stems(e))

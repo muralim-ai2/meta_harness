@@ -83,7 +83,7 @@ def test_flow_guard_blocks_unfinished_stage() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         (root / "hooks").mkdir()
-        (root / ".hve" / "runs").mkdir(parents=True)
+        (root / ".aria" / "runs").mkdir(parents=True)
         for hook in ("flow_guard.py", "interventions.py", "hve_paths.py"):
             shutil.copy(REPO / "hooks" / hook, root / "hooks")
         (root / "tools" / "loop").mkdir(parents=True)
@@ -101,8 +101,8 @@ def test_choice_recorder() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         cwd = Path(tmp)
         (cwd / "proj" / ".harness").mkdir(parents=True)
-        (cwd / ".hve").mkdir()
-        (cwd / ".hve" / "user_profile.json").write_text(json.dumps({"build_preference": None}), encoding="utf-8")
+        (cwd / ".aria").mkdir()
+        (cwd / ".aria" / "user_profile.json").write_text(json.dumps({"build_preference": None}), encoding="utf-8")
 
         def answer(header: str, question: str, selected: list[str]) -> None:
             """Fire the recorder for one answered question."""
@@ -116,17 +116,17 @@ def test_choice_recorder() -> None:
         answer("push", "Push which? [project: proj]", ["feature/b", "not-a-branch"])
         answer("check:palette", "palette passed its check. Try it? [project: proj]", ["needs changes"])
         assert json.loads((cwd / "proj" / ".harness" / "checks" / "palette.json").read_text())["result"] == "needs changes"
-        answer("build-preference", "How do you prefer to build? [profile: .hve/user_profile.json]", ["low code"])
+        answer("build-preference", "How do you prefer to build? [profile: .aria/user_profile.json]", ["low code"])
         assert json.loads((cwd / "proj" / ".harness" / "choices" / "palette.json").read_text())["approach"] == "two"
         assert json.loads((cwd / "proj" / ".harness" / "push_approved.json").read_text())["branches"] == ["feature/a", "feature/b"]
-        assert json.loads((cwd / ".hve" / "user_profile.json").read_text())["build_preference"] == "low_code"
+        assert json.loads((cwd / ".aria" / "user_profile.json").read_text())["build_preference"] == "low_code"
 
 
 def test_guardrail_flags_non_enterprise_prototype() -> None:
     """Over 5,000 lines, FalkorDB, Tesseract, SQLite and a Dockerfile give a review verdict naming a solution architect; the hook warns once."""
     with tempfile.TemporaryDirectory() as tmp:
         cwd = Path(tmp)
-        project = cwd / ".hve" / "outputs" / "flow" / "current"
+        project = cwd / ".aria" / "outputs" / "flow" / "current"
         (project / ".harness").mkdir(parents=True)
         (project / "package.json").write_text(json.dumps({"dependencies": {"falkordb": "1", "tesseract.js": "5", "better-sqlite3": "9",
                                                                            "react": "19"}}), encoding="utf-8")

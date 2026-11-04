@@ -53,7 +53,7 @@ function model(t) {
     + row('tool.execution_start', 5, { toolCallId: 'b', toolName: 'run_in_terminal', arguments: { command: 'npm test', explanation: 'Run the policy checks' } })
     + row('tool.execution_complete', 9, { toolCallId: 'b', success: false })
     + row('tool.execution_start', 10, { toolCallId: 'c', toolName: 'create_file', arguments: { filePath: path.join(root, 'policy.js') } }));
-  json(root, '.hve\\runs\\session-1.errors.json', { failures: [{ command: 'npm test', output: '1 failing' }], paused: false });
+  json(root, '.aria\\runs\\session-1.errors.json', { failures: [{ command: 'npm test', output: '1 failing' }], paused: false });
   const asks = listAsks(root);
   const { chats } = chatList(transcripts, root, asks.map(ask => ask.id), { 'session-1': { ask: ASK, how: 'started' } }, null, NOW);
   return { now: new Date(NOW).toISOString(), surface: 'sidebar', busy: false, error: null, workspace: { name: 'policy', path: root }, workspaceMessage: null,

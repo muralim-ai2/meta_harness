@@ -342,7 +342,7 @@ function session(s, now) {
  */
 function runFiles(workspace, id) {
   const reader = new Reader(workspace);
-  const runs = path.join('.hve', 'runs');
+  const runs = path.join('.aria', 'runs');
   const errorsValue = reader.json(path.join(runs, `${id}.errors.json`), true);
   const errors = errorsValue === undefined ? null : (() => {
     const value = record(errorsValue, 'Error guard state');

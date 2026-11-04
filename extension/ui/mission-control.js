@@ -125,7 +125,7 @@ class MissionControl {
     return { enabled: otel.get('enabled') === true, file: resolved, bytes: resolved && fs.existsSync(resolved) ? fs.statSync(resolved).size : null };
   }
 
-  /** Watch the workspace's .hve/ and .harness/ folders and this window's chat transcripts.
+  /** Watch the workspace's .aria/ and .harness/ folders and this window's chat transcripts.
    * @returns {void}
    */
   bindWatchers() {
@@ -133,7 +133,7 @@ class MissionControl {
     this.watchers = [];
     this.tree.refresh();
     if (this.workspace?.uri.scheme !== 'file') return;
-    const patterns = [new vscode.RelativePattern(this.workspace, '.hve/**/*')];
+    const patterns = [new vscode.RelativePattern(this.workspace, '.aria/**/*')];
     const storage = this.context.storageUri;
     if (storage) patterns.push(new vscode.RelativePattern(vscode.Uri.file(path.dirname(storage.fsPath)), 'GitHub.copilot-chat/transcripts/*.jsonl'));
     patterns.push(new vscode.RelativePattern(this.workspace, '.harness/**/*'));

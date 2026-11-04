@@ -33,7 +33,7 @@ async function setup(t) {
  */
 function completeStage(root, ask) {
   const connection = bundled();
-  const plan = path.join(root, '.hve', 'asks', ask, 'plan.md');
+  const plan = path.join(root, '.aria', 'asks', ask, 'plan.md');
   fs.writeFileSync(plan, '# Policy delivery\n\nCheck required configuration and report the result.\n' + fs.readFileSync(plan, 'utf8'));
   for (const args of [['plan-sync', 'Recorded test plan'], ['stage', 'deliver', 'done', 'Verified scratch delivery']]) {
     execFileSync(connection.python, ['-B', connection.script, ...args], { cwd: root, env: { ...process.env, PYTHONUTF8: '1' } });
@@ -48,7 +48,7 @@ test('real task creation is visible to the harness and cleans request inputs', a
   assert.equal(where.open_ask.ask, state.ask.id);
   assert.equal(where.project.asks[0], state.ask.id);
   assert.deepEqual(fs.readdirSync(storage), []);
-  assert.ok(fs.existsSync(path.join(root, '.hve', 'asks', state.ask.id, 'request.md')));
+  assert.ok(fs.existsSync(path.join(root, '.aria', 'asks', state.ask.id, 'request.md')));
 });
 
 test('acceptance and requested changes persist through the guarded API', async t => {
@@ -69,10 +69,10 @@ test('preparing a review ticket does not write project state', async t => {
   const { root, flow, state } = await setup(t);
   completeStage(root, state.ask.id);
   const ready = snapshot(root);
-  const contract = fs.readFileSync(path.join(root, '.hve', 'asks', state.ask.id, 'contract.json'));
+  const contract = fs.readFileSync(path.join(root, '.aria', 'asks', state.ask.id, 'contract.json'));
   await flow.prepareReview(root, ready.revision, 'stage:deliver', 'accepted');
   assert.equal(snapshot(root).revision, ready.revision);
-  assert.deepEqual(fs.readFileSync(path.join(root, '.hve', 'asks', state.ask.id, 'contract.json')), contract);
+  assert.deepEqual(fs.readFileSync(path.join(root, '.aria', 'asks', state.ask.id, 'contract.json')), contract);
 });
 
 test('stale UI and active-ask switches cannot approve another task', async t => {
@@ -94,7 +94,7 @@ test('changed plans, incomplete work, and invalid identifiers reject before muta
   completeStage(root, state.ask.id);
   const ready = snapshot(root);
   const ticket = await flow.prepareReview(root, ready.revision, 'stage:deliver', 'accepted');
-  fs.appendFileSync(path.join(root, '.hve', 'asks', state.ask.id, 'plan.md'), '\nAnother requirement.');
+  fs.appendFileSync(path.join(root, '.aria', 'asks', state.ask.id, 'plan.md'), '\nAnother requirement.');
   await assert.rejects(flow.recordReview(root, ticket, 'Old approval'), /state changed/);
   assert.equal(snapshot(root).reviews[0].decision, 'open');
   assert.equal(flow.busy, false);

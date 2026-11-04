@@ -9,7 +9,7 @@ import subprocess
 from pathlib import Path
 from typing import TypedDict
 
-SKIP_DIRS = {"node_modules", "dist", "build", "out", ".next", "coverage", "vendor", "__pycache__", ".venv", "venv", "target", "bin", "obj", ".git", ".hve"}
+SKIP_DIRS = {"node_modules", "dist", "build", "out", ".next", "coverage", "vendor", "__pycache__", ".venv", "venv", "target", "bin", "obj", ".git", ".aria"}
 SKIP_PREFIXES = (".github/hve/",)
 SKIP_NAMES = ("package-lock.json", "pnpm-lock.yaml", "yarn.lock", ".min.js", ".map", ".tsbuildinfo")
 LANGS = {".py": "python", ".js": "js", ".jsx": "js", ".mjs": "js", ".cjs": "js", ".ts": "ts", ".tsx": "ts", ".cs": "csharp",

@@ -42,7 +42,7 @@ def make_project(tmp: str, check_passes: bool = True, screenshot: bool = True) -
 
 def write(project: Path, name: str, value: object) -> Path:
     """Write an agent input JSON file and return its path."""
-    path = project / ".hve" / "evaluations" / "input" / name
+    path = project / ".aria" / "evaluations" / "input" / name
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value), encoding="utf-8")
     return path
@@ -99,8 +99,8 @@ def test_scores_must_be_grounded_and_ordered() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         project = make_project(tmp)
         run_id = workflow.prepare(project, CONTRACT, project / "request.md", "ui", 0)["runId"]
-        prompt = json.loads((project / ".hve" / "evaluations" / run_id / "rubric-prompt.json").read_text(encoding="utf-8"))
-        assert "app.py" in prompt["inventory"] and not any(p.startswith(".hve/") for p in prompt["inventory"])
+        prompt = json.loads((project / ".aria" / "evaluations" / run_id / "rubric-prompt.json").read_text(encoding="utf-8"))
+        assert "app.py" in prompt["inventory"] and not any(p.startswith(".aria/") for p in prompt["inventory"])
         assert "expected 'awaiting-validation'" in raises(ValueError, workflow.validate_run, project, run_id)
         good = json.loads(scores(project).read_text(encoding="utf-8"))
         assert "contract order" in raises(ValueError, workflow.record_scores, project, run_id,
@@ -118,7 +118,7 @@ def test_validation_follows_trigger_and_output_kind() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         project = make_project(tmp, check_passes=False)
         run_id = run_to_council(project)
-        validation = json.loads((project / ".hve" / "evaluations" / run_id / "validation-results.json").read_text(encoding="utf-8"))
+        validation = json.loads((project / ".aria" / "evaluations" / run_id / "validation-results.json").read_text(encoding="utf-8"))
         assert [h["id"] for h in validation["hooks"]] == ["locked-feature-checks"] and validation["passed"] is False, validation
         assert validation["notApplicable"] == ["runtime-logs"] and validation["triggeredBy"] == [], validation
     with tempfile.TemporaryDirectory() as tmp:
@@ -127,7 +127,7 @@ def test_validation_follows_trigger_and_output_kind() -> None:
         workflow.record_scores(project, run_id, scores(project, usability_accessibility=0.7, task_completion=0.5))
         result = workflow.validate_run(project, run_id)
         assert result["passed"] is False and set(result["hooks"]) == {"locked-feature-checks", "visual-evidence"}, result
-        folder = project / ".hve" / "evaluations" / run_id
+        folder = project / ".aria" / "evaluations" / run_id
         hooks = {h["id"]: h for h in json.loads((folder / "validation-results.json").read_text(encoding="utf-8"))["hooks"]}
         assert hooks["locked-feature-checks"]["runs"][0]["checks"] == "3/3" and not hooks["locked-feature-checks"]["passed"]
         assert hooks["visual-evidence"]["artifacts"][0]["path"] == ".harness/evidence/core/page.png"
@@ -190,7 +190,7 @@ def test_decisions_pass_revise_and_human_review() -> None:
         assert cli.returncode == 1 and json.loads(cli.stdout)["status"] == "revise", cli
         (project / "app.py").write_text("print('palette with export')\n", encoding="utf-8")
         second_id = run_to_council(project, 1)
-        hooks = json.loads((project / ".hve" / "evaluations" / second_id / "validation-results.json").read_text(encoding="utf-8"))["hooks"]
+        hooks = json.loads((project / ".aria" / "evaluations" / second_id / "validation-results.json").read_text(encoding="utf-8"))["hooks"]
         assert {h["id"] for h in hooks} == {"locked-feature-checks", "visual-evidence"}, "revision passes re-run every hook"
         assert council(project, second_id, "revise", "pass", "human-review")["decision"] == "human-review"
         cli = subprocess.run([sys.executable, str(CLI), "check", str(project)], capture_output=True, text=True)
@@ -211,7 +211,7 @@ def test_output_without_feature_loop_is_evaluated() -> None:
         project = make_project(tmp, screenshot=False)
         (project / "feature_list.json").unlink()
         run_id = run_to_council(project, kind="document")
-        validation = json.loads((project / ".hve" / "evaluations" / run_id / "validation-results.json").read_text(encoding="utf-8"))
+        validation = json.loads((project / ".aria" / "evaluations" / run_id / "validation-results.json").read_text(encoding="utf-8"))
         assert validation["hooks"] == [] and "locked-feature-checks" in validation["notApplicable"], validation
         assert "no feature loop" in validation["notApplicableWhy"]["locked-feature-checks"] and validation["passed"] is True, validation
         assert council(project, run_id, "pass", "pass", "pass")["decision"] == "pass"

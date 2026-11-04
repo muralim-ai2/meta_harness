@@ -27,8 +27,8 @@ def render(out: Path, version: str = "0.0.0-test", python: str | None = "python"
 def workspace(tmp: str) -> Path:
     """Return a temp workspace set up the way the extension's setup command leaves it."""
     ws = Path(tmp) / "ws"
-    (ws / ".hve" / "runs").mkdir(parents=True)
-    (ws / ".hve" / "user_profile.json").write_text(json.dumps(EMPTY_PROFILE | {"build_preference": "low_code"}), encoding="utf-8")
+    (ws / ".aria" / "runs").mkdir(parents=True)
+    (ws / ".aria" / "user_profile.json").write_text(json.dumps(EMPTY_PROFILE | {"build_preference": "low_code"}), encoding="utf-8")
     return ws
 
 
@@ -133,7 +133,7 @@ def test_render_for_python_launcher_and_fresh_workspace() -> None:
         run(hook(creator, "profile_detector.py"), ws, {"hook_event_name": "SessionStart"})
         run(hook(creator, "skill_loader.py"), ws, {"hook_event_name": "UserPromptSubmit", "prompt": "Build a palette app"},
             HARNESS_SKILLS_MIN_STATUS="provisional")
-        assert (ws / ".hve" / "user_profile.json").is_file() and (ws / ".hve" / "runs" / "s1.skills.json").is_file()
+        assert (ws / ".aria" / "user_profile.json").is_file() and (ws / ".aria" / "runs" / "s1.skills.json").is_file()
 
 
 def test_rerender_updates_in_place() -> None:
@@ -187,7 +187,7 @@ def test_product_manager_agent() -> None:
         assert "`search_issues`" in pm and "scoped to that repository" in pm and "contract direct <slug> \"ARIA product-manager\"" in pm
         assert "+prd" in pm and "The council gets no brief" in pm
         assert "host-selected; actual model unconfirmed" in pm and 'label it "session model"' not in pm
-        assert "read `.hve/skills/prd/SKILL.md`" in pm and "skills/admitted/prd/SKILL.md" not in pm
+        assert "read `.aria/skills/prd/SKILL.md`" in pm and "skills/admitted/prd/SKILL.md" not in pm
         assert "register prd --slug" in pm and "Create parents and dependencies before" in pm and "`uncovered`" in pm
         ado = (folder / "hve-azure-devops.agent.md").read_text(encoding="utf-8")
         assert "Epic / Issue / Task (Basic" in ado and "Create parents and dependencies before" in ado
@@ -196,14 +196,14 @@ def test_product_manager_agent() -> None:
                                 ("Create a PRD for a search app", 2)):
             run(loader, ws, {"hook_event_name": "UserPromptSubmit", "prompt": prompt},
                 HARNESS_SKILLS_MIN_STATUS="provisional", HARNESS_REQUIRED_SKILLS="prd")
-            loadout = json.loads((ws / ".hve" / "runs" / "s1.skills.json").read_text(encoding="utf-8"))
+            loadout = json.loads((ws / ".aria" / "runs" / "s1.skills.json").read_text(encoding="utf-8"))
             assert loadout["skills"][0] == "skills/admitted/prd" and len(loadout["skills"]) >= minimum, loadout
             registry = json.loads((EXTENSION / "runtime" / "skills" / "registry.json").read_text(encoding="utf-8"))
             tokens = {entry["name"]: entry["skill_tokens"] for entry in registry["admitted"]}
             budget = json.loads((EXTENSION / "runtime" / "skills" / "categories.json").read_text(encoding="utf-8"))["loadout"]
             total = sum(tokens[Path(skill).name] for skill in loadout["skills"])
             assert loadout["tokens"] == total and loadout["over_budget"] == (total > budget["max_tokens"] or len(loadout["skills"]) > budget["max_skills"])
-            skill_path = ws / ".hve" / "skills" / "prd" / "SKILL.md"
+            skill_path = ws / ".aria" / "skills" / "prd" / "SKILL.md"
             assert skill_path.is_file()
             for path in (skill_path, EXTENSION / "runtime" / "skills" / "admitted" / "prd" / "SKILL.md"):
                 read = run(loader, ws, {"hook_event_name": "PreToolUse", "tool_input": {"filePath": str(path)}})
@@ -237,7 +237,7 @@ def test_rendered_hooks_run_in_a_workspace() -> None:
         assert context and "Explanation depth: balanced" in json.dumps(context), context
         prompt = start | {"hook_event_name": "UserPromptSubmit", "prompt": "Design the screens and states of a signup page."}
         assert run(hook(creator, "skill_loader.py"), ws, prompt, HARNESS_SKILLS_MIN_STATUS="provisional") is None
-        assert (ws / ".hve" / "skills" / "ux-flows" / "SKILL.md").is_file(), list((ws / ".hve").rglob("SKILL.md"))
+        assert (ws / ".aria" / "skills" / "ux-flows" / "SKILL.md").is_file(), list((ws / ".aria").rglob("SKILL.md"))
         isolated = {**os.environ, "APPDATA": str(ws / "appdata"), "USERPROFILE": str(ws / "home"), "HOME": str(ws / "home")}
         load = subprocess.run([sys.executable, str(EXTENSION / "runtime" / "tools" / "skills" / "context_load.py")], cwd=ws,
                               capture_output=True, text=True, env=isolated)
@@ -292,7 +292,7 @@ def test_delivery_agents_and_lifecycles() -> None:
             made = subprocess.run([sys.executable, lifecycle_py, "contract", overlay, f"ask-{name}", f"HVE {name}", "req.md"],
                                   cwd=ws, capture_output=True, text=True)
             assert made.returncode == 0, made.stderr
-            active = json.loads((ws / ".hve" / "asks" / "active.json").read_text(encoding="utf-8"))["active"]
+            active = json.loads((ws / ".aria" / "asks" / "active.json").read_text(encoding="utf-8"))["active"]
             assert active == json.loads(made.stdout)["ask"] and re.fullmatch(rf"\d{{8}}-\d{{4}}-ask-{name}", active), active
 
 

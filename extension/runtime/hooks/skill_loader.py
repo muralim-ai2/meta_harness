@@ -79,7 +79,7 @@ def choose(prompt: str) -> tuple[Loadout, list[Json]]:
     required += tuple(s for s in current_skills() if s not in required)
     chosen = (STATE_DIR / "asks" / "active.json").is_file() and active()[1]["skills"]["choice"] is not None
     ranked = rank("" if chosen else prompt, os.environ["HARNESS_SKILLS_MIN_STATUS"], required, ask_packs())  # type: ignore[arg-type]
-    skills = [f".hve/skills/{skill_dir(r['name'])}" if ":" in r["name"] else r["path"] for r in ranked["load"]]
+    skills = [f".aria/skills/{skill_dir(r['name'])}" if ":" in r["name"] else r["path"] for r in ranked["load"]]
     return (Loadout(categories=ranked["categories"], skills=skills, tokens=ranked["load_tokens"], over_budget=ranked["over_budget"],
                     budget=ranked["budget"], announced=False, used=list(skills), shift_noted=None, ask=None, displaced_noted=None),
             ranked["load"])
@@ -89,7 +89,7 @@ def announcement(loadout: Loadout) -> str:
     """Return the instruction naming the loaded skills and, when the load exceeds the guideline, telling the agent to surface it."""
     if not loadout["skills"]:
         return ""
-    paths = ", ".join(f".hve/skills/{Path(s).name}/SKILL.md" for s in loadout["skills"])
+    paths = ", ".join(f".aria/skills/{Path(s).name}/SKILL.md" for s in loadout["skills"])
     text = (f"Skills loaded for this task ({len(loadout['skills'])}, {loadout['tokens']:,} tokens): read and follow {paths} before "
             "continuing. Do not use other library skills.")
     if loadout["over_budget"]:

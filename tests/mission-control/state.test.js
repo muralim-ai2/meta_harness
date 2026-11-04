@@ -39,12 +39,12 @@ test('invalid JSON, invalid shapes, and invalid pointers fail explicitly', t => 
   const root = workspace();
   t.after(() => removeWorkspace(root));
   project(root);
-  fs.writeFileSync(path.join(root, '.hve', 'asks', 'active.json'), '{');
+  fs.writeFileSync(path.join(root, '.aria', 'asks', 'active.json'), '{');
   assert.throws(() => snapshot(root), /Invalid JSON/);
-  json(root, '.hve\\asks\\active.json', { active: '../../escape' });
+  json(root, '.aria\\asks\\active.json', { active: '../../escape' });
   assert.throws(() => snapshot(root), /Invalid ask/);
-  json(root, '.hve\\asks\\active.json', { active: ASK });
-  json(root, '.hve\\project\\feature_list.json', [{ name: 'policy', description: 'policy', verify: 'check', passes: 'true' }]);
+  json(root, '.aria\\asks\\active.json', { active: ASK });
+  json(root, '.aria\\project\\feature_list.json', [{ name: 'policy', description: 'policy', verify: 'check', passes: 'true' }]);
   assert.throws(() => snapshot(root), /expected a boolean/);
 });
 
@@ -87,9 +87,9 @@ test('path traversal, linked state directories and oversized files are refused',
   t.after(() => { removeWorkspace(root); removeWorkspace(outside); });
   assert.throws(() => containedPath(root, '..\\escape'), /leaves/);
   assert.throws(() => containedPath(root, outside), /relative/);
-  fs.symlinkSync(outside, path.join(root, '.hve'), 'junction');
+  fs.symlinkSync(outside, path.join(root, '.aria'), 'junction');
   assert.throws(() => snapshot(root), /Linked harness paths/);
-  fs.unlinkSync(path.join(root, '.hve'));
+  fs.unlinkSync(path.join(root, '.aria'));
   fs.writeFileSync(path.join(root, 'huge'), Buffer.alloc(8 * 1024 * 1024 + 1));
   assert.throws(() => new Reader(root).text('huge'), /8 MB/);
 });

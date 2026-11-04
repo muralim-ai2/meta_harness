@@ -1,5 +1,5 @@
 """Initializer/worker loop over feature_list.json: init locks features and starts git; next picks one; verify commits, flips, or diagnoses;
-status writes tracker.json. With an ask open, the feature list, progress, tracker and lock are the project's (.hve/project/) and the
+status writes tracker.json. With an ask open, the feature list, progress, tracker and lock are the project's (.aria/project/) and the
 attempts, evidence and PR records the ask's; with no ask open everything stays in the project and .harness/."""
 
 import json
@@ -25,7 +25,7 @@ FIELDS = {"name", "description", "verify", "passes"}
 MIN_FEATURES = 3
 MAX_ATTEMPTS = 5
 VERIFY_TIMEOUT_S = 300
-GITIGNORE = ("node_modules/", ".next/", ".harness/", ".hve/")
+GITIGNORE = ("node_modules/", ".next/", ".harness/", ".aria/")
 Review = Literal["local", "github"]
 
 Json = dict[str, Any]
@@ -73,7 +73,7 @@ def init(project: Path, review: Review) -> Json:
         "attempts": {f["name"]: 0 for f in features}, "base": {}, "current": None, "since_ms": None, "escalated": None, "help": None})
     tracker(project)
     git(project, "add", "-A")
-    # Inside an ask the loop files are in git-ignored .hve/, so a fresh repo may have nothing to commit yet.
+    # Inside an ask the loop files are in git-ignored .aria/, so a fresh repo may have nothing to commit yet.
     git(project, "commit", "--allow-empty", "-m", "[init] scaffold", "-m", locked_summary(features))
     return {"initialized": True, "review": review, "features": [f["name"] for f in features]}
 

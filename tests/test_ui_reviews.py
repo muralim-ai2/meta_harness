@@ -34,14 +34,14 @@ def create(workspace: Path, slug: str) -> str:
 
 def read_contract(workspace: Path, ask: str) -> dict[str, object]:
     """Read the selected ask's contract."""
-    value: dict[str, object] = json.loads((workspace / ".hve" / "asks" / ask / "contract.json").read_text(encoding="utf-8"))
+    value: dict[str, object] = json.loads((workspace / ".aria" / "asks" / ask / "contract.json").read_text(encoding="utf-8"))
     return value
 
 
 def test_review_ticket_is_read_only_and_valid_review_is_persistent(tmp_path: Path) -> None:
     """Read-only tickets authorize persistent reviews of exactly their selected ask."""
     ask = create(tmp_path, "first")
-    folder = tmp_path / ".hve" / "asks" / ask
+    folder = tmp_path / ".aria" / "asks" / ask
     before = {name: (folder / name).read_bytes() for name in ("contract.json", "plan.md")}
     ticket = run(tmp_path, "review-status", ask)
     assert {name: (folder / name).read_bytes() for name in before} == before
@@ -68,7 +68,7 @@ def test_plan_edit_invalidates_review_and_does_not_reconcile_ticks(tmp_path: Pat
     """An edited plan rejects an earlier ticket without writing the plan or contract."""
     ask = create(tmp_path, "first")
     ticket = run(tmp_path, "review-status", ask)
-    plan = tmp_path / ".hve" / "asks" / ask / "plan.md"
+    plan = tmp_path / ".aria" / "asks" / ask / "plan.md"
     plan.write_text(plan.read_text(encoding="utf-8").replace("- [ ] stage:deliver", "- [x] stage:deliver"), encoding="utf-8")
     before = read_contract(tmp_path, ask)
     text = plan.read_bytes()
@@ -92,7 +92,7 @@ def test_new_recorded_evidence_invalidates_ticket(tmp_path: Path) -> None:
     """A changed deterministic check record invalidates an outstanding review ticket."""
     ask = create(tmp_path, "first")
     ticket = run(tmp_path, "review-status", ask)
-    records = tmp_path / ".hve" / "asks" / ask / "loop" / "prs"
+    records = tmp_path / ".aria" / "asks" / ask / "loop" / "prs"
     records.mkdir()
     (records / "policy.json").write_text('{"verify": {"exit_code": 1}}', encoding="utf-8")
     result = invoke(tmp_path, "tick-for", ask, str(ticket["revision"]), "stage:deliver", "accepted", "Old review")

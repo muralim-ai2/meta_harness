@@ -74,7 +74,7 @@ test('the plan model separates the written plan from its generated sections and 
   assert.ok(!draft.body.includes('hve:checklist'));
   const agreed = write(`${body}\n\n${GENERATED}`, planDigest(body), [{ ts: '2026-10-28T20:30:00+00:00', sha256: planDigest(body), note: 'approved' }]);
   assert.deepEqual({ status: agreed.status, revisions: agreed.revisions, agreedAt: agreed.agreedAt, path: agreed.path },
-    { status: 'agreed', revisions: 1, agreedAt: '2026-10-28T20:30:00+00:00', path: `.hve/asks/${ASK}/plan.md` });
+    { status: 'agreed', revisions: 1, agreedAt: '2026-10-28T20:30:00+00:00', path: `.aria/asks/${ASK}/plan.md` });
   assert.equal(write(`${body}\nAlso support dark mode.\n\n${GENERATED}`, planDigest(body)).status, 'edited');
 });
 
@@ -84,6 +84,6 @@ test('Edit plan opens plan.md as a text editor beside Mission Control, and expla
   project(fixture.root);
   await fixture.controls.commands.get('frontierHve.editPlan')();
   const opened = fixture.controls.calls.find(call => call[0] === 'document');
-  assert.equal(opened[1].fsPath, path.join(fs.realpathSync(fixture.root), '.hve', 'asks', ASK, 'plan.md'));
+  assert.equal(opened[1].fsPath, path.join(fs.realpathSync(fixture.root), '.aria', 'asks', ASK, 'plan.md'));
   assert.deepEqual(opened[2], { viewColumn: -2, preview: false });
 });

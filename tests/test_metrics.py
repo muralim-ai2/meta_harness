@@ -65,7 +65,7 @@ def run_session(main_model: str, canceled: bool) -> tuple[subprocess.CompletedPr
         (root / ".github" / "agents").mkdir(parents=True)
         (root / ".github" / "agents" / "single.agent.md").write_text(
             "---\nname: single\nmodel: Claude Opus 5.5 (copilot)\n---\nmodel: not-the-pin\n", encoding="utf-8")
-        runs = root / ".hve" / "runs"
+        runs = root / ".aria" / "runs"
         runs.mkdir(parents=True)
         main = {"copilot_chat.chat_session_id": SESSION}
         sub = {"copilot_chat.chat_session_id": SUB, "copilot_chat.parent_chat_session_id": SESSION}
@@ -138,7 +138,7 @@ def test_otel_trim_keeps_recent_records_and_ignores_the_export() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         ws = Path(tmp)
         assert otel_trim.trim(ws, T0) == {"export": None, "gitignore_added": True}
-        runs = ws / ".hve" / "runs"
+        runs = ws / ".aria" / "runs"
         runs.mkdir(parents=True)
         day = 86_400_000
         old, new = chat_span("old", -4 * day, "m", 10, {}), chat_span("new", -day, "m", 10, {})
@@ -146,7 +146,7 @@ def test_otel_trim_keeps_recent_records_and_ignores_the_export() -> None:
         report = otel_trim.trim(ws, T0)
         kept = [json.loads(line).get("spanId") for line in (runs / "copilot-otel.jsonl").read_text(encoding="utf-8").splitlines()]
         assert kept == [None, "new"] and report["before_mb"] >= report["after_mb"] and report["gitignore_added"] is False, (kept, report)
-        assert (ws / ".gitignore").read_text(encoding="utf-8").count(".hve/runs/copilot-otel.jsonl") == 1
+        assert (ws / ".gitignore").read_text(encoding="utf-8").count(".aria/runs/copilot-otel.jsonl") == 1
 
 
 if __name__ == "__main__":

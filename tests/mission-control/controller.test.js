@@ -94,15 +94,15 @@ test('files open beside Mission Control only when it lists them', async t => {
   project(fixture.root);
   fs.writeFileSync(path.join(fixture.root, 'policy.js'), 'export {}');
   fs.writeFileSync(path.join(fixture.root, 'secret.txt'), 'private');
-  fs.mkdirSync(path.join(fixture.root, '.hve', 'skills', 'ux-flows'), { recursive: true });
-  fs.writeFileSync(path.join(fixture.root, '.hve', 'skills', 'ux-flows', 'SKILL.md'), '# UX flows');
+  fs.mkdirSync(path.join(fixture.root, '.aria', 'skills', 'ux-flows'), { recursive: true });
+  fs.writeFileSync(path.join(fixture.root, '.aria', 'skills', 'ux-flows', 'SKILL.md'), '# UX flows');
   transcript(fixture.transcripts, [{ type: 'tool.execution_start', data: { toolCallId: 'o', toolName: 'run_in_terminal', arguments: { command: `python lifecycle.py open ${ASK}` } } },
     { type: 'tool.execution_start', data: { toolCallId: 'a', toolName: 'create_file', arguments: { filePath: path.join(fixture.root, 'policy.js') } } }]);
   await fixture.controls.commands.get('frontierHve.refreshMissionControl')();
   await fixture.controls.provider.execute({ action: 'openFile', path: 'policy.js' });
-  await fixture.controls.provider.execute({ action: 'openFile', path: '.hve/skills/ux-flows/SKILL.md' });
+  await fixture.controls.provider.execute({ action: 'openFile', path: '.aria/skills/ux-flows/SKILL.md' });
   const opened = fixture.controls.calls.filter(call => call[0] === 'document');
-  assert.deepEqual(opened.map(call => path.relative(fs.realpathSync(fixture.root), call[1].fsPath)), ['policy.js', path.join('.hve', 'skills', 'ux-flows', 'SKILL.md')]);
+  assert.deepEqual(opened.map(call => path.relative(fs.realpathSync(fixture.root), call[1].fsPath)), ['policy.js', path.join('.aria', 'skills', 'ux-flows', 'SKILL.md')]);
   assert.equal(opened[0][2].viewColumn, -2);
   await assert.rejects(fixture.controls.provider.execute({ action: 'openFile', path: 'secret.txt' }), /not listed/);
 });

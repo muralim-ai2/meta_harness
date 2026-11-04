@@ -87,7 +87,7 @@ async function summarize(mc, id) {
   const root = mc.target().uri.fsPath;
   /** @param {string} relative @param {number} limit @returns {string | null} */
   const read = (relative, limit) => { const file = containedPath(root, relative); return fs.existsSync(file) ? boundedText(file).slice(0, limit) : null; };
-  const provenance = read(`.hve/asks/${snap.ask.id}/provenance.md`, 8000);
+  const provenance = read(`.aria/asks/${snap.ask.id}/provenance.md`, 8000);
   const report = mc.state.evaluations.find(file => file.endsWith('report.json'));
   const evaluation = report ? read(report, 6000) : null;
   const passing = snap.features.filter(feature => feature.passes).length;

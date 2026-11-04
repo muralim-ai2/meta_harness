@@ -67,7 +67,7 @@ test('full activation registers Mission Control before setup work, keeps every o
 test('registration is passive, watches harness state and chat transcripts, and posts the model without creating project files', async t => {
   const fixture = mission(t);
   assert.ok(!fixture.controls.calls.some(call => call[0] !== 'provider'));
-  assert.deepEqual(fixture.controls.watchers.map(watcher => watcher.pattern.pattern), ['.hve/**/*', 'GitHub.copilot-chat/transcripts/*.jsonl', '.harness/**/*']);
+  assert.deepEqual(fixture.controls.watchers.map(watcher => watcher.pattern.pattern), ['.aria/**/*', 'GitHub.copilot-chat/transcripts/*.jsonl', '.harness/**/*']);
   assert.equal(fixture.controls.watchers[1].pattern.base.fsPath, path.join(fixture.storage, 'window'));
   const view = fixture.controls.view();
   fixture.controls.provider.resolveWebviewView(view);

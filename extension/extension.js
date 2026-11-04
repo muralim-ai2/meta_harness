@@ -99,11 +99,11 @@ async function warnNoPython() {
 }
 
 /**
- * Create <workspace>/.hve with runs/ and the user profile, ask how the user prefers to build, and optionally ignore .hve in git.
+ * Create <workspace>/.aria with runs/ and the user profile, ask how the user prefers to build, and optionally ignore .aria in git.
  * @param {string} workspace
  */
 async function setUpWorkspace(workspace) {
-  const state = path.join(workspace, '.hve');
+  const state = path.join(workspace, '.aria');
   fs.mkdirSync(path.join(state, 'runs'), { recursive: true });
   const profileFile = path.join(state, 'user_profile.json');
   const profile = fs.existsSync(profileFile) ? JSON.parse(fs.readFileSync(profileFile, 'utf8')) : { ...EMPTY_PROFILE };
@@ -115,9 +115,9 @@ async function setUpWorkspace(workspace) {
   }
   fs.writeFileSync(profileFile, JSON.stringify(profile, null, 2) + '\n');
   const gitignore = path.join(workspace, '.gitignore');
-  const ignored = fs.existsSync(gitignore) && fs.readFileSync(gitignore, 'utf8').split(/\r?\n/).includes('.hve/');
-  if (!ignored && await vscode.window.showQuickPick(['Yes', 'No'], { title: 'Add .hve/ (ARIA state) to .gitignore?' }) === 'Yes') {
-    fs.appendFileSync(gitignore, `${fs.existsSync(gitignore) ? '\n' : ''}.hve/\n`);
+  const ignored = fs.existsSync(gitignore) && fs.readFileSync(gitignore, 'utf8').split(/\r?\n/).includes('.aria/');
+  if (!ignored && await vscode.window.showQuickPick(['Yes', 'No'], { title: 'Add .aria/ (ARIA state) to .gitignore?' }) === 'Yes') {
+    fs.appendFileSync(gitignore, `${fs.existsSync(gitignore) ? '\n' : ''}.aria/\n`);
   }
 }
 
@@ -132,7 +132,7 @@ async function enableResearchTelemetry(context) {
     return;
   }
   const choice = await vscode.window.showWarningMessage(
-    'Turn on the Copilot telemetry file export? It records full chat content into .hve/runs/copilot-otel.jsonl. Use it for benchmarks or an ask that opted in, then turn it off ("ARIA: Turn off research telemetry").',
+    'Turn on the Copilot telemetry file export? It records full chat content into .aria/runs/copilot-otel.jsonl. Use it for benchmarks or an ask that opted in, then turn it off ("ARIA: Turn off research telemetry").',
     { modal: true }, 'Turn on');
   if (choice !== 'Turn on') {
     return;
@@ -140,7 +140,7 @@ async function enableResearchTelemetry(context) {
   const otel = vscode.workspace.getConfiguration('github.copilot.chat.otel');
   await otel.update('enabled', true, vscode.ConfigurationTarget.Global);
   await otel.update('exporterType', 'file', vscode.ConfigurationTarget.Global);
-  await otel.update('outfile', path.join(folders[0].uri.fsPath, '.hve', 'runs', 'copilot-otel.jsonl'), vscode.ConfigurationTarget.Global);
+  await otel.update('outfile', path.join(folders[0].uri.fsPath, '.aria', 'runs', 'copilot-otel.jsonl'), vscode.ConfigurationTarget.Global);
   const python = await findPython();
   if (python) {
     await trimTelemetry(context, folders[0].uri.fsPath, python);
@@ -162,7 +162,7 @@ async function trimTelemetry(context, workspace, python) {
       + `last ${report.keep_days} days up to ${report.cap_mb} MB`);
   }
   if (report.gitignore_added) {
-    notes.push('added .hve/runs/copilot-otel.jsonl to .gitignore (it holds full chat content)');
+    notes.push('added .aria/runs/copilot-otel.jsonl to .gitignore (it holds full chat content)');
   }
   if (notes.length) {
     vscode.window.showInformationMessage(`ARIA ${notes.join(' and ')}.`);
@@ -174,7 +174,7 @@ async function trimTelemetry(context, workspace, python) {
  */
 async function disableResearchTelemetry() {
   await vscode.workspace.getConfiguration('github.copilot.chat.otel').update('enabled', false, vscode.ConfigurationTarget.Global);
-  vscode.window.showInformationMessage('Research telemetry is off. Chats are no longer recorded to .hve/runs/copilot-otel.jsonl.');
+  vscode.window.showInformationMessage('Research telemetry is off. Chats are no longer recorded to .aria/runs/copilot-otel.jsonl.');
 }
 
 /**
@@ -211,7 +211,7 @@ function runPythonJson(python, script, args, cwd) {
 }
 
 /**
- * Measure the always-on context load (skills, instructions, MCP) and show its size and any warnings; the report is .hve/context_load.json.
+ * Measure the always-on context load (skills, instructions, MCP) and show its size and any warnings; the report is .aria/context_load.json.
  * @param {vscode.ExtensionContext} context
  * @param {string} workspace
  * @param {string} python Python launcher.
@@ -225,7 +225,7 @@ async function reportContextLoad(context, workspace, python) {
   const warnings = report.warnings.length ? ` Warnings: ${report.warnings.join('; ')}. Run /check-context-load for fixes.` : '';
   const open = await vscode.window.showInformationMessage(summary + warnings, 'Show report');
   if (open) {
-    await vscode.window.showTextDocument(vscode.Uri.file(path.join(workspace, '.hve', 'context_load.json')));
+    await vscode.window.showTextDocument(vscode.Uri.file(path.join(workspace, '.aria', 'context_load.json')));
   }
 }
 
@@ -321,7 +321,7 @@ async function activate(context) {
   context.subscriptions.push(...missionControl.register(context, findPython));
   const telemetry = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
   telemetry.text = '$(record) Research telemetry on';
-  telemetry.tooltip = 'Copilot chats are recorded with full content to .hve/runs/copilot-otel.jsonl. Click to turn research telemetry off.';
+  telemetry.tooltip = 'Copilot chats are recorded with full content to .aria/runs/copilot-otel.jsonl. Click to turn research telemetry off.';
   telemetry.command = 'frontierHve.researchTelemetryOff';
   showTelemetryReminder(telemetry);
   context.subscriptions.push(telemetry, vscode.workspace.onDidChangeConfiguration((event) => {
@@ -331,7 +331,7 @@ async function activate(context) {
   }));
   const python = await findPython();
   const folders = vscode.workspace.workspaceFolders;
-  if (python && folders && folders.length > 0 && fs.existsSync(path.join(folders[0].uri.fsPath, '.hve', 'runs', 'copilot-otel.jsonl'))) {
+  if (python && folders && folders.length > 0 && fs.existsSync(path.join(folders[0].uri.fsPath, '.aria', 'runs', 'copilot-otel.jsonl'))) {
     // Not awaited: activation must not wait on a large file; a failure is shown, not swallowed.
     trimTelemetry(context, folders[0].uri.fsPath, python).catch((error) => vscode.window.showErrorMessage(`ARIA: ${error.message}`));
   }

@@ -14,7 +14,7 @@ from scan import scan
 from triage import load_categories, skill_categories
 
 WORKSPACE = Path.cwd()
-STATE = WORKSPACE / ".hve"
+STATE = WORKSPACE / ".aria"
 USER_REGISTRY = STATE / "skills-registry.json"
 USER_LIBRARY = STATE / "skill-library"
 DUPLICATE_SIMILARITY = 0.5

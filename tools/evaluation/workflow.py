@@ -20,7 +20,7 @@ Json = dict[str, Any]
 RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$")
 LINE_SUFFIX = re.compile(r":\d+(?::\d+)?$")
 CHECKS = re.compile(r"HARNESS_CHECKS (\d+)/(\d+)")
-EXCLUDED_PARTS = {".git", ".hve", "node_modules", ".next", "dist", "build", "out", "coverage", "__pycache__", ".venv", ".turbo"}
+EXCLUDED_PARTS = {".git", ".aria", "node_modules", ".next", "dist", "build", "out", "coverage", "__pycache__", ".venv", ".turbo"}
 KINDS = ("risk", "miss", "questionable-design")
 SEVERITIES = ("critical", "high", "medium", "low")
 RECOMMENDATIONS = ("pass", "revise", "human-review")
@@ -55,7 +55,7 @@ def _run_folder(project: Path, run_id: str) -> Path:
     """Return the folder of one evaluation run."""
     if not RUN_ID.fullmatch(run_id):
         raise ValueError(f"invalid evaluation run id: {run_id!r}")
-    return project / ".hve" / "evaluations" / run_id
+    return project / ".aria" / "evaluations" / run_id
 
 
 def _open_run(project: Path, run_id: str, status: str) -> tuple[Path, Path, EvaluationContract, Json]:
@@ -95,7 +95,7 @@ def _fingerprint(project: Path, files: list[str]) -> str:
 
 def latest_report(project: Path) -> Json | None:
     """Return the most recent completed reflection report, or None when there is none."""
-    reports = sorted((_project(project) / ".hve" / "evaluations").glob("*/report.json"), key=lambda p: p.parent.name)
+    reports = sorted((_project(project) / ".aria" / "evaluations").glob("*/report.json"), key=lambda p: p.parent.name)
     return mapping(_read_json(reports[-1]), "latest evaluation report") if reports else None
 
 

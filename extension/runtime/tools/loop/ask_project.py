@@ -74,7 +74,7 @@ def project_text(workspace: Path = WORKSPACE) -> str:
     project = project_status(workspace)
     if project is None:
         raise FileNotFoundError(f"{project_folder(workspace) / 'project.json'} missing: no ask has opened a project in this workspace")
-    requests = [json.loads((workspace / ".hve" / "asks" / a / "contract.json").read_text(encoding="utf-8"))["request"] for a in project["asks"]]
+    requests = [json.loads((workspace / ".aria" / "asks" / a / "contract.json").read_text(encoding="utf-8"))["request"] for a in project["asks"]]
     folder = project_folder(workspace)
     names = [f["name"] for f in json.loads((folder / "feature_list.json").read_text(encoding="utf-8"))] \
         if (folder / "feature_list.json").is_file() else []
@@ -99,7 +99,7 @@ def ledger(lifecycle: str, workspace: Path = WORKSPACE) -> Json:
     rows: dict[str, list[Json]] = {s: [] for s in stages}
     asks = []
     for ask in project["asks"] if project else []:
-        data = json.loads((workspace / ".hve" / "asks" / ask / "contract.json").read_text(encoding="utf-8"))
+        data = json.loads((workspace / ".aria" / "asks" / ask / "contract.json").read_text(encoding="utf-8"))
         asks.append({k: data.get(k) for k in ("ask", "lifecycle", "agent", "created", "scope", "for_stage")})
         target = data.get("for_stage")
         if target and target.split(":", 1)[0] == lifecycle:

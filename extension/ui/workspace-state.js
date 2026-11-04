@@ -39,7 +39,7 @@ function featureName(value) {
  * @returns {import('./types').Check | null}
  */
 function evidence(reader, owner, name, command, passes) {
-  const folder = path.join('.hve', 'asks', owner, 'loop');
+  const folder = path.join('.aria', 'asks', owner, 'loop');
   const prPath = path.join(folder, 'prs', `${name}.json`);
   const pr = reader.json(prPath, true);
   if (passes && pr !== undefined) {
@@ -92,7 +92,7 @@ function snapshot(workspace, selected = null) {
   /** @type {import('./types').Snapshot} */
   const state = { workspace: reader.root, revision: '', project: null, ask: null, features: [], reviews: [], files: [],
     planState: 'missing', plan: null, pendingPlanTicks: false, decisions: [], skills: [], skillLoad: null, pluginSkills: [], options: [], stages: [] };
-  const projectPath = path.join('.hve', 'project', 'project.json');
+  const projectPath = path.join('.aria', 'project', 'project.json');
   const projectValue = reader.json(projectPath, true);
   /** @type {string[]} */
   let projectAsks = [];
@@ -101,7 +101,7 @@ function snapshot(workspace, selected = null) {
     state.project = { name: text(project.name, 'Project name'), goal: text(project.goal, 'Project goal') };
     projectAsks = list(project.asks, 'Project asks').map(askId);
   }
-  const activeValue = reader.json(path.join('.hve', 'asks', 'active.json'), true);
+  const activeValue = reader.json(path.join('.aria', 'asks', 'active.json'), true);
   const activeId = activeValue === undefined ? null : askId(record(activeValue, 'Active ask pointer').active);
   const shown = selected === null ? activeId : askId(selected);
   /** @type {Record<string, unknown> | null} */
@@ -109,7 +109,7 @@ function snapshot(workspace, selected = null) {
   let askFolder = '';
   if (shown !== null) {
     if (!state.project || !projectAsks.includes(shown)) throw new Error(`Ask ${shown} is missing from the project record.`);
-    askFolder = path.join('.hve', 'asks', shown);
+    askFolder = path.join('.aria', 'asks', shown);
     if (!fs.existsSync(path.join(reader.root, askFolder, 'contract.json'))) {
       throw new Error(`Ask ${shown} has no contract.json: its files were deleted. New ask offers to forget it so the harness can start another ask.`);
     }
@@ -144,8 +144,8 @@ function snapshot(workspace, selected = null) {
     state.files.push(requestFile);
     state.files.push(...reader.files(path.join(askFolder, 'loop', 'evidence')));
   }
-  const featureValue = reader.json(path.join('.hve', 'project', 'feature_list.json'), true);
-  const lockValue = reader.json(path.join('.hve', 'project', 'state.json'), true);
+  const featureValue = reader.json(path.join('.aria', 'project', 'feature_list.json'), true);
+  const lockValue = reader.json(path.join('.aria', 'project', 'state.json'), true);
   const lock = lockValue === undefined ? null : record(record(lockValue, 'Loop state').lock, 'Feature lock');
   if (featureValue !== undefined) {
     state.features = list(featureValue, 'Project features').map(value => {

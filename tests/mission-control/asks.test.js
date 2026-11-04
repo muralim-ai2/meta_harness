@@ -39,7 +39,7 @@ function find(node, match) {
  * @returns {string}
  */
 function active(root) {
-  return JSON.parse(fs.readFileSync(path.join(root, '.hve', 'asks', 'active.json'), 'utf8')).active;
+  return JSON.parse(fs.readFileSync(path.join(root, '.aria', 'asks', 'active.json'), 'utf8')).active;
 }
 
 test('every ask of the project is listed newest first with its title, agent, stage and which one is active', async t => {
@@ -134,7 +134,7 @@ test('Make active reopens the earlier ask through the harness only after confirm
   assert.equal(model.snapshot.ask.id, first);
   assert.equal(model.snapshot.ask.active, true);
   assert.equal(fixture.context.workspaceState.get('selectedAsk'), null);
-  assert.ok(fs.existsSync(path.join(fixture.root, '.hve', 'asks', second, 'contract.json')));
+  assert.ok(fs.existsSync(path.join(fixture.root, '.aria', 'asks', second, 'contract.json')));
   assert.doesNotThrow(() => validateOperation(['open', second]));
   assert.throws(() => validateOperation(['open', '../escape']), /Unsupported lifecycle operation/);
   assert.throws(() => validateOperation(['close']), /Unsupported lifecycle operation/);

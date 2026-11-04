@@ -14,7 +14,7 @@ Before planning, follow `explain-walkthrough` section 2: what we will build, how
 State the risk, the better option and what it costs in one line each. The user decides; record their choice in your summary.
 
 ## 2. Initializer: plan in files, not in chat
-1. Use `feature-checklist` to write the feature list (`paths.feature_list`, the project's `.hve/project/feature_list.json`; 3-8 features a user recognises, each with a real check).
+1. Use `feature-checklist` to write the feature list (`paths.feature_list`, the project's `.aria/project/feature_list.json`; 3-8 features a user recognises, each with a real check).
 2. For a UI feature, make its `verify` command also capture a screenshot into `$HVE_EVIDENCE/<feature>/` (the loop sets `HVE_EVIDENCE` to the ask's `loop/evidence/`; for example a script that starts the app, runs `npx playwright screenshot --full-page http://localhost:<port> <HVE_EVIDENCE>/<feature>/page.png`, stops the app, and exits non-zero if the file is missing). The check produces the evidence, so it cannot be faked.
 3. Run `python <tools>/loop/loop.py init . --review <local|github>`. It writes `progress.txt` and `tracker.json` (status, attempts, check, evidence and manual check per feature). Show the user the tracker as a short table.
 
@@ -31,7 +31,7 @@ Ask with the ask-questions tool (the user may skip; never insist):
 A hook records the answer and `python <tools>/loop/loop.py status .` shows it in `tracker.json`. On `needs changes`, ask what is wrong; fix it within the next feature only if it belongs there, otherwise list it as a follow-up request in your summary.
 
 ## 5. Discovery sprint for complex features
-When a feature has several viable designs, new technology or high risk, do not guess: follow `parallel-options` with 2-3 approaches. Each approach gets its own branch and worktree under `.hve/discovery/`, is built and run, and is reviewed with `code-review`. Show the user how each one behaves and what it costs to maintain, then let them tick the winner.
+When a feature has several viable designs, new technology or high risk, do not guess: follow `parallel-options` with 2-3 approaches. Each approach gets its own branch and worktree under `.aria/discovery/`, is built and run, and is reviewed with `code-review`. Show the user how each one behaves and what it costs to maintain, then let them tick the winner.
 
 ## 6. Close out
 Report per feature: check command and exit code, evidence files, manual check result. Say plainly what is still a prototype and which experts to involve before production. Then follow `check-context-load` and include its warnings, if any, so skill and instruction bloat is caught as the project grows.

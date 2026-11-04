@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from map_build import build, explorer, load_config, overview  # noqa: E402
 from extract import file_facts, list_files  # noqa: E402
 
-MAP_DIR = Path(".hve/map")
+MAP_DIR = Path(".aria/map")
 SNAPSHOT_DIR = Path("docs/architecture")
 STOP = set("the a an and or of to in on for with from into by is are be as at it its this that how what where why who me my our we us i you "
            "help understand explain about show tell does do work works working implementation implemented code".split())

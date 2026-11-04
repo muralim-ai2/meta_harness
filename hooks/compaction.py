@@ -12,12 +12,12 @@ SUBAGENT_CONTEXT = ("Return only what the parent agent needs, under 2,000 tokens
 
 def ask_context(workspace: Path) -> str:
     """Return the active ask's skill paths and the SKILLS-USED reply rule, or nothing when no ask is active."""
-    active = workspace / ".hve" / "asks" / "active.json"
+    active = workspace / ".aria" / "asks" / "active.json"
     if not active.is_file():
         return ""
     slug = json.loads(active.read_text(encoding="utf-8"))["active"]
     contract = json.loads((active.parent / slug / "contract.json").read_text(encoding="utf-8"))
-    paths = ", ".join(f".hve/skills/{r['name'].replace(':', '__')}/SKILL.md" for r in contract["skills"]["selected"]) or "none"
+    paths = ", ".join(f".aria/skills/{r['name'].replace(':', '__')}/SKILL.md" for r in contract["skills"]["selected"]) or "none"
     return (f" Frontier HVE ask {slug} (folder {contract['paths']['ask']}, evidence {contract['paths']['evidence']}; never search the "
             f"workspace for plan.md or feature_list.json): unless your brief lists other skills, follow {paths}. "
             "End your reply with one line: SKILLS-USED: <the skills you actually followed, or none>.")

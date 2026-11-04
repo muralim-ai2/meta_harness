@@ -26,7 +26,7 @@ ASK_TOOL = "vscode_askQuestions"
 LOCKED_FILES = {"feature_list.json", "progress.txt", "tracker.json"}
 LOOP_FILE_NAMES = re.compile(r"feature_list\.json|progress\.txt|tracker\.json", re.I)
 # Loop state: .harness/, an ask's loop/ folder, or the project folder, other than the loop files themselves.
-LOOP_STATE = re.compile(r"\.harness[/\\]|\.hve[/\\](asks[/\\][^/\\\s\"']+[/\\]loop|project)[/\\]"
+LOOP_STATE = re.compile(r"\.harness[/\\]|\.aria[/\\](asks[/\\][^/\\\s\"']+[/\\]loop|project)[/\\]"
                         r"(?!(feature_list(\.add)?\.json|progress\.txt|tracker\.json)\b)", re.I)
 SHELL_WRITE = re.compile(r"(?<![\d&])>|\b(Set-Content|Add-Content|Out-File|Remove-Item|Move-Item|Copy-Item|Rename-Item|New-Item|rm|mv|cp|del|"
                          r"erase|ren|move|copy|tee|truncate|touch)\b|\bsed\s+-i|\bgit\s+(checkout|restore|rm|mv)\b|\bpython3?\s+-c|\bnode\s+-e",
@@ -42,7 +42,7 @@ FORCE = re.compile(r"\s(-f|--force|--force-with-lease)\b|\s\+\S", re.I)
 MODE = json.loads((Path(__file__).parent / "guard_mode.json").read_text(encoding="utf-8"))["loop_guard"]
 if MODE not in ("advise", "enforce"):
     raise ValueError(f"guard_mode.json loop_guard={MODE!r}, expected 'advise' or 'enforce'")
-ADVISED = {"anti_gaming": "loop state (.harness/, the ask's loop/ folder or .hve/project/) was changed outside the loop scripts",
+ADVISED = {"anti_gaming": "loop state (.harness/, the ask's loop/ folder or .aria/project/) was changed outside the loop scripts",
            "loop_files": "a loop file (feature_list.json, progress.txt or tracker.json) was changed while features still fail",
            "victory_check": "the agent stopped while features still fail"}
 ATTENTION = "Advisory alert (experimental)"
@@ -184,7 +184,7 @@ def pre_tool(session_id: str, tool_name: str, tool_input: Json, tool_use_id: str
         running = loop_running(proj)
         hits = {protected_target(p, proj, running) for p in edited_paths(tool_input)}
     if "state" in hits:
-        return deny(session_id, "anti_gaming", "Loop state (.harness/, the ask's loop/ folder or .hve/project/) changes only through the loop "
+        return deny(session_id, "anti_gaming", "Loop state (.harness/, the ask's loop/ folder or .aria/project/) changes only through the loop "
                     "scripts. Do not edit it.", "B5", change=describe(tool_name, tool_input))
     if "files" in hits:
         return deny(session_id, "loop_files", "While features still fail, feature_list.json, progress.txt and tracker.json change only "

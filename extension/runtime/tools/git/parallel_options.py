@@ -26,8 +26,8 @@ def options_file(project: Path, feature: str) -> Path:
 
 
 def worktree(project: Path, feature: str, approach: str) -> Path:
-    """Return the worktree folder of one approach, inside the project's ignored .hve/discovery/ folder."""
-    return project / ".hve" / "discovery" / f"{feature}--{approach}"
+    """Return the worktree folder of one approach, inside the project's ignored .aria/discovery/ folder."""
+    return project / ".aria" / "discovery" / f"{feature}--{approach}"
 
 
 def create(project: Path, feature: str, approaches: list[str]) -> Json:

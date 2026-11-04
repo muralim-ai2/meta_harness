@@ -16,7 +16,7 @@ from loop_paths import state_dir  # noqa: E402
 
 CATALOG = json.loads((Path(__file__).parent / "enterprise_catalog.json").read_text(encoding="utf-8"))
 CODE_SUFFIXES = {".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".css", ".scss", ".html", ".vue", ".svelte", ".sql"}
-SKIP_DIRS = {"node_modules", ".next", ".git", ".harness", ".hve", "dist", "build", "coverage", ".venv", "venv",
+SKIP_DIRS = {"node_modules", ".next", ".git", ".harness", ".aria", "dist", "build", "coverage", ".venv", "venv",
              "__pycache__"}
 REQUIREMENT_NAME = re.compile(r"^\s*([A-Za-z0-9_.\-]+)")
 IMAGE = re.compile(r"^\s*(?:image:|FROM)\s+([^\s:@]+)", re.I | re.M)
@@ -85,7 +85,7 @@ def hook() -> None:
     if payload["hook_event_name"] != "PostToolUse":
         raise ValueError(f"guardrail.py --hook does not handle {payload['hook_event_name']!r}")
     cwd = Path.cwd()
-    for project, harness in [(cwd, state_dir(cwd)), *((h.parent, h) for h in cwd.glob(".hve/outputs/*/current/.harness"))]:
+    for project, harness in [(cwd, state_dir(cwd)), *((h.parent, h) for h in cwd.glob(".aria/outputs/*/current/.harness"))]:
         if not harness.is_dir():
             continue
         report = scan(project)

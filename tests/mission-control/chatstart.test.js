@@ -42,8 +42,8 @@ async function create(fixture, title, description) {
   return listAsks(fixture.root).find(ask => ask.active);
 }
 
-test('the starter is short: title, description, use the ask only if the agent uses .hve or .harness folders, and references first', () => {
-  const use = 'If you are an agent that uses .hve or .harness folders, work in the ask .hve/asks/20261029-0329-dog-profile-badges/ (request and plan attached) and keep its records in that same folder; do not create another. Otherwise ignore this if it does not apply.';
+test('the starter is short: title, description, use the ask only if the agent uses .aria or .harness folders, and references first', () => {
+  const use = 'If you are an agent that uses .aria or .harness folders, work in the ask .aria/asks/20261029-0329-dog-profile-badges/ (request and plan attached) and keep its records in that same folder; do not create another. Otherwise ignore this if it does not apply.';
   assert.equal(starterPrompt('new', ASK, { title: 'Dog profile badges', description: 'Come up with 3 creative badge ideas and build them' }),
     `Dog profile badges\nCome up with 3 creative badge ideas and build them\n${use}\nAsk me for references or constraints first, then confirm the scope.`);
   assert.equal(starterPrompt('new', ASK, { title: 'Dog profile badges', description: '' }).split('\n').length, 3);
@@ -69,7 +69,7 @@ test('with no earlier chat, a new ask opens a new chat session with the starter 
   assert.equal(options.mode, 'ARIA Collab');
   assert.equal(options.query, starterPrompt('new', ask, { title: 'Dog profile badges', description: 'Come up with 3 creative badge ideas and build them' }));
   assert.deepEqual(options.attachFiles.map(uri => path.relative(fixture.root, uri.fsPath)),
-    [path.join('.hve', 'asks', ask.id, 'request.md'), path.join('.hve', 'asks', ask.id, 'plan.md')]);
+    [path.join('.aria', 'asks', ask.id, 'request.md'), path.join('.aria', 'asks', ask.id, 'plan.md')]);
   assert.equal(fixture.context.workspaceState.get('pendingChat').ask, ask.id);
   const notice = fixture.controls.calls.find(call => call[0] === 'information');
   assert.match(notice[1], /“Dog profile badges” has a starter message filled in/);

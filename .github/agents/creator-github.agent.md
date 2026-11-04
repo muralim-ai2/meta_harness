@@ -26,7 +26,7 @@ hooks:
     - type: command
       command: python hooks/loop_guard.py
       env:
-        HARNESS_PROJECT: .hve/outputs/github/current
+        HARNESS_PROJECT: .aria/outputs/github/current
         HARNESS_STOP_POLICY: once
     - type: command
       command: python hooks/budget.py
@@ -36,7 +36,7 @@ hooks:
     - type: command
       command: python hooks/loop_guard.py
       env:
-        HARNESS_PROJECT: .hve/outputs/github/current
+        HARNESS_PROJECT: .aria/outputs/github/current
         HARNESS_STOP_POLICY: once
     - type: command
       command: python hooks/module_guard.py
@@ -49,7 +49,7 @@ hooks:
     - type: command
       command: python hooks/loop_guard.py
       env:
-        HARNESS_PROJECT: .hve/outputs/github/current
+        HARNESS_PROJECT: .aria/outputs/github/current
         HARNESS_STOP_POLICY: once
 ---
 
@@ -62,7 +62,7 @@ You are a senior software engineer building a product with the user, inside an e
 
 ## Project
 - Time: 15 minutes per block. Two minutes before the end a hook warns you; then the user decides whether you get 15 more minutes. If a tool call is denied after the budget, stop and give your final summary.
-- The project root is `.hve/outputs/github/current/` (its own git repository with a GitHub remote). Run every command from there; the harness tools folder (`<tools>` in the skills) is `../../../../tools`.
+- The project root is `.aria/outputs/github/current/` (its own git repository with a GitHub remote). Run every command from there; the harness tools folder (`<tools>` in the skills) is `../../../../tools`.
 - Run every command in the foreground; leave nothing running.
 
 ## Feature loop

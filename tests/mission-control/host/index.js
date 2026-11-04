@@ -63,8 +63,8 @@ async function run() {
   await vscode.commands.executeCommand('frontierHve.harnessFiles.focus');
   const { HarnessTree } = require(path.join(extension.extensionPath, 'ui', 'harness-tree.js'));
   const tree = new HarnessTree(() => folder.uri.fsPath);
-  const hve = tree.getChildren().find(node => node.name === '.hve');
-  assert.ok(hve, 'The Harness files pane must list .hve/.');
+  const hve = tree.getChildren().find(node => node.name === '.aria');
+  assert.ok(hve, 'The Harness files pane must list .aria/.');
   const askNode = tree.getChildren(tree.getChildren(hve).find(node => node.name === 'asks')).find(node => node.name === state.ask.id);
   assert.match(String(tree.getTreeItem(askNode).description), /^active · /, 'The active ask folder must be titled and marked active.');
   const contract = tree.getChildren(askNode).find(node => node.name === 'contract.json');
@@ -90,7 +90,7 @@ async function run() {
       'HVE agent plugin rendered and registered (41 agents)', 'current wow-uplift skill rendered', 'no Continue in Chat command',
       'Activity Bar container opened', 'Mission Control editor opened with live ask', 'no passive project mutation',
       'ask dropdown lists the active ask and the Files page shows its folder', 'chat, folder and Explorer commands used by New ask, the new-workspace handoff and Show in Explorer exist',
-      'Harness files pane contributed, focused, and lists .hve/ with the active ask titled and files that open on click',
+      'Harness files pane contributed, focused, and lists .aria/ with the active ask titled and files that open on click',
       'new chat steps appear live through the real file watcher', 'a chat that reopens the ask is linked to it'],
   }, null, 2));
 }

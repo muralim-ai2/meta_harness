@@ -117,9 +117,9 @@ test('ten quiet minutes make a session idle and unfinished calls show as stopped
 test('the session error guard, skill load and guard alerts come from the harness run files', t => {
   const { root, chat, write } = setup(t);
   write(busy(root));
-  json(root, `.hve\\runs\\${SESSION}.errors.json`, { failures: [{ command: 'python check.py', output: 'Usage: check.py' }], paused: true });
-  json(root, `.hve\\runs\\${SESSION}.skills.json`, { skills: ['a', 'b'], tokens: 51162, over_budget: true, budget: { max_skills: 10, max_tokens: 32000 } });
-  fs.writeFileSync(path.join(root, '.hve', 'runs', `${SESSION}.interventions.jsonl`),
+  json(root, `.aria\\runs\\${SESSION}.errors.json`, { failures: [{ command: 'python check.py', output: 'Usage: check.py' }], paused: true });
+  json(root, `.aria\\runs\\${SESSION}.skills.json`, { skills: ['a', 'b'], tokens: 51162, over_budget: true, budget: { max_skills: 10, max_tokens: 32000 } });
+  fs.writeFileSync(path.join(root, '.aria', 'runs', `${SESSION}.interventions.jsonl`),
     JSON.stringify({ ts_ms: START + 25_000, session_id: SESSION, hook: 'loop_guard.py', kind: 'advise', detail: 'Edited the feature list' }) + '\n');
   const result = activity(root, chat, null, START + 60_000);
   assert.deepEqual(result.errors, { paused: true, failures: [{ command: 'python check.py', output: 'Usage: check.py' }] });
@@ -136,7 +136,7 @@ test('research telemetry tokens are summed per model for this session only', t =
     ? 'copilot_chat.parent_chat_session_id' : 'gen_ai.conversation.id']: session,
     'gen_ai.response.model': model, 'gen_ai.usage.input_tokens': input, 'gen_ai.usage.output_tokens': output,
     'gen_ai.usage.cache_read.input_tokens': 100, 'copilot_chat.copilot_usage_nano_aiu': 500000000 } }) + '\n';
-  const file = path.join(root, '.hve', 'runs', 'copilot-otel.jsonl');
+  const file = path.join(root, '.aria', 'runs', 'copilot-otel.jsonl');
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, span(SESSION, 'claude-opus-5.5', 1000, 50) + span(SESSION, 'claude-opus-5.5', 2000, 70)
     + span(SESSION, 'gpt-4o-mini', 300, 5) + span('another-session', 'claude-opus-5.5', 9999, 999) + JSON.stringify({ body: 'log record' }) + '\n'
@@ -170,8 +170,8 @@ test('tool calls are described in plain words with every edited file', () => {
   assert.equal(describe('runSubagent', { agentName: 'ARIA engineer', description: 'Build feed' }, root, at(0)).title, 'Handed off to ARIA engineer');
   assert.equal(describe('mcp_graphify_query_graph', {}, root, at(0)).title, 'Used graphify query graph');
   assert.equal(describe('run_in_terminal', {}, root, at(0)).title, 'Ran a command');
-  const harness = describe('run_in_terminal', { command: 'python "c:/Users/me/.vscode/extensions/muralim-ai2.frontier-hve-0.19.0/runtime/tools/loop/lifecycle.py" where .hve/asks/request.md',
+  const harness = describe('run_in_terminal', { command: 'python "c:/Users/me/.vscode/extensions/muralim-ai2.frontier-hve-0.19.0/runtime/tools/loop/lifecycle.py" where .aria/asks/request.md',
     explanation: 'Check for an existing project or open ask.' }, root, at(0));
   assert.equal(harness.title, 'Check for an existing project or open ask');
-  assert.equal(harness.detail, 'python lifecycle.py where .hve/asks/request.md');
+  assert.equal(harness.detail, 'python lifecycle.py where .aria/asks/request.md');
 });

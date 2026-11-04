@@ -108,8 +108,8 @@ def test_invalid_policy_and_paths() -> None:
             config.write_text(json.dumps(invalid), encoding="utf-8")
             fails(ValueError, lambda: manage.configuration(workspace))
         config.write_text(json.dumps(data), encoding="utf-8")
-        for unsafe in ("../outside.md", "/outside.md", "C:/outside.md", "folder\\outside.md", ".git/config", ".hve/config", "./prd.md",
-                   ".GIT/config", ".HVE/state", ".git./review.md", "docs /sample.md", "docs./sample.md"):
+        for unsafe in ("../outside.md", "/outside.md", "C:/outside.md", "folder\\outside.md", ".git/config", ".aria/config", "./prd.md",
+                   ".GIT/config", ".ARIA/state", ".git./review.md", "docs /sample.md", "docs./sample.md"):
             fails(ValueError, lambda: manage.safe_path(workspace, unsafe))
         for output in ("../{slug}.md", "out.md", "{slug}-{slug}.md", "{other}.md", "{slug}.json"):
             broken = json.loads(json.dumps(data))

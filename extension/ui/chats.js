@@ -12,7 +12,7 @@ const PENDING_MS = 60 * 60 * 1000;
 const SESSION = /^[\w-]+$/;
 const CONTRACT = /\bcontract\s+["']?[\w.-]+["']?\s+["']?([a-z0-9][a-z0-9-]{0,40})(?=["'\s;|]|$)/g;
 const OPEN = /\bopen\s+["']?(\d{8}-\d{4}-[a-z0-9][a-z0-9-]{0,40})(?=["'\s;|]|$)/g;
-const ASK_PATH = /(?:^|[\\/])\.hve[\\/]asks[\\/](\d{8}-\d{4}-[a-z0-9][a-z0-9-]{0,40})[\\/]/;
+const ASK_PATH = /(?:^|[\\/])\.aria[\\/]asks[\\/](\d{8}-\d{4}-[a-z0-9][a-z0-9-]{0,40})[\\/]/;
 const HOW = ['started', 'linked', 'continued'];
 
 /** @typedef {{offset: number, size: number, mtime: number, lines: number, id: string, title: string | null, started: string, lastAt: string,

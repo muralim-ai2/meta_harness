@@ -9,7 +9,7 @@ hooks:
     - type: command
       command: python hooks/flow_guard.py
       env:
-        HARNESS_PROJECT: .hve/outputs/flow/current
+        HARNESS_PROJECT: .aria/outputs/flow/current
         FLOW_STAGE: architect
 ---
 

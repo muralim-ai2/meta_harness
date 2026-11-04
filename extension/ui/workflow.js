@@ -157,7 +157,7 @@ class Workflow {
         ['tick-for', ticket.ask, ticket.revision, ticket.item, ticket.value, note]), 'Recorded review');
       if (result.ask !== ticket.ask || result.item !== ticket.item || result.value !== ticket.value) throw new Error('Harness returned a different review result.');
       const reader = new Reader(workspace);
-      const saved = record(reader.json(path.join('.hve', 'asks', ticket.ask, 'contract.json')), 'Saved contract');
+      const saved = record(reader.json(path.join('.aria', 'asks', ticket.ask, 'contract.json')), 'Saved contract');
       const entry = record(record(saved.checklist, 'Saved checklist')[ticket.item], 'Saved review');
       if (entry.value !== ticket.value || entry.note !== note) throw new Error('Review response did not match the saved human decision.');
       return snapshot(workspace);

@@ -1,6 +1,6 @@
-"""Locate the loop files. With an ask open, the product's feature list, progress, tracker and lock live in .hve/project/ (shared by
+"""Locate the loop files. With an ask open, the product's feature list, progress, tracker and lock live in .aria/project/ (shared by
 every ask of the workspace's one project) and each ask keeps its own attempts, evidence, PR records, choices and tool log in
-.hve/asks/<ask>/loop/. With no ask open (research runs) everything stays in the project root and .harness/."""
+.aria/asks/<ask>/loop/. With no ask open (research runs) everything stays in the project root and .harness/."""
 
 import json
 import re
@@ -12,7 +12,7 @@ ASK_ID = re.compile(r"^\d{8}-\d{4}-[a-z0-9][a-z0-9-]{0,40}$")
 
 def ask_folder(project: Path) -> Path | None:
     """Return the open ask's folder under the project, or None when no ask is open there."""
-    active = project / ".hve" / "asks" / "active.json"
+    active = project / ".aria" / "asks" / "active.json"
     if not active.is_file():
         return None
     ask = json.loads(active.read_text(encoding="utf-8"))["active"]
@@ -23,7 +23,7 @@ def ask_folder(project: Path) -> Path | None:
 
 def project_folder(project: Path) -> Path:
     """Return the folder holding the project's shared files: project.json, the feature list, progress, tracker and loop lock."""
-    return project / ".hve" / "project"
+    return project / ".aria" / "project"
 
 
 def loop_dir(project: Path) -> Path:
@@ -53,4 +53,4 @@ def ask_evidence(project: Path, ask: str | None) -> Path:
         return project / ".harness" / "evidence"
     if not ASK_ID.match(ask):
         raise ValueError(f"ask id {ask!r} must match {ASK_ID.pattern}")
-    return project / ".hve" / "asks" / ask / "loop" / "evidence"
+    return project / ".aria" / "asks" / ask / "loop" / "evidence"

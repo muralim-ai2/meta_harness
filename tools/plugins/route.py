@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 NAMED = re.compile(r"\b(?:use|with|using)\s+(?:the\s+)?([a-z0-9]+(?:-[a-z0-9]+)*)\s+(?:plugin|pack)\b", re.I)
-SKIP_DIRS = {"node_modules", ".git", ".hve", ".harness", "dist", "build", ".venv"}
+SKIP_DIRS = {"node_modules", ".git", ".aria", ".harness", "dist", "build", ".venv"}
 
 Json = dict[str, Any]
 

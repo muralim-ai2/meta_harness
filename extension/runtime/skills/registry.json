@@ -110,7 +110,7 @@
     },
     {
       "name": "dreams",
-      "description": "Dreams - self-learning between sessions. Consolidate interventions, escalations, failed checks and manual-check results into lessons learned in .hve/learnings.json, then apply them next time.",
+      "description": "Dreams - self-learning between sessions. Consolidate interventions, escalations, failed checks and manual-check results into lessons learned in .aria/learnings.json, then apply them next time.",
       "source": "authored (see skills/authored/NOTICE)",
       "status": "admitted",
       "task_categories": [

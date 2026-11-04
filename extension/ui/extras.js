@@ -8,7 +8,7 @@ const { pipeline } = require('node:stream/promises');
 const { buildMap } = require('./lifecycle-cli');
 const { containedPath } = require('./file-access');
 const { AGENT } = require('./ask-flow');
-const MAP_PAGE = path.join('.hve', 'map', 'explorer.html');
+const MAP_PAGE = path.join('.aria', 'map', 'explorer.html');
 
 /** @typedef {import('./mission-control').MissionControl} MissionControl */
 

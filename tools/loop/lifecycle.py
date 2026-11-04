@@ -24,7 +24,7 @@ import personas  # noqa: E402
 import stage_evidence  # noqa: E402
 
 WORKSPACE = Path.cwd()
-ASKS = WORKSPACE / ".hve" / "asks"
+ASKS = WORKSPACE / ".aria" / "asks"
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")
 SUBAGENT_RULES = ("Do not edit the loop files (feature_list.json, progress.txt, tracker.json) or loop state (.harness/ or the ask's loop/ "
                   "folder). Checks save screenshots and logs to $HVE_EVIDENCE/<feature>/. No file over 500 lines, no hidden errors, no TODO "
@@ -43,7 +43,7 @@ def ask_dir(ask: str) -> Path:
 
 def active(workspace: Path = WORKSPACE) -> tuple[Path, Json]:
     """Return the active ask's contract path and contract."""
-    asks = workspace / ".hve" / "asks"
+    asks = workspace / ".aria" / "asks"
     ask = json.loads((asks / "active.json").read_text(encoding="utf-8"))["active"]
     if not ASK_ID.match(ask):
         raise ValueError(f"ask id {ask!r} must match {ASK_ID.pattern}")
@@ -74,10 +74,10 @@ def where(prompt: str | None) -> Json:
 
 
 def install(rows: list[Json]) -> None:
-    """Copy skills into <workspace>/.hve/skills/<name>/ ('<pack>:<skill>' into '<pack>__<skill>') so every harness reads them in the
+    """Copy skills into <workspace>/.aria/skills/<name>/ ('<pack>:<skill>' into '<pack>__<skill>') so every harness reads them in the
     workspace."""
     for row in rows:
-        shutil.copytree(ROOT / row["path"], WORKSPACE / ".hve" / "skills" / skill_dir(row["name"]), dirs_exist_ok=True)
+        shutil.copytree(ROOT / row["path"], WORKSPACE / ".aria" / "skills" / skill_dir(row["name"]), dirs_exist_ok=True)
 
 
 def contract(name: str, slug: str, agent: str, request: str, skips: dict[str, str], required: tuple[str, ...] = (),
@@ -361,7 +361,7 @@ def plan_sync(note: str) -> Json:
 
 def plan_status(workspace: Path = WORKSPACE) -> Json | None:
     """Return whether the active ask's plan.md changed since its last sync, or None when there is no active ask or plan."""
-    if not (workspace / ".hve" / "asks" / "active.json").is_file():
+    if not (workspace / ".aria" / "asks" / "active.json").is_file():
         return None
     path, data = active(workspace)
     digest = plan_hash(path)
@@ -416,7 +416,7 @@ def brief(stage: str | None, task: str | None, persona: str) -> str:
         *([f"- Your role: {role['title']}. {role['goal']}"] if role else []),
         f"- Stage goal: {row['goal']} Gate: {row['exit']}",
         f"- Ask folder: {data['paths']['ask']}/ (prototypes and drafts go there, never in the workspace root)",
-        "- Read and follow before you start: " + (", ".join(f".hve/skills/{skill_dir(s)}/SKILL.md" for s in skills) or "no library skills"),
+        "- Read and follow before you start: " + (", ".join(f".aria/skills/{skill_dir(s)}/SKILL.md" for s in skills) or "no library skills"),
         "- Plugin skills you may use: " + (", ".join(dict.fromkeys([*row["plugin_skills"], *data["skills"]["plugin"]])) or "none"),
         *ask_packs.brief_lines(data, row),
         "- MCP servers available: " + (", ".join(servers) or "none"),

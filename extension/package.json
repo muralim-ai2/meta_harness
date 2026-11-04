@@ -29,7 +29,7 @@
     "viewsWelcome": [
       {
         "view": "frontierHve.harnessFiles",
-        "contents": "No .hve/ or .harness/ folder in this workspace yet. Asks, plans, evidence, run records and loop files appear here as soon as an agent or the harness writes them.\n[New ask](command:frontierHve.newAsk)"
+        "contents": "No .aria/ or .harness/ folder in this workspace yet. Asks, plans, evidence, run records and loop files appear here as soon as an agent or the harness writes them.\n[New ask](command:frontierHve.newAsk)"
       }
     ],
     "commands": [

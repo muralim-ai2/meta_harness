@@ -30,16 +30,16 @@ class Finding(TypedDict):
 
 def latest_session(workspace: Path) -> str:
     """Return the id of the newest session with a skill loadout or hook event log in the workspace."""
-    logs = sorted([*(workspace / ".hve" / "runs").glob("*.skills.json"), *(workspace / ".hve" / "runs").glob("*.events.jsonl")],
+    logs = sorted([*(workspace / ".aria" / "runs").glob("*.skills.json"), *(workspace / ".aria" / "runs").glob("*.events.jsonl")],
                   key=lambda p: p.stat().st_mtime)
     if not logs:
-        raise FileNotFoundError(f"no session logs in {workspace / '.hve' / 'runs'}: no harness hook has run in this workspace")
+        raise FileNotFoundError(f"no session logs in {workspace / '.aria' / 'runs'}: no harness hook has run in this workspace")
     return logs[-1].name.split(".")[0]
 
 
 def _templates(workspace: Path, session: str) -> Finding:
     """Return whether requested deliverables were created from their configured templates and validate."""
-    registry = workspace / ".hve" / "deliverables" / f"{session}.json"
+    registry = workspace / ".aria" / "deliverables" / f"{session}.json"
     if not registry.is_file():
         return {"status": "not-exercised", "detail": "no deliverable was requested in this session"}
     errors = check_session(workspace, session)
@@ -64,7 +64,7 @@ def _loop(project: Path) -> tuple[Finding, bool]:
 
 def _reflection(project: Path, finished: bool) -> Finding:
     """Return the latest output evaluation's five layers and decision, or a failure when a finished loop has none."""
-    reports = sorted((project / ".hve" / "evaluations").glob("*/report.json"))
+    reports = sorted((project / ".aria" / "evaluations").glob("*/report.json"))
     if reports:
         folder = reports[-1].parent
         report = json.loads(reports[-1].read_text(encoding="utf-8"))
@@ -81,7 +81,7 @@ def _reflection(project: Path, finished: bool) -> Finding:
 
 def _contract(workspace: Path, session: str) -> tuple[Finding, Json | None]:
     """Return whether the active ask's done stages used their expected skills and templates and its plan is in sync, with the facts."""
-    if not (workspace / ".hve" / "asks" / "active.json").is_file():
+    if not (workspace / ".aria" / "asks" / "active.json").is_file():
         return {"status": "not-exercised", "detail": "no lifecycle contract in this workspace"}, None
     found = facts(workspace, session)
     stale = [f"{found['plan']['plan']} changed since its last sync"] if found["plan"] and found["plan"]["changed"] else []
@@ -118,11 +118,11 @@ def _trace(runs: Path, session: str) -> Json | None:
 
 
 def provenance(agent_file: Path, workspace: Path, project: Path, session: str, required: list[str]) -> Json:
-    """Return and save to .hve/runs/<session>.provenance.json each declared component's evidence status and whether all is ok."""
+    """Return and save to .aria/runs/<session>.provenance.json each declared component's evidence status and whether all is ok."""
     agent = agent_file.read_text(encoding="utf-8")
-    runs = workspace / ".hve" / "runs"
+    runs = workspace / ".aria" / "runs"
     found: dict[str, Finding] = {}
-    exists = {"skills": runs / f"{session}.skills.json", "profile": workspace / ".hve" / "user_profile.json",
+    exists = {"skills": runs / f"{session}.skills.json", "profile": workspace / ".aria" / "user_profile.json",
               "metrics": runs / f"{session}.events.jsonl"}
     for name, path in exists.items():
         relative = path.relative_to(workspace).as_posix()
@@ -161,7 +161,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("agent_file", type=Path, help="the agent's .agent.md file (rendered or template)")
     parser.add_argument("session", help="chat session id, or 'latest' for the newest session logged in the workspace")
-    parser.add_argument("--workspace", type=Path, default=Path.cwd(), help="workspace root where hooks write .hve/ (default: cwd)")
+    parser.add_argument("--workspace", type=Path, default=Path.cwd(), help="workspace root where hooks write .aria/ (default: cwd)")
     parser.add_argument("--project", type=Path, help="folder the feature loop ran in (default: the workspace)")
     parser.add_argument("--require", nargs="*", default=[], choices=sorted(COMPONENTS), help="components that must be verified")
     args = parser.parse_args()

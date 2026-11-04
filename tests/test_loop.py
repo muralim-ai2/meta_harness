@@ -90,7 +90,7 @@ def test_tracker_reports_status_evidence_and_manual_check() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         project = three(tmp)
         assert [r["status"] for r in read_json(project / "tracker.json")["features"]] == ["pending"] * 3
-        assert ".hve/" in (project / ".gitignore").read_text(encoding="utf-8").splitlines()
+        assert ".aria/" in (project / ".gitignore").read_text(encoding="utf-8").splitlines()
         loop.next_feature(project)
         (project / "a.txt").write_text("a\n", encoding="utf-8")
         assert loop.verify(project)["passes"] is True
@@ -243,15 +243,15 @@ def test_parallel_options_same_failure_escalates() -> None:
 
 
 def test_ask_mode_keeps_loop_files_in_the_ask_folder() -> None:
-    """With an open ask the feature list, progress, tracker and state live in .hve/project/ and the evidence in the ask's loop/ folder,
+    """With an open ask the feature list, progress, tracker and state live in .aria/project/ and the evidence in the ask's loop/ folder,
     all out of git; commits carry the locked checks, checks get HVE_EVIDENCE, locks record the ask, and the guard protects both."""
     with tempfile.TemporaryDirectory() as tmp:
         project = Path(tmp) / "project"
-        folder = project / ".hve" / "asks" / "20261019-1200-x" / "loop"
-        shared = project / ".hve" / "project"
+        folder = project / ".aria" / "asks" / "20261019-1200-x" / "loop"
+        shared = project / ".aria" / "project"
         folder.mkdir(parents=True)
         shared.mkdir(parents=True)
-        (project / ".hve" / "asks" / "active.json").write_text(json.dumps({"active": "20261019-1200-x"}), encoding="utf-8")
+        (project / ".aria" / "asks" / "active.json").write_text(json.dumps({"active": "20261019-1200-x"}), encoding="utf-8")
         (project / "check.py").write_text("import os, pathlib, sys\n"
                                           "out = pathlib.Path(os.environ['HVE_EVIDENCE']) / pathlib.Path(sys.argv[1]).stem\n"
                                           "out.mkdir(parents=True, exist_ok=True)\n(out / 'log.txt').write_text('checked')\n"
@@ -262,13 +262,13 @@ def test_ask_mode_keeps_loop_files_in_the_ask_folder() -> None:
         state = json.loads((shared / "state.json").read_text(encoding="utf-8"))
         assert state["lock"]["a"]["ask"] == "20261019-1200-x", state["lock"]
         assert not (project / ".harness").exists() and not (project / "feature_list.json").exists()
-        assert ".hve" not in git(project, "ls-files") and "a: python check.py a.txt" in git(project, "log", "-1", "--format=%b")
+        assert ".aria" not in git(project, "ls-files") and "a: python check.py a.txt" in git(project, "log", "-1", "--format=%b")
         loop.next_feature(project)
         (project / "a.txt").write_text("a\n", encoding="utf-8")
         assert loop.verify(project)["passes"] is True
         assert (folder / "evidence" / "a" / "log.txt").read_text(encoding="utf-8") == "checked"
         assert "verify: python check.py a.txt" in git(project, "log", "-1", "--format=%b")
-        assert loop.tracker(project)["features"][0]["evidence"] == [".hve/asks/20261019-1200-x/loop/evidence/a/log.txt"]
+        assert loop.tracker(project)["features"][0]["evidence"] == [".aria/asks/20261019-1200-x/loop/evidence/a/log.txt"]
         root = make_root(tmp)
         env = {"HARNESS_PROJECT": "project", "HARNESS_STOP_POLICY": "once"}
         for path, denied in ((shared / "feature_list.json", True), (shared / "state.json", True), (folder / "evidence" / "a" / "x.txt", True),
@@ -289,7 +289,7 @@ def test_no_fallback_patterns() -> None:
 
 
 def make_root(tmp: str, guard_mode: str = "enforce") -> Path:
-    """Return a temp workspace with the guard hooks (loop guard in the given mode), .hve/runs, a 20-minute budget at 08:00 UTC, and a
+    """Return a temp workspace with the guard hooks (loop guard in the given mode), .aria/runs, a 20-minute budget at 08:00 UTC, and a
     project folder."""
     root = Path(tmp)
     (root / "hooks").mkdir()
@@ -298,8 +298,8 @@ def make_root(tmp: str, guard_mode: str = "enforce") -> Path:
     (root / "hooks" / "guard_mode.json").write_text(json.dumps({"loop_guard": guard_mode}), encoding="utf-8")
     (root / "tools" / "loop").mkdir(parents=True)
     shutil.copy(REPO / "tools" / "loop" / "loop_paths.py", root / "tools" / "loop")
-    (root / ".hve" / "runs").mkdir(parents=True)
-    (root / ".hve" / "runs" / "s1.budget.json").write_text(json.dumps({"start_ms": START_MS, "budget_ms": 1_200_000.0, "denied": []}),
+    (root / ".aria" / "runs").mkdir(parents=True)
+    (root / ".aria" / "runs" / "s1.budget.json").write_text(json.dumps({"start_ms": START_MS, "budget_ms": 1_200_000.0, "denied": []}),
                                                           encoding="utf-8")
     (root / "proj" / ".harness").mkdir(parents=True)
     return root
@@ -337,8 +337,8 @@ def test_loop_guard() -> None:
         assert pre("runSubagent", {"prompt": "Do not edit feature_list.json or .harness/"}) is None
         assert pre("run_in_terminal", {"command": "Get-Content feature_list.json 2>&1"}) is None
         cites = {"content": '{"evidence": [".harness/evidence/a/page.png", "feature_list.json"]}'}
-        assert pre("create_file", {"filePath": str(proj / ".hve" / "evaluations" / "input" / "r-scores.json")} | cites) is None
-        escape = str(proj / ".hve" / "evaluations" / "input" / ".." / ".." / ".." / "feature_list.json")
+        assert pre("create_file", {"filePath": str(proj / ".aria" / "evaluations" / "input" / "r-scores.json")} | cites) is None
+        escape = str(proj / ".aria" / "evaluations" / "input" / ".." / ".." / ".." / "feature_list.json")
         assert pre("create_file", {"filePath": escape} | cites) is not None
         assert pre("read_file", edit) is None
         assert pre("run_in_terminal", {"command": "python ../../../../tools/loop/loop.py verify ."}) is None
@@ -365,7 +365,7 @@ def test_loop_guard() -> None:
         (proj / ".harness" / "state.json").write_text(json.dumps(state), encoding="utf-8")
         stopped = pre("read_file", edit)
         assert stopped["continue"] is False and "Which check?" in stopped["stopReason"], stopped  # type: ignore[index]
-        kinds = [json.loads(line)["kind"] for line in (root / ".hve" / "runs" / "s1.interventions.jsonl").read_text().splitlines()]
+        kinds = [json.loads(line)["kind"] for line in (root / ".aria" / "runs" / "s1.interventions.jsonl").read_text().splitlines()]
         assert {"loop_files", "hook_bypass", "human_only", "push_blocked", "victory_check", "escalated"} <= set(kinds), kinds
         state |= {"escalated": None, "help": None, "current": None}
         (proj / ".harness" / "state.json").write_text(json.dumps(state), encoding="utf-8")
@@ -398,11 +398,11 @@ def test_guard_waiver() -> None:
              **env)
         assert pre(proj / "progress.txt") is None
         assert pre(proj / ".harness" / "state.json") is not None
-        (root / ".hve" / "evaluations" / "r1").mkdir(parents=True)
-        (root / ".hve" / "evaluations" / "r1" / "contract.json").write_text("{}", encoding="utf-8")
+        (root / ".aria" / "evaluations" / "r1").mkdir(parents=True)
+        (root / ".aria" / "evaluations" / "r1" / "contract.json").write_text("{}", encoding="utf-8")
         strict = pre(proj / "progress.txt")
         assert strict and "strict" in strict["hookSpecificOutput"]["permissionDecisionReason"], strict
-        kinds = [json.loads(line)["kind"] for line in (root / ".hve" / "runs" / "s1.interventions.jsonl").read_text().splitlines()]
+        kinds = [json.loads(line)["kind"] for line in (root / ".aria" / "runs" / "s1.interventions.jsonl").read_text().splitlines()]
         assert kinds.count("waived") == 1 and "waiver_answer" in kinds, kinds
 
 
@@ -459,7 +459,7 @@ def test_error_guard_pauses_after_three_failures_in_a_row() -> None:
         assert post("python a.py", copilot) is None and post("python a.py", copilot) is None and post("python a.py", copilot)
         assert post("python ok.py", "<shellId: 4 completed with exit code 0>") is None and pre("run_in_terminal") is None
         fire(root, "error_guard.py", {"hook_event_name": "UserPromptSubmit", "prompt": "thanks"})
-        kinds = [json.loads(line)["kind"] for line in (root / ".hve" / "runs" / "s1.interventions.jsonl").read_text().splitlines()]
+        kinds = [json.loads(line)["kind"] for line in (root / ".aria" / "runs" / "s1.interventions.jsonl").read_text().splitlines()]
         assert kinds == ["error_streak", "error_streak"], kinds
 
 
@@ -484,8 +484,8 @@ def test_prototype_check() -> None:
     import check  # noqa: E402
     with tempfile.TemporaryDirectory() as tmp:
         ws = Path(tmp)
-        (ws / ".hve" / "asks" / "20261021-1200-x" / "loop").mkdir(parents=True)
-        (ws / ".hve" / "asks" / "active.json").write_text(json.dumps({"active": "20261021-1200-x"}), encoding="utf-8")
+        (ws / ".aria" / "asks" / "20261021-1200-x" / "loop").mkdir(parents=True)
+        (ws / ".aria" / "asks" / "active.json").write_text(json.dumps({"active": "20261021-1200-x"}), encoding="utf-8")
         proto = ws / "proto"
         proto.mkdir()
         (proto / "index.html").write_text('<h1>Dashboard</h1><a href="#/settings">Settings</a><a href="#/ghost">x</a>', encoding="utf-8")
@@ -501,7 +501,7 @@ def test_prototype_check() -> None:
             check.browser()
         except FileNotFoundError:
             return
-        assert check.shots(proto, ["/settings"], ws) == [".hve/asks/20261021-1200-x/loop/evidence/prototype/settings.png"]
+        assert check.shots(proto, ["/settings"], ws) == [".aria/asks/20261021-1200-x/loop/evidence/prototype/settings.png"]
 
 
 if __name__ == "__main__":

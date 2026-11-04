@@ -199,7 +199,7 @@ def test_workspace_skill_evaluator_flow() -> None:
         skill = write_skill(ws / "incoming", "signup-ux", "Design UI signup screens with usability checks.")
         static = tool("evaluate.py", ws, "static", str(skill))
         assert static["ok"] and static["categories"] == ["ux"] and not static["gate_reasons"], static
-        folder = ws / ".hve" / "evals" / "signup-ux"
+        folder = ws / ".aria" / "evals" / "signup-ux"
         folder.mkdir(parents=True)
         tasks = [{"id": f"signup-ux-{i}", "prompt": f"Design signup screen {i}.", "checks": ["c1", "c2", "c3"]} for i in range(5)]
         (folder / "tasks.json").write_text(json.dumps(tasks), encoding="utf-8")
@@ -214,9 +214,9 @@ def test_workspace_skill_evaluator_flow() -> None:
         (folder / "verdicts.json").write_text(json.dumps(verdicts), encoding="utf-8")
         recorded = tool("evaluate.py", ws, "record", str(skill))
         assert recorded["admitted"] and recorded["quality_lift_pp"] == 40.0 and recorded["wins"] == 5, recorded
-        assert (ws / ".hve" / "skill-library" / "signup-ux" / "SKILL.md").is_file()
+        assert (ws / ".aria" / "skill-library" / "signup-ux" / "SKILL.md").is_file()
         ranked = tool("recommend.py", ws, "admitted", "design the signup page ui")
-        assert any(r["name"] == "signup-ux" and r["path"].endswith(".hve/skill-library/signup-ux") for r in ranked["load"]), ranked
+        assert any(r["name"] == "signup-ux" and r["path"].endswith(".aria/skill-library/signup-ux") for r in ranked["load"]), ranked
 
 
 def fire(root: Path, payload: dict[str, Any], **env: str) -> str:
@@ -233,7 +233,7 @@ def library_root(tmp: str) -> Path:
     (root / "hooks").mkdir()
     (root / "tools" / "skills").mkdir(parents=True)
     (root / "tools" / "loop").mkdir()
-    (root / ".hve" / "runs").mkdir(parents=True)
+    (root / ".aria" / "runs").mkdir(parents=True)
     for hook in ("skill_loader.py", "interventions.py", "hve_paths.py", "guard_policy.py"):
         shutil.copy(REPO / "hooks" / hook, root / "hooks")
     for script in ("recommend.py", "context_load.py", "scan.py"):
@@ -268,23 +268,23 @@ def test_skill_loader_loads_all_relevant_flags_budget_and_scoped_deny() -> None:
         base = {"session_id": "s1"}
         fire(root, base | {"hook_event_name": "UserPromptSubmit", "prompt": "Build a color palette page."},
              HARNESS_SKILLS_MIN_STATUS="provisional")
-        loadout = json.loads((root / ".hve" / "runs" / "s1.skills.json").read_text(encoding="utf-8"))
+        loadout = json.loads((root / ".aria" / "runs" / "s1.skills.json").read_text(encoding="utf-8"))
         assert loadout["skills"] == [f"skills/admitted/{n}" for n in ("palette-ux", "proven", "forms", "layout")], loadout
         assert loadout["tokens"] == 1600 and loadout["over_budget"] is True and "recommended" not in loadout, loadout
-        assert (root / ".hve" / "skills" / "layout" / "SKILL.md").exists()
+        assert (root / ".aria" / "skills" / "layout" / "SKILL.md").exists()
         first = json.loads(fire(root, base | {"hook_event_name": "PreToolUse", "tool_input": {"filePath": "x.ts"}}))
         text = first["hookSpecificOutput"]["additionalContext"]
-        assert ".hve/skills/layout/SKILL.md" in text and "1,600 tokens" in text and "over the loadout guideline" in text, text
-        denied = json.loads(fire(root, base | {"hook_event_name": "PreToolUse", "tool_input": {"filePath": ".hve/skills/research/SKILL.md"}}))
+        assert ".aria/skills/layout/SKILL.md" in text and "1,600 tokens" in text and "over the loadout guideline" in text, text
+        denied = json.loads(fire(root, base | {"hook_event_name": "PreToolUse", "tool_input": {"filePath": ".aria/skills/research/SKILL.md"}}))
         assert denied["hookSpecificOutput"]["permissionDecision"] == "deny", denied
         plugin = {"filePath": "plugin/skills/feature-checklist/SKILL.md"}
         assert fire(root, base | {"hook_event_name": "PreToolUse", "tool_input": plugin}) == ""
         fire(root, {"session_id": "s2", "hook_event_name": "UserPromptSubmit", "prompt": "Build a color palette page."},
              HARNESS_SKILLS_MIN_STATUS="admitted")
-        assert json.loads((root / ".hve" / "runs" / "s2.skills.json").read_text(encoding="utf-8"))["skills"] == ["skills/admitted/proven"]
+        assert json.loads((root / ".aria" / "runs" / "s2.skills.json").read_text(encoding="utf-8"))["skills"] == ["skills/admitted/proven"]
         fire(root, {"session_id": "k1", "hook_event_name": "UserPromptSubmit", "prompt": "Fix the sourced citations"},
              HARNESS_SKILLS_MIN_STATUS="provisional")
-        keyword = json.loads((root / ".hve" / "runs" / "k1.skills.json").read_text(encoding="utf-8"))
+        keyword = json.loads((root / ".aria" / "runs" / "k1.skills.json").read_text(encoding="utf-8"))
         assert keyword["categories"] == [] and keyword["skills"] == ["skills/admitted/research"], keyword
         (root / "skills" / "eval_override.json").write_text(json.dumps({"skills": []}), encoding="utf-8")
         fire(root, {"session_id": "s3", "hook_event_name": "UserPromptSubmit", "prompt": "Build a color palette page."})
@@ -293,17 +293,17 @@ def test_skill_loader_loads_all_relevant_flags_budget_and_scoped_deny() -> None:
 
 def open_ask(root: Path, request: str, choice: str | None = None, ask: str = "20261019-1200-x") -> None:
     """Write an active ask in design (layout) with forms selected, the given request and skill choice, and its project."""
-    (root / ".hve" / "asks" / ask).mkdir(parents=True)
-    (root / ".hve" / "project").mkdir(parents=True, exist_ok=True)
-    (root / ".hve" / "asks" / "active.json").write_text(json.dumps({"active": ask}), encoding="utf-8")
+    (root / ".aria" / "asks" / ask).mkdir(parents=True)
+    (root / ".aria" / "project").mkdir(parents=True, exist_ok=True)
+    (root / ".aria" / "asks" / "active.json").write_text(json.dumps({"active": ask}), encoding="utf-8")
     stages = [{"name": "design", "skills": ["layout"]}, {"name": "build", "skills": ["research"]}]
-    folder = f".hve/asks/{ask}"
-    paths = {"ask": folder, "plan": f"{folder}/plan.md", "evidence": f"{folder}/loop/evidence", "feature_list": ".hve/project/feature_list.json"}
+    folder = f".aria/asks/{ask}"
+    paths = {"ask": folder, "plan": f"{folder}/plan.md", "evidence": f"{folder}/loop/evidence", "feature_list": ".aria/project/feature_list.json"}
     contract = {"ask": ask, "request": request, "tasks": [], "current": "design", "stages": stages, "paths": paths,
                 "skills": {"selected": [{"name": "forms"}], "choice": choice and {"choice": choice}}}
-    (root / ".hve" / "asks" / ask / "contract.json").write_text(json.dumps(contract), encoding="utf-8")
+    (root / ".aria" / "asks" / ask / "contract.json").write_text(json.dumps(contract), encoding="utf-8")
     project = {"name": "x", "goal": request, "kind": None, "created": "2026-10-19T12:00:00+00:00", "asks": [ask]}
-    (root / ".hve" / "project" / "project.json").write_text(json.dumps(project), encoding="utf-8")
+    (root / ".aria" / "project" / "project.json").write_text(json.dumps(project), encoding="utf-8")
 
 
 def test_lifecycle_stage_skills_load_and_are_allowed() -> None:
@@ -314,13 +314,13 @@ def test_lifecycle_stage_skills_load_and_are_allowed() -> None:
         base = {"session_id": "l1"}
         fire(root, base | {"hook_event_name": "UserPromptSubmit", "prompt": "Write sourced research."},
              HARNESS_SKILLS_MIN_STATUS="provisional")
-        path = root / ".hve" / "runs" / "l1.skills.json"
+        path = root / ".aria" / "runs" / "l1.skills.json"
         assert json.loads(path.read_text(encoding="utf-8"))["skills"][:2] == ["skills/admitted/layout", "skills/admitted/forms"]
         loadout = json.loads(path.read_text(encoding="utf-8")) | {"skills": [], "used": []}
         path.write_text(json.dumps(loadout), encoding="utf-8")
         read = fire(root, base | {"hook_event_name": "PreToolUse", "tool_input": {"filePath": "runtime/skills/admitted/layout/SKILL.md"}})
         assert "deny" not in read and json.loads(path.read_text(encoding="utf-8"))["used"] == ["skills/admitted/layout"], read
-        other = fire(root, base | {"hook_event_name": "PreToolUse", "tool_input": {"filePath": ".hve/skills/palette-ux/SKILL.md"}})
+        other = fire(root, base | {"hook_event_name": "PreToolUse", "tool_input": {"filePath": ".aria/skills/palette-ux/SKILL.md"}})
         assert "deny" in other, other
 
 
@@ -333,10 +333,10 @@ def test_skill_choice_stops_prompt_ranking_and_topic_shift_is_recommended_once()
         env = {"HARNESS_SKILLS_MIN_STATUS": "provisional"}
         follow_up = fire(root, {"session_id": "t1", "hook_event_name": "UserPromptSubmit", "prompt": "Fix the Martian timeline colour palette page"},
                          **env)
-        loadout = json.loads((root / ".hve" / "runs" / "t1.skills.json").read_text(encoding="utf-8"))
+        loadout = json.loads((root / ".aria" / "runs" / "t1.skills.json").read_text(encoding="utf-8"))
         context = json.loads(follow_up)
         assert "systemMessage" not in context and loadout["skills"] == ["skills/admitted/layout", "skills/admitted/forms"], (follow_up, loadout)
-        assert "plan .hve/asks/20261019-1200-x/plan.md" in context["hookSpecificOutput"]["additionalContext"], context
+        assert "plan .aria/asks/20261019-1200-x/plan.md" in context["hookSpecificOutput"]["additionalContext"], context
         shift = {"session_id": "t1", "hook_event_name": "UserPromptSubmit", "prompt": "Build a quiz about chess openings and grandmasters"}
         message = json.loads(fire(root, shift, **env))
         assert "another folder" in message["systemMessage"] and "20261019-1200-x" in message["systemMessage"], message
@@ -351,7 +351,7 @@ def test_chat_is_told_once_when_another_chat_opens_an_ask() -> None:
         open_ask(root, "Build a War of the Worlds timeline")
         env = {"HARNESS_SKILLS_MIN_STATUS": "provisional"}
         opened = {"hook_event_name": "PostToolUse", "session_id": "p1", "tool_name": "run_in_terminal", "tool_response": "{}",
-                  "tool_input": {"command": 'python "rt/tools/loop/lifecycle.py" contract direct x "ARIA Lite" .hve/asks/request.md'}}
+                  "tool_input": {"command": 'python "rt/tools/loop/lifecycle.py" contract direct x "ARIA Lite" .aria/asks/request.md'}}
         fire(root, opened, **env)
         pre = {"hook_event_name": "PreToolUse", "session_id": "p1", "tool_input": {"filePath": "x.ts"}}
         first = json.loads(fire(root, pre, **env))["hookSpecificOutput"]["additionalContext"]
@@ -382,12 +382,12 @@ def test_required_skills_load_first_and_outside_categories() -> None:
         env = {"HARNESS_SKILLS_MIN_STATUS": "provisional", "HARNESS_REQUIRED_SKILLS": "research,research"}
         for session, prompt in (("r1", "Create a PRD for leave"), ("r2", "Build a color palette page.")):
             fire(root, {"session_id": session, "hook_event_name": "UserPromptSubmit", "prompt": prompt}, **env)
-            loadout = json.loads((root / ".hve" / "runs" / f"{session}.skills.json").read_text(encoding="utf-8"))
+            loadout = json.loads((root / ".aria" / "runs" / f"{session}.skills.json").read_text(encoding="utf-8"))
             assert loadout["skills"][0] == "skills/admitted/research", loadout
             assert loadout["skills"].count("skills/admitted/research") == 1, loadout
-            assert (root / ".hve" / "skills" / "research" / "SKILL.md").is_file()
+            assert (root / ".aria" / "skills" / "research" / "SKILL.md").is_file()
             result = json.loads(fire(root, {"session_id": session, "hook_event_name": "PreToolUse",
-                                           "tool_input": {"filePath": ".hve/skills/research/SKILL.md"}}))
+                                           "tool_input": {"filePath": ".aria/skills/research/SKILL.md"}}))
             assert "permissionDecision" not in result["hookSpecificOutput"], result
         registry_path = root / "skills" / "registry.json"
         registry = json.loads(registry_path.read_text(encoding="utf-8"))
@@ -403,7 +403,7 @@ def test_required_skills_load_first_and_outside_categories() -> None:
             registry_path.write_text(json.dumps(registry | {"admitted": variant}), encoding="utf-8")
             if needle.startswith("skill-library"):
                 workspace_skill = entries[-1] | {"description": "Our own research."}
-                (root / ".hve" / "skills-registry.json").write_text(json.dumps({"admitted": [workspace_skill]}), encoding="utf-8")
+                (root / ".aria" / "skills-registry.json").write_text(json.dumps({"admitted": [workspace_skill]}), encoding="utf-8")
             result = subprocess.run([sys.executable, str(root / "hooks" / "skill_loader.py")],
                                     input=json.dumps({"session_id": "bad", "hook_event_name": "UserPromptSubmit", "prompt": "Create a PRD"}),
                                     capture_output=True, text=True, cwd=root,
@@ -412,7 +412,7 @@ def test_required_skills_load_first_and_outside_categories() -> None:
                 assert result.returncode != 0 and needle in result.stderr, result.stderr
             else:
                 assert result.returncode == 0, result.stderr
-                loadout = json.loads((root / ".hve" / "runs" / "bad.skills.json").read_text(encoding="utf-8"))
+                loadout = json.loads((root / ".aria" / "runs" / "bad.skills.json").read_text(encoding="utf-8"))
                 assert loadout["skills"] == [f"skills/admitted/{n}" for n in required.split(",")], loadout
                 assert loadout["over_budget"] is (len(loadout["skills"]) > 2), loadout
 

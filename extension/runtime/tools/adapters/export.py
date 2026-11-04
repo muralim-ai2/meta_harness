@@ -11,7 +11,7 @@ from typing import Any, TypedDict
 
 ROOT = Path(__file__).resolve().parents[2]
 EXTENSION = ROOT.parent
-RUNTIME_PATH = ".hve/runtime"
+RUNTIME_PATH = ".aria/runtime"
 CLOUD_RUNTIME_PATH = ".github/hve/runtime"
 HOOK_SOURCE = "hve-creator.agent.md"
 SKIP_SKILLS = {"pr-push", "export-harness"}
@@ -232,8 +232,8 @@ def copy_runtime(t: Target) -> None:
         shutil.copytree(ROOT, t["runtime"], ignore=shutil.ignore_patterns("__pycache__"))
     if t["user"]:
         return
-    (t["base"] / ".hve" / "runs").mkdir(parents=True, exist_ok=True)
-    profile = t["base"] / ".hve" / "user_profile.json"
+    (t["base"] / ".aria" / "runs").mkdir(parents=True, exist_ok=True)
+    profile = t["base"] / ".aria" / "user_profile.json"
     if not profile.exists():
         profile.write_text(json.dumps(EMPTY_PROFILE, indent=2) + "\n", encoding="utf-8")
 

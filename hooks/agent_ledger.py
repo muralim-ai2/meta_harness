@@ -16,7 +16,7 @@ EVENTS = {"SubagentStart": "start", "SubagentStop": "stop"}
 
 
 def main() -> None:
-    """Append one row per SubagentStart or SubagentStop to .hve/runs/<session>.agents.jsonl."""
+    """Append one row per SubagentStart or SubagentStop to .aria/runs/<session>.agents.jsonl."""
     payload = json.load(sys.stdin)
     event = payload["hook_event_name"]
     if event not in EVENTS:

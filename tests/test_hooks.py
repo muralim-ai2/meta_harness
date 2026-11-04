@@ -15,19 +15,19 @@ EMPTY_PROFILE = {"prompt_style": None, "wants_evidence": None, "verbosity": None
 
 
 def make_root(tmp: str, profile: dict[str, Any]) -> Path:
-    """Return a temp workspace with the hooks, .hve/runs and the given .hve/user_profile.json."""
+    """Return a temp workspace with the hooks, .aria/runs and the given .aria/user_profile.json."""
     root = Path(tmp)
     (root / "hooks").mkdir()
     for hook in ("profile_detector.py", "compaction.py", "graph_refresh.py", "budget.py", "interventions.py", "hve_paths.py"):
         shutil.copy(REPO / "hooks" / hook, root / "hooks")
-    (root / ".hve" / "runs").mkdir(parents=True)
-    (root / ".hve" / "user_profile.json").write_text(json.dumps(profile), encoding="utf-8")
+    (root / ".aria" / "runs").mkdir(parents=True)
+    (root / ".aria" / "user_profile.json").write_text(json.dumps(profile), encoding="utf-8")
     return root
 
 
 def profile_of(root: Path) -> dict[str, Any]:
     """Return the workspace's saved profile."""
-    return json.loads((root / ".hve" / "user_profile.json").read_text(encoding="utf-8"))
+    return json.loads((root / ".aria" / "user_profile.json").read_text(encoding="utf-8"))
 
 
 def fire(root: Path, hook: str, payload: dict[str, str]) -> subprocess.CompletedProcess[str]:
@@ -106,13 +106,13 @@ def test_subagent_start_gets_return_cap() -> None:
         assert "under 2,000 tokens" in context["hookSpecificOutput"]["additionalContext"]
         assert "exactly one role" in context["hookSpecificOutput"]["additionalContext"]
         assert "SKILLS-USED" not in context["hookSpecificOutput"]["additionalContext"]
-        (root / ".hve" / "asks" / "x").mkdir(parents=True)
-        (root / ".hve" / "asks" / "active.json").write_text(json.dumps({"active": "x"}), encoding="utf-8")
-        contract = {"skills": {"selected": [{"name": "ux-flows"}]}, "paths": {"ask": ".hve/asks/x", "evidence": ".hve/asks/x/loop/evidence"}}
-        (root / ".hve" / "asks" / "x" / "contract.json").write_text(json.dumps(contract), encoding="utf-8")
+        (root / ".aria" / "asks" / "x").mkdir(parents=True)
+        (root / ".aria" / "asks" / "active.json").write_text(json.dumps({"active": "x"}), encoding="utf-8")
+        contract = {"skills": {"selected": [{"name": "ux-flows"}]}, "paths": {"ask": ".aria/asks/x", "evidence": ".aria/asks/x/loop/evidence"}}
+        (root / ".aria" / "asks" / "x" / "contract.json").write_text(json.dumps(contract), encoding="utf-8")
         context = output(fire(root, "compaction.py", {"hook_event_name": "SubagentStart", "agent_id": "a2", "agent_type": "creator"}))
         text = context["hookSpecificOutput"]["additionalContext"]
-        assert ".hve/skills/ux-flows/SKILL.md" in text and "SKILLS-USED" in text and "evidence .hve/asks/x/loop/evidence" in text, text
+        assert ".aria/skills/ux-flows/SKILL.md" in text and "SKILLS-USED" in text and "evidence .aria/asks/x/loop/evidence" in text, text
 
 
 def test_graph_follows_project() -> None:
@@ -121,7 +121,7 @@ def test_graph_follows_project() -> None:
     env = {**os.environ, "PATH": bin_dir + os.pathsep + os.environ["PATH"]}
     with tempfile.TemporaryDirectory() as tmp:
         root = make_root(tmp, EMPTY_PROFILE)
-        graph = root / ".hve" / "outputs" / "harness" / "graph" / "graph.json"
+        graph = root / ".aria" / "outputs" / "harness" / "graph" / "graph.json"
 
         def run(event: str) -> subprocess.CompletedProcess[str]:
             """Run graph_refresh.py for one hook event."""
@@ -130,7 +130,7 @@ def test_graph_follows_project() -> None:
 
         assert run("SessionStart").returncode == 0
         assert json.loads(graph.read_text(encoding="utf-8"))["nodes"] == []
-        project = root / ".hve" / "outputs" / "harness" / "current"
+        project = root / ".aria" / "outputs" / "harness" / "current"
         (project / "node_modules" / "x").mkdir(parents=True)
         (project / "node_modules" / "x" / "index.js").write_text("function junk() {}\n", encoding="utf-8")
         (project / "lib.ts").write_text("export function hexToRgb(h: string): number[] { return [0, 0, 0]; }\n"
@@ -178,7 +178,7 @@ def test_budget_asks_user_to_continue() -> None:
         assert fire_budget(root, "PostToolUse", 16.5, env, "x1").returncode == 0
         assert fire_budget(root, "PreToolUse", 20, env).stdout == ""
         assert "left" in output(fire_budget(root, "PreToolUse", 28.5, env))["hookSpecificOutput"]["additionalContext"]
-        state = json.loads((root / ".hve" / "runs" / "s-1.budget.json").read_text(encoding="utf-8"))
+        state = json.loads((root / ".aria" / "runs" / "s-1.budget.json").read_text(encoding="utf-8"))
         assert state["extensions"] == 1 and state["budget_ms"] == 30 * 60_000, state
 
 

@@ -19,10 +19,10 @@ const UI = { page: 'progress', filter: 'all', open: {}, seq: 0 };
  * @returns {string}
  */
 function telemetryFile(fixture) {
-  const file = path.join(fixture.root, '.hve', 'runs', 'copilot-otel.jsonl');
+  const file = path.join(fixture.root, '.aria', 'runs', 'copilot-otel.jsonl');
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, '{"name":"chat a"}\n{"name":"chat b"}\n');
-  fixture.controls.settings.set('github.copilot.chat.otel.outfile', '.hve/runs/copilot-otel.jsonl');
+  fixture.controls.settings.set('github.copilot.chat.otel.outfile', '.aria/runs/copilot-otel.jsonl');
   fixture.controls.settings.set('github.copilot.chat.otel.enabled', true);
   return file;
 }
@@ -58,7 +58,7 @@ test('Build the map runs the bundled map tool, and the map opens in its own tab'
   fs.writeFileSync(path.join(fixture.root, 'app.js'), 'export function feed() { return 1; }\n');
   await assert.rejects(fixture.controls.provider.execute({ action: 'openMap' }), /no solution map yet/);
   await fixture.controls.provider.execute({ action: 'refreshMap' });
-  assert.ok(fs.statSync(path.join(fixture.root, '.hve', 'map', 'explorer.html')).size > 1000);
+  assert.ok(fs.statSync(path.join(fixture.root, '.aria', 'map', 'explorer.html')).size > 1000);
   assert.match(fixture.controls.calls.find(call => call[0] === 'information')[1], /^Solution map built: small repository, \d+ files, \d+ concepts\.$/);
   const panel = fixture.controls.panels.at(-1);
   assert.match(panel.webview.html, /<script/);
@@ -82,27 +82,27 @@ test('Make an infographic opens a new Local chat with the skill and the subject 
 test('Progress lists evaluation reports and the ask\'s contract and provenance, and they open beside Mission Control', async t => {
   const fixture = mission(t);
   project(fixture.root);
-  const run = path.join(fixture.root, '.hve', 'evaluations', 'run-1');
+  const run = path.join(fixture.root, '.aria', 'evaluations', 'run-1');
   fs.mkdirSync(run, { recursive: true });
   fs.writeFileSync(path.join(run, 'report.json'), '{"decision":"pass","score":0.82}');
-  fs.mkdirSync(path.join(fixture.root, '.hve', 'evaluations', 'input'));
-  fs.writeFileSync(path.join(fixture.root, '.hve', 'asks', ASK, 'provenance.md'), '# Provenance\n\nAll five pillars recorded.');
-  assert.deepEqual(evaluationFiles(fixture.root), ['.hve/evaluations/run-1/report.json']);
+  fs.mkdirSync(path.join(fixture.root, '.aria', 'evaluations', 'input'));
+  fs.writeFileSync(path.join(fixture.root, '.aria', 'asks', ASK, 'provenance.md'), '# Provenance\n\nAll five pillars recorded.');
+  assert.deepEqual(evaluationFiles(fixture.root), ['.aria/evaluations/run-1/report.json']);
   await fixture.controls.commands.get('frontierHve.refreshMissionControl')();
   const model = fixture.controls.commands.get('frontierHve.missionControlModel')();
   const page = text(dashboard(model, UI, Date.now()));
-  assert.match(page, /Evaluations\.hve\/evaluations\/run-1\/report\.json/);
-  assert.match(page, new RegExp(`Contract and provenance.*\\.hve/asks/${ASK}/contract\\.json\\.hve/asks/${ASK}/provenance\\.md`));
+  assert.match(page, /Evaluations\.aria\/evaluations\/run-1\/report\.json/);
+  assert.match(page, new RegExp(`Contract and provenance.*\\.aria/asks/${ASK}/contract\\.json\\.aria/asks/${ASK}/provenance\\.md`));
   assert.match(page, /Summarize this ask/);
-  await fixture.controls.provider.execute({ action: 'openFile', path: '.hve/evaluations/run-1/report.json' });
-  await fixture.controls.provider.execute({ action: 'openFile', path: `.hve/asks/${ASK}/provenance.md` });
+  await fixture.controls.provider.execute({ action: 'openFile', path: '.aria/evaluations/run-1/report.json' });
+  await fixture.controls.provider.execute({ action: 'openFile', path: `.aria/asks/${ASK}/provenance.md` });
   assert.equal(fixture.controls.calls.filter(call => call[0] === 'document').length, 2);
 });
 
 test('Summarize streams a three-bullet summary of the ask from its state, provenance and latest evaluation', async t => {
   const fixture = mission(t);
   project(fixture.root);
-  fs.writeFileSync(path.join(fixture.root, '.hve', 'asks', ASK, 'provenance.md'), '# Provenance\n\nPolicy delivered.');
+  fs.writeFileSync(path.join(fixture.root, '.aria', 'asks', ASK, 'provenance.md'), '# Provenance\n\nPolicy delivered.');
   /** @type {string[]} */
   const prompts = [];
   fixture.controls.models.push({ id: 'claude-haiku-5.5', name: 'Claude Haiku 5.5', family: 'claude-haiku', sendRequest: async messages => {

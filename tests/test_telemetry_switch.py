@@ -28,7 +28,7 @@ def new_ask(workspace: Path) -> dict[str, Any]:
     made = invoke(workspace, "contract", "direct", "policy", "ARIA Lite", "request.txt")
     assert made.returncode == 0, made.stderr
     ask = json.loads(made.stdout)["ask"]
-    contract: dict[str, Any] = json.loads((workspace / ".hve" / "asks" / ask / "contract.json").read_text(encoding="utf-8"))
+    contract: dict[str, Any] = json.loads((workspace / ".aria" / "asks" / ask / "contract.json").read_text(encoding="utf-8"))
     return contract
 
 

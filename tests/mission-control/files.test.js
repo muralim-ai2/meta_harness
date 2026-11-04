@@ -11,7 +11,7 @@ const { askTree } = require('../../extension/ui/asks');
 const { text } = require('../../extension/ui/media/vnode');
 const { sidebar } = require('../../extension/ui/media/views');
 const { dashboard } = require('../../extension/ui/media/pages');
-const FOLDER = `.hve/asks/${ASK}`;
+const FOLDER = `.aria/asks/${ASK}`;
 const UI = { page: 'files', filter: 'all', open: {}, seq: 0 };
 
 /** Return every view node matching a test.
@@ -110,14 +110,14 @@ test('files in the ask open beside Mission Control; files behind a link or outsi
   await fixture.controls.commands.get('frontierHve.refreshMissionControl')();
   await fixture.controls.provider.execute({ action: 'openFile', path: `${FOLDER}/loop/prs/policy.json` });
   const opened = fixture.controls.calls.filter(call => call[0] === 'document');
-  assert.equal(path.relative(fs.realpathSync(fixture.root), opened[0][1].fsPath), path.join('.hve', 'asks', ASK, 'loop', 'prs', 'policy.json'));
+  assert.equal(path.relative(fs.realpathSync(fixture.root), opened[0][1].fsPath), path.join('.aria', 'asks', ASK, 'loop', 'prs', 'policy.json'));
   assert.equal(opened[0][2].viewColumn, -2);
   await assert.rejects(fixture.controls.provider.execute({ action: 'openFile', path: `${FOLDER}/linked/secret.txt` }), /not listed/);
   await assert.rejects(fixture.controls.provider.execute({ action: 'openFile', path: 'secret.txt' }), /not listed/);
   await assert.rejects(fixture.controls.provider.execute({ action: 'openFile', path: `${FOLDER}/loop` }), /not listed/);
   await fixture.controls.provider.execute({ action: 'revealAsk' });
   const reveal = fixture.controls.calls.find(call => call[0] === 'revealInExplorer');
-  assert.equal(path.relative(fs.realpathSync(fixture.root), reveal[1].fsPath), path.join('.hve', 'asks', ASK));
+  assert.equal(path.relative(fs.realpathSync(fixture.root), reveal[1].fsPath), path.join('.aria', 'asks', ASK));
 });
 
 test('the Files page follows the ask chosen in the dropdown', async t => {
@@ -128,7 +128,7 @@ test('the Files page follows the ask chosen in the dropdown', async t => {
   await fixture.controls.provider.execute({ action: 'selectAsk', ask: first });
   const model = fixture.controls.commands.get('frontierHve.missionControlModel')();
   assert.equal(model.files.ask, first);
-  assert.ok(model.files.entries.some(node => node.path === `.hve/asks/${first}/request.md`));
-  await fixture.controls.provider.execute({ action: 'openFile', path: `.hve/asks/${first}/request.md` });
+  assert.ok(model.files.entries.some(node => node.path === `.aria/asks/${first}/request.md`));
+  await fixture.controls.provider.execute({ action: 'openFile', path: `.aria/asks/${first}/request.md` });
   assert.ok(fixture.controls.calls.some(call => call[0] === 'document' && call[1].fsPath.endsWith(path.join(first, 'request.md'))));
 });

@@ -9,9 +9,9 @@ from typing import Any
 
 KEEP_DAYS = 3
 MAX_BYTES = 200 * 1024 * 1024
-EXPORT = ".hve/runs/copilot-otel.jsonl"
-LOCK = ".hve/runs/bench.lock"
-IGNORED_BY = {".hve/", "/.hve/", ".hve", ".hve/runs/", EXPORT}
+EXPORT = ".aria/runs/copilot-otel.jsonl"
+LOCK = ".aria/runs/bench.lock"
+IGNORED_BY = {".aria/", "/.aria/", ".aria", ".aria/runs/", EXPORT}
 
 Json = dict[str, Any]
 
@@ -24,7 +24,7 @@ def stamp_ms(raw: bytes) -> float | None:
 
 
 def ensure_ignored(workspace: Path) -> bool:
-    """Add the export to the workspace's .gitignore unless .hve/ or the export is already ignored; return True when a line was added."""
+    """Add the export to the workspace's .gitignore unless .aria/ or the export is already ignored; return True when a line was added."""
     gitignore = workspace / ".gitignore"
     lines = gitignore.read_text(encoding="utf-8").splitlines() if gitignore.is_file() else []
     if IGNORED_BY & {line.strip() for line in lines}:

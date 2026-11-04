@@ -38,8 +38,8 @@ def exported_workspace(tmp: str) -> Path:
     ws.mkdir()
     for client in ("claude", "cursor", "codex", "vscode"):
         export(ws, client, "--ado", "contoso")
-    (ws / ".hve" / "user_profile.json").write_text(json.dumps(PROFILE), encoding="utf-8")
-    guard_mode(ws / ".hve" / "runtime", "enforce")
+    (ws / ".aria" / "user_profile.json").write_text(json.dumps(PROFILE), encoding="utf-8")
+    guard_mode(ws / ".aria" / "runtime", "enforce")
     return ws
 
 
@@ -76,8 +76,8 @@ def fire(ws: Path, client: str, payload: Json) -> list[Json]:
 
 
 def start_loop(ws: Path, passes: bool = False, escalated: bool = False, in_ask: bool = False) -> None:
-    """Write the loop state the guards read: one feature and the loop state file, in .hve/project/ when an ask is open."""
-    files, state_folder = (ws / ".hve" / "project", ws / ".hve" / "project") if in_ask else (ws, ws / ".harness")
+    """Write the loop state the guards read: one feature and the loop state file, in .aria/project/ when an ask is open."""
+    files, state_folder = (ws / ".aria" / "project", ws / ".aria" / "project") if in_ask else (ws, ws / ".harness")
     state_folder.mkdir(parents=True, exist_ok=True)
     (files / "feature_list.json").write_text(json.dumps([{"name": "login", "description": "d", "verify": "exit 0", "passes": passes}]))
     state = {"current": None, "review": "local", "escalated": escalated, "help": {"question": "Which database?"}}
@@ -88,7 +88,7 @@ def test_export_structure() -> None:
     """Each client gets the runtime, skills (minus VS Code-only ones), its agents, hooks naming real scripts, and the ado server."""
     with tempfile.TemporaryDirectory() as tmp:
         ws = exported_workspace(tmp)
-        runtime = ws / ".hve" / "runtime"
+        runtime = ws / ".aria" / "runtime"
         assert (runtime / "hooks" / "agent_compat.py").is_file() and (runtime / "skills" / "licenses" / "agentx" / "LICENSE").is_file()
         assert (runtime / "tools" / "templates" / "manage.py").is_file()
         assert (runtime / "templates" / "deliverables" / "test-strategy-v1.md").is_file()
@@ -108,7 +108,7 @@ def test_export_structure() -> None:
         assert "hooks:" in single and single.count("hooks/template_guard.py") == 3
         assert any(a[2] == "scripts/guardrail.py" and a[-2:] == ["--", "--hook"] for a in argv), argv
         creator = (ws / ".claude" / "agents" / "hve-creator.md").read_text(encoding="utf-8")
-        assert "{{RUNTIME}}" not in creator and ".hve/runtime/tools/loop/loop.py" in creator
+        assert "{{RUNTIME}}" not in creator and ".aria/runtime/tools/loop/loop.py" in creator
         cursor = json.loads((ws / ".cursor" / "hooks.json").read_text())
         assert cursor["version"] == 1 and set(cursor["hooks"]) == {"sessionStart", "beforeSubmitPrompt", "preToolUse", "postToolUse", "stop"}
         assert "disable-model-invocation: true" in (ws / ".cursor" / "skills" / "hve-creator" / "SKILL.md").read_text(encoding="utf-8")
@@ -143,20 +143,20 @@ def test_claude_code_hooks() -> None:
         start = fire(ws, "claude", base | {"hook_event_name": "SessionStart", "source": "startup"})
         assert any("Delivery" in o["hookSpecificOutput"]["additionalContext"] for o in start), start
         fire(ws, "claude", base | {"hook_event_name": "UserPromptSubmit", "prompt": "Design an accessible signup page UI with clear forms"})
-        assert json.loads((ws / ".hve" / "runs" / "c1.skills.json").read_text())["skills"]
+        assert json.loads((ws / ".aria" / "runs" / "c1.skills.json").read_text())["skills"]
         read = {"hook_event_name": "PreToolUse", "tool_name": "Read", "tool_input": {"file_path": str(ws / "README.md")}, "tool_use_id": "t1"}
         notice = fire(ws, "claude", base | read)
-        assert any(".hve/skills/" in o["hookSpecificOutput"].get("additionalContext", "") for o in notice), notice
+        assert any(".aria/skills/" in o["hookSpecificOutput"].get("additionalContext", "") for o in notice), notice
         start_loop(ws)
         write = {"hook_event_name": "PreToolUse", "tool_name": "Write", "tool_use_id": "t2",
                  "tool_input": {"file_path": str(ws / "feature_list.json"), "content": "[]"}}
         denied = fire(ws, "claude", base | write)
         assert denied[0]["hookSpecificOutput"]["permissionDecision"] == "deny" and "loop scripts" in json.dumps(denied), denied
-        guard_mode(ws / ".hve" / "runtime", "advise")
+        guard_mode(ws / ".aria" / "runtime", "advise")
         advised = fire(ws, "claude", base | write)
         assert any(o.get("systemMessage", "").startswith("Advisory alert (experimental)") for o in advised), advised
         assert not any(o.get("hookSpecificOutput", {}).get("permissionDecision") == "deny" for o in advised), advised
-        guard_mode(ws / ".hve" / "runtime", "enforce")
+        guard_mode(ws / ".aria" / "runtime", "enforce")
         push = {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_use_id": "t3", "tool_input": {"command": "git push -f origin main"}}
         assert "Force pushes" in fire(ws, "claude", base | push)[0]["hookSpecificOutput"]["permissionDecisionReason"]
         (ws / "big.py").write_text("x = 1\n" * 600)
@@ -261,13 +261,13 @@ def test_copilot_user_scope_and_cloud_exports() -> None:
         result = subprocess.run([sys.executable, str(EXPORT), "copilot", "--user"], capture_output=True, text=True, env=env)
         assert result.returncode == 0, result.stderr
         assert json.loads(result.stdout)["scope"] == "user"
-        guard_mode(home / ".hve" / "runtime", "enforce")
+        guard_mode(home / ".aria" / "runtime", "enforce")
         agents = home / ".copilot" / "agents"
         assert {p.name for p in agents.glob("*.agent.md")} == {p.name for p in (EXTENSION / "agents").glob("hve-*.agent.md")}
         creator = (agents / "hve-creator.agent.md").read_text(encoding="utf-8")
         front = creator.split("---\n")[1]
         assert "hooks:" not in front and "{{RUNTIME}}" not in creator and "tools:" not in front, front
-        assert f"{(home / '.hve' / 'runtime').as_posix()}/tools/loop/lifecycle.py" in creator
+        assert f"{(home / '.aria' / 'runtime').as_posix()}/tools/loop/lifecycle.py" in creator
         assert 'tools: ["read", "search"]' in (agents / "hve-evaluation-reviewer.agent.md").read_text(encoding="utf-8")
         assert "handoffs" not in (agents / "hve-product-manager.agent.md").read_text(encoding="utf-8").split("---\n")[1]
         hooks = json.loads((home / ".copilot" / "hooks" / "hve.json").read_text(encoding="utf-8"))
@@ -280,7 +280,7 @@ def test_copilot_user_scope_and_cloud_exports() -> None:
                  "tool_name": "Write", "tool_input": {"file_path": str(ws / "feature_list.json"), "content": "[]"}}
         assert fire_copilot(hooks, ws, write, env) == [], "no open ask: the user-level hooks stay out of the way"
         (ws / "req.md").write_text("Build a login page", encoding="utf-8")
-        lifecycle = home / ".hve" / "runtime" / "tools" / "loop" / "lifecycle.py"
+        lifecycle = home / ".aria" / "runtime" / "tools" / "loop" / "lifecycle.py"
         made = subprocess.run([sys.executable, str(lifecycle), "contract", "direct", "login", "ARIA Lite", "req.md"], cwd=ws,
                               capture_output=True, text=True, env=env)
         assert made.returncode == 0, made.stderr
@@ -289,7 +289,7 @@ def test_copilot_user_scope_and_cloud_exports() -> None:
         write["tool_input"]["file_path"] = str(ws / paths["feature_list"])  # type: ignore[index]
         denied = fire_copilot(hooks, ws, write, env)
         assert any(o.get("permissionDecision") == "deny" and "loop scripts" in o["permissionDecisionReason"] for o in denied), denied
-        assert (ws / ".hve" / "runs" / "p1.skills.json").is_file(), "the loadout comes from the ask when the prompt hook did not run"
+        assert (ws / ".aria" / "runs" / "p1.skills.json").is_file(), "the loadout comes from the ask when the prompt hook did not run"
         stop = {"hook_event_name": "Stop", "session_id": "p1", "timestamp": "2026-10-19T08:01:00Z", "cwd": str(ws),
                 "transcript_path": "t", "stop_reason": "end_turn", "stop_hook_active": False}
         assert any(o.get("decision") == "block" and "login" in o["reason"] for o in fire_copilot(hooks, ws, stop, env))
@@ -320,8 +320,8 @@ def test_wiki_is_shipped_and_linked() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         ws = exported_workspace(tmp)
         report = export(ws, "claude")
-        assert (ws / report["guide"]).is_file() and (ws / ".hve" / "runtime" / "tools" / ".." / "docs" / "wiki" / "Adapters.md").is_file()
-        assert ".hve/runtime/docs/wiki/Adapters.md" in (ws / ".claude" / "agents" / "hve-azure-devops.md").read_text(encoding="utf-8")
+        assert (ws / report["guide"]).is_file() and (ws / ".aria" / "runtime" / "tools" / ".." / "docs" / "wiki" / "Adapters.md").is_file()
+        assert ".aria/runtime/docs/wiki/Adapters.md" in (ws / ".claude" / "agents" / "hve-azure-devops.md").read_text(encoding="utf-8")
         assert Path(export(ws, "vscode", "--ado", "contoso")["guide"]).is_file()
 
 

@@ -34,7 +34,7 @@ def add_session(root: Path, session_id: str, mode: str, user_text: str, reply: s
     ]
     transcript.write_text("".join(json.dumps(r) + "\n" for r in records), encoding="utf-8")
     event = {"event": "Stop", "mode": mode, "ts_ms": 0, "tool_use_id": None, "tool_name": None, "transcript_path": str(transcript)}
-    (root / ".hve" / "runs" / f"{session_id}.events.jsonl").write_text(json.dumps(event) + "\n", encoding="utf-8")
+    (root / ".aria" / "runs" / f"{session_id}.events.jsonl").write_text(json.dumps(event) + "\n", encoding="utf-8")
 
 
 def make_root(tmp: str) -> Path:
@@ -44,7 +44,7 @@ def make_root(tmp: str) -> Path:
     shutil.copy(REPO / "tools" / "observe" / "collect.py", root / "tools" / "observe")
     (root / "tests" / "prompts").mkdir(parents=True)
     (root / "tests" / "prompts" / "color-palette.md").write_bytes(PROMPT.encode("utf-8"))
-    (root / ".hve" / "runs").mkdir(parents=True)
+    (root / ".aria" / "runs").mkdir(parents=True)
     return root
 
 
@@ -59,21 +59,21 @@ def test_collects_minimal_reply_and_single_folder() -> None:
         root = make_root(tmp)
         add_session(root, MIN_ID, "minimal", "#attachment:Pasted text #1 ", REPLY, pasted=PROMPT)
         add_session(root, SINGLE_ID, "single", PROMPT, "Done.")
-        current = root / ".hve" / "outputs" / "single" / "current"
+        current = root / ".aria" / "outputs" / "single" / "current"
         (current / "node_modules" / "x").mkdir(parents=True)
         (current / "node_modules" / "x" / "i.js").write_text("", encoding="utf-8")
         (current / "app").mkdir()
         (current / "app" / "page.tsx").write_text("export {}\n", encoding="utf-8")
         result = run_collect(root)
         assert result.returncode == 0, result.stderr
-        minimal_out = root / ".hve" / "outputs" / "minimal" / MIN_ID
+        minimal_out = root / ".aria" / "outputs" / "minimal" / MIN_ID
         assert (minimal_out / "index.html").read_text(encoding="utf-8") == "<h1>Palette</h1>\n"
         assert (minimal_out / "src" / "app.js").read_text(encoding="utf-8") == "console.log(1);\n"
         assert (minimal_out / "response.md").exists()
         assert not current.exists()
-        manifest = json.loads((root / ".hve" / "runs" / f"{SINGLE_ID}.run.json").read_text(encoding="utf-8"))
+        manifest = json.loads((root / ".aria" / "runs" / f"{SINGLE_ID}.run.json").read_text(encoding="utf-8"))
         assert manifest["files"] == ["app/page.tsx"], manifest
-        assert manifest["output_dir"] == f".hve/outputs/single/{SINGLE_ID}"
+        assert manifest["output_dir"] == f".aria/outputs/single/{SINGLE_ID}"
         assert (manifest["started"], manifest["ended"]) == ("2026-10-06T08:00:00.000Z", "2026-10-06T08:01:00.000Z")
         assert run_collect(root).returncode == 0  # already collected sessions are skipped
 
@@ -110,8 +110,8 @@ def test_provenance_reports_component_evidence() -> None:
         agent = ws / "pm.agent.md"
         agent.write_text('hooks: skill_loader.py template_guard.py\nRun "tools/loop/loop.py" then "tools/evaluation/reflection.py".\n',
                          encoding="utf-8")
-        (ws / ".hve" / "runs").mkdir(parents=True)
-        (ws / ".hve" / "runs" / "s1.skills.json").write_text(json.dumps({"skills": ["skills/admitted/prd"]}), encoding="utf-8")
+        (ws / ".aria" / "runs").mkdir(parents=True)
+        (ws / ".aria" / "runs" / "s1.skills.json").write_text(json.dumps({"skills": ["skills/admitted/prd"]}), encoding="utf-8")
         cli = [sys.executable, str(REPO / "tools" / "observe" / "provenance.py"), str(agent), "latest", "--workspace", str(ws)]
         result = subprocess.run([*cli, "--require", "templates"], capture_output=True, text=True)
         report = json.loads(result.stdout)
@@ -133,9 +133,9 @@ def test_provenance_reports_component_evidence() -> None:
         assert report["components"]["skills"]["detail"] == "loaded: prd" and report["trace"] is None, report
         assert report["components"]["templates"] == {"status": "verified", "detail": "prd/leave from builtin:prd@1"}, report
         assert report["components"]["reflection"]["status"] == "failed" and result.returncode == 1, report
-        assert (ws / ".hve" / "runs" / "s1.provenance.json").is_file()
-        (ws / ".hve" / "runs" / "s1.skills.json").unlink()
-        (ws / ".hve" / "runs" / "s2.events.jsonl").write_text("", encoding="utf-8")
+        assert (ws / ".aria" / "runs" / "s1.provenance.json").is_file()
+        (ws / ".aria" / "runs" / "s1.skills.json").unlink()
+        (ws / ".aria" / "runs" / "s2.events.jsonl").write_text("", encoding="utf-8")
         report = json.loads(subprocess.run(cli, capture_output=True, text=True).stdout)
         assert report["session"] == "s2" and report["components"]["skills"]["status"] == "failed", report
 
@@ -144,7 +144,7 @@ def test_contract_plan_check_and_provenance() -> None:
     """A lifecycle contract reports expected vs used per done stage; an unsynced plan.md adds context, holds loop runs and fails provenance."""
     with tempfile.TemporaryDirectory() as tmp:
         ws = Path(tmp)
-        (ws / ".hve" / "runs").mkdir(parents=True)
+        (ws / ".aria" / "runs").mkdir(parents=True)
 
         def lifecycle(*args: str) -> str:
             """Run lifecycle.py in the workspace and return its output."""
@@ -174,7 +174,7 @@ def test_contract_plan_check_and_provenance() -> None:
         lifecycle("stage", "backlog", "planned", "sprint 2: redo")
         assert json.loads(lifecycle("checklist"))["items"]["stage:backlog"]["value"] == "open", "a stage set back to planned loses its sign-off"
         lifecycle("stage", "backlog", "done", "PRD and backlog agreed")
-        (ws / ".hve" / "runs" / "s1.skills.json").write_text(json.dumps({"skills": [], "used": ["skills/admitted/prd", "skills/admitted/scrub"]}),
+        (ws / ".aria" / "runs" / "s1.skills.json").write_text(json.dumps({"skills": [], "used": ["skills/admitted/prd", "skills/admitted/scrub"]}),
                                                              encoding="utf-8")
         agent = ws / "agile.agent.md"
         agent.write_text('Run "tools/loop/lifecycle.py".\n', encoding="utf-8")
@@ -193,7 +193,7 @@ def test_direct_contract_tracks_skills_tasks_briefs_and_reports() -> None:
     """A direct ask records ranked skills, persona, environment and a generated plan block; tasks, briefs and reported skills join it."""
     with tempfile.TemporaryDirectory() as tmp:
         ws = Path(tmp)
-        (ws / ".hve" / "runs").mkdir(parents=True)
+        (ws / ".aria" / "runs").mkdir(parents=True)
         (ws / ".vscode").mkdir()
         (ws / ".vscode" / "mcp.json").write_text('{\n  // team servers\n  "servers": {"graphify": {"command": "g"},},\n}\n', encoding="utf-8")
 
@@ -207,8 +207,8 @@ def test_direct_contract_tracks_skills_tasks_briefs_and_reports() -> None:
         created = lifecycle("contract", "direct", "palette", "ARIA Lite", "req.md")
         assert created.returncode == 0, created.stderr
         paths = json.loads(created.stdout)["paths"]
-        assert re.fullmatch(r"\.hve/asks/\d{8}-\d{4}-palette", paths["ask"]) and paths["feature_list"] == ".hve/project/feature_list.json"
-        project = json.loads((ws / ".hve" / "project" / "project.json").read_text(encoding="utf-8"))
+        assert re.fullmatch(r"\.aria/asks/\d{8}-\d{4}-palette", paths["ask"]) and paths["feature_list"] == ".aria/project/feature_list.json"
+        project = json.loads((ws / ".aria" / "project" / "project.json").read_text(encoding="utf-8"))
         assert project["goal"] == "Build a color palette page with Next.js" and project["asks"] == [paths["ask"].split("/")[-1]], project
         for prompt, verdict in (("Fix the palette page contrast", "continue"), ("Build a settings screen", "new-ask"),
                                 ("Create a formal presentation on revenue forecasting for the board", "new-workspace")):
@@ -224,7 +224,7 @@ def test_direct_contract_tracks_skills_tasks_briefs_and_reports() -> None:
         assert data["personas"] == [{"agent": "ARIA Lite", "stages": ["deliver"]}] and data["tasks"] == [], data
         assert "graphify" in {s["name"] for s in data["environment"]["mcp_servers"]}, data["environment"]
         assert "graphify" in data["environment"]["tool_load"]["harnesses"]["vscode"]["servers"], data["environment"]
-        assert (ws / ".hve" / "skills" / names[0] / "SKILL.md").is_file()
+        assert (ws / ".aria" / "skills" / names[0] / "SKILL.md").is_file()
         plan = ws / paths["ask"] / "plan.md"
         assert "<!-- hve:skills -->" in plan.read_text(encoding="utf-8") and lifecycle("plan-status").stdout.strip() == "null"
         assert "- [ ] opt:evaluation" in plan.read_text(encoding="utf-8") and "- [ ] stage:deliver" in plan.read_text(encoding="utf-8")
@@ -237,7 +237,7 @@ def test_direct_contract_tracks_skills_tasks_briefs_and_reports() -> None:
         assert tasks == [{"name": "core", "milestone": "deliver", "persona": "ARIA Lite", "skills": names, "passes": False}], tasks
         assert f"- [ ] task:core — deliver, ARIA Lite; check not passing yet; evidence `{paths['evidence']}/core/`" in plan.read_text(encoding="utf-8")
         text = lifecycle("brief", "frontend sub-agent", "task=core").stdout
-        assert f".hve/skills/{names[0]}/SKILL.md" in text and "graphify" in text and "SKILLS-USED" in text, text
+        assert f".aria/skills/{names[0]}/SKILL.md" in text and "graphify" in text and "SKILLS-USED" in text, text
         assert "not in the contract" in lifecycle("brief", "x", "task=ghost").stderr
         lifecycle("used", "frontend sub-agent", "core", f"{names[0]}, made-up")
 
@@ -250,7 +250,7 @@ def test_direct_contract_tracks_skills_tasks_briefs_and_reports() -> None:
         ledger("SubagentStart", "a1")
         ledger("SubagentStop", "a1", model="gpt-5")
         ledger("SubagentStart", "a2")
-        rows = [json.loads(line) for line in (ws / ".hve" / "runs" / "s9.agents.jsonl").read_text(encoding="utf-8").splitlines()]
+        rows = [json.loads(line) for line in (ws / ".aria" / "runs" / "s9.agents.jsonl").read_text(encoding="utf-8").splitlines()]
         assert [(r["event"], r["agent"], r["subagent"], r["ask"]) for r in rows][0] == ("start", "ARIA Lite", "ARIA engineer", paths["ask"].split("/")[-1]), rows
         data = json.loads(path.read_text(encoding="utf-8"))
         assert data["delegations"][0]["persona"] == "frontend sub-agent" and data["reported"][0]["skills"] == [names[0], "made-up"], data
@@ -285,7 +285,7 @@ def test_direct_contract_tracks_skills_tasks_briefs_and_reports() -> None:
                  "cache_read_tokens": 600},
                 {"turn_id": "t2", "ts": "2026-10-19T08:01:30+00:00", "prompt_tokens": 1000, "completion_tokens": 70, "cost_nano_aiu": 10**8,
                  "cache_read_tokens": None}]
-        (ws / ".hve" / "runs" / "m1.jsonl").write_text("\n".join(map(json.dumps, rows)), encoding="utf-8")
+        (ws / ".aria" / "runs" / "m1.jsonl").write_text("\n".join(map(json.dumps, rows)), encoding="utf-8")
         measured = lifecycle("report", "m1").stdout
         assert "600 of 2,000 prompt tokens read from cache (30%) over 2 turn(s)" in measured, measured
         assert "| Cost | 0.3 AI units |" in measured and "2,000 prompt tokens (first 1,000, peak 1,000), 120 completion, 2 model calls" in measured
@@ -298,11 +298,11 @@ def test_direct_contract_tracks_skills_tasks_briefs_and_reports() -> None:
         spans.append(spans[0] | {"spanId": "sub", "startTime": [1_800_000_005, 0], "endTime": [1_800_000_007, 0],
                                  "attributes": spans[0]["attributes"] | {"copilot_chat.chat_session_id": "sub-o1",
                                                                          "copilot_chat.parent_chat_session_id": "o1", "gen_ai.response.model": "claude-x"}})
-        (ws / ".hve" / "runs" / "o1.agents.jsonl").write_text("".join(json.dumps(
+        (ws / ".aria" / "runs" / "o1.agents.jsonl").write_text("".join(json.dumps(
             {"ts": ts, "session": "o1", "ask": data["ask"], "agent": "ARIA Lite", "event": event, "agent_id": "b1", "subagent": "ARIA council",
              "model": None}) + "\n" for ts, event in (("2027-01-15T08:00:04+00:00", "start"), ("2027-01-15T08:00:08+00:00", "stop"))),
             encoding="utf-8")
-        (ws / ".hve" / "runs" / "copilot-otel.jsonl").write_text("".join(json.dumps(s) + "\n" for s in spans), encoding="utf-8")
+        (ws / ".aria" / "runs" / "copilot-otel.jsonl").write_text("".join(json.dumps(s) + "\n" for s in spans), encoding="utf-8")
         otel = lifecycle("report", "o1").stdout
         assert "| Cost | 1.5 AI units | Copilot OTel export (research telemetry) |" in otel and "14 s of model calls" in otel, otel
         assert "| Cache efficiency | 20% of prompt tokens read from cache |" in otel, otel

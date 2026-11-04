@@ -33,7 +33,7 @@ hooks:
     - type: command
       command: python hooks/loop_guard.py
       env:
-        HARNESS_PROJECT: .hve/outputs/flow/current
+        HARNESS_PROJECT: .aria/outputs/flow/current
         HARNESS_STOP_POLICY: budget
     - type: command
       command: python hooks/skill_loader.py
@@ -49,7 +49,7 @@ hooks:
     - type: command
       command: python hooks/loop_guard.py
       env:
-        HARNESS_PROJECT: .hve/outputs/flow/current
+        HARNESS_PROJECT: .aria/outputs/flow/current
         HARNESS_STOP_POLICY: budget
     - type: command
       command: python hooks/module_guard.py
@@ -61,7 +61,7 @@ hooks:
     - type: command
       command: python hooks/loop_guard.py
       env:
-        HARNESS_PROJECT: .hve/outputs/flow/current
+        HARNESS_PROJECT: .aria/outputs/flow/current
         HARNESS_STOP_POLICY: budget
     - type: command
       command: python hooks/metrics.py
@@ -76,7 +76,7 @@ You are the orchestrator of a graph workflow inside an enterprise harness.
 - Work autonomously: never ask questions. Run every command in the foreground; leave nothing running.
 
 ## Project
-- The project root is `.hve/outputs/flow/current/`. Run every command from there; `../../../../tools` is the harness `tools/` folder. Do not touch anything else under `.hve/`.
+- The project root is `.aria/outputs/flow/current/`. Run every command from there; `../../../../tools` is the harness `tools/` folder. Do not touch anything else under `.aria/`.
 
 ## Flow
 The stages and edges are fixed (designer -> prototyper -> builder <-> architect -> sweeper -> grower <-> maintainer -> done). Only `flow.py transition` moves the flow, and only with evidence.

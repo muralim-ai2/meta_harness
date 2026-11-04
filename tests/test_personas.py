@@ -49,7 +49,7 @@ def test_collab_scoped_asks_pack_stage_and_ledger() -> None:
     ledger shows every stage across both asks."""
     with tempfile.TemporaryDirectory() as tmp:
         ws = Path(tmp)
-        (ws / ".hve" / "runs").mkdir(parents=True)
+        (ws / ".aria" / "runs").mkdir(parents=True)
         shutil.copytree(REPO / "examples" / "plugins" / "oracle-offering", ws / "plugins" / "oracle-offering")
         (ws / "req.md").write_text("Design the data model for the leave portal", encoding="utf-8")
         first = json.loads(run(ws, "contract", "team-delivery", "data-model", "ARIA Collab", "req.md", "only=data-architecture"))
@@ -74,7 +74,7 @@ def test_auto_pauses_only_at_ticked_gates() -> None:
     """With gates=ticked the checklist gets a gate per milestone that the user ticks in the form or plan.md; without it there are none."""
     with tempfile.TemporaryDirectory() as tmp:
         ws = Path(tmp)
-        (ws / ".hve" / "runs").mkdir(parents=True)
+        (ws / ".aria" / "runs").mkdir(parents=True)
         (ws / "req.md").write_text("Build a leave request service", encoding="utf-8")
         data = json.loads(run(ws, "contract", "sdlc", "leave", "ARIA Auto", "req.md", "gates=ticked", "test=feature checks cover it"))
         assert data["gates"] == "ticked" and next(s for s in data["stages"] if s["name"] == "design")["agent"] == "ARIA solution-architect"

@@ -15,7 +15,7 @@ from metrics import request_effort  # noqa: E402
 from otel_prune import LOCK_FILE, prune  # noqa: E402
 from provenance import provenance  # noqa: E402
 
-RUNS_DIR = ROOT / ".hve" / "runs"
+RUNS_DIR = ROOT / ".aria" / "runs"
 OTEL_FILE = RUNS_DIR / "copilot-otel.jsonl"
 LOG_FILE = RUNS_DIR / "bench.log"
 PROMPT_FILE = ROOT / "tests" / "prompts" / "color-palette.md"
@@ -56,7 +56,7 @@ class Bench:
         self.last_activity = time.monotonic()
 
     def log(self, message: str) -> None:
-        """Print a timestamped line and append it to .hve/runs/bench.log."""
+        """Print a timestamped line and append it to .aria/runs/bench.log."""
         elapsed = int(time.monotonic() - self.t0)
         line = f"{datetime.now():%H:%M:%S} +{elapsed // 60:02d}:{elapsed % 60:02d} [{self.agent}] {message}"
         print(line, flush=True)
@@ -109,7 +109,7 @@ class Bench:
             if operation == "chat" and rec["status"]["code"] == 2:
                 raise RuntimeError(f"a model call of session {session_id} ended with '{rec['status'].get('message')}': the run is invalid. "
                                    "Keep the benchmark chat open and in view until it finishes (switching the Chat view to another chat can "
-                                   f"cancel it), move .hve/runs/{session_id}.* to .hve/runs/invalid/, and run again")
+                                   f"cancel it), move .aria/runs/{session_id}.* to .aria/runs/invalid/, and run again")
             if operation == "chat" and "gen_ai.usage.input_tokens" in attrs:
                 self.calls += 1
                 who = "main" if attrs["copilot_chat.chat_session_id"] == session_id else "sub-agent"
@@ -119,7 +119,7 @@ class Bench:
                 if who == "main" and effort != self.effort:
                     raise RuntimeError(f"the chat ran at reasoning effort {effort!r} but {self.agent}.agent.md pins {self.effort!r}; VS Code "
                                        "ignores the agent file's reasoning-effort (D-020). Stop the chat, set the effort in the model picker "
-                                       f"to {self.effort!r}, move .hve/runs/{session_id}.* to .hve/runs/invalid/, and run again")
+                                       f"to {self.effort!r}, move .aria/runs/{session_id}.* to .aria/runs/invalid/, and run again")
             elif operation == "invoke_agent" and attrs["copilot_chat.chat_session_id"] == session_id:
                 self.agent_end_ms = max(self.agent_end_ms, rec["endTime"][0] * 1000 + rec["endTime"][1] / 1e6)
         return (self.last_stop_ms > self.last_pre_ms and self.agent_end_ms >= self.last_stop_ms
@@ -152,7 +152,7 @@ def guarded(work: Callable[[], str]) -> str:
 
 def watch(agent: str) -> str:
     """Put the prompt on the clipboard, wait for the user to start a new chat with the agent, follow it live, flush and collect; return the session id."""
-    current = ROOT / ".hve" / "outputs" / AGENT_MODES[agent] / "current"
+    current = ROOT / ".aria" / "outputs" / AGENT_MODES[agent] / "current"
     if current.exists():
         raise FileExistsError(f"{current} exists from an earlier run: run `python tools/observe/collect.py` or move it before a new run")
     bench = Bench(agent, OTEL_FILE.stat().st_size)
@@ -200,7 +200,7 @@ def follow(bench: Bench, session_id: str) -> None:
     trace = provenance(ROOT / ".github" / "agents" / f"{bench.agent}.agent.md", ROOT, ROOT / manifest["output_dir"], session_id, [])
     bench.log(f"provenance {'ok' if trace['ok'] else 'FAILED'}: "
               + ", ".join(f"{name} {c['status']}" for name, c in trace["components"].items())
-              + f"; {trace['interventions']} interventions (.hve/runs/{session_id}.provenance.json)")
+              + f"; {trace['interventions']} interventions (.aria/runs/{session_id}.provenance.json)")
 
 
 if __name__ == "__main__":
