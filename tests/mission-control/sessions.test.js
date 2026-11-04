@@ -64,14 +64,14 @@ test('a chat is linked to the ask its contract created, the asks it reopened and
   const { root, transcripts } = setup(t);
   write(transcripts, 'created', [row('session.start', '2026-10-28T20:15:00.000Z', { startTime: '2026-10-28T20:15:00.000Z' }),
     row('user.message', '2026-10-28T20:15:01.000Z', { content: 'Build: Pawstagram, a social photo app for dogs' }),
-    tool('2026-10-28T20:15:40.000Z', 'c', 'run_in_terminal', { command: `python ${LIFECYCLE} contract direct pawstagram-dog-app "Frontier Prototype Creator" .hve/asks/request.md +ux-flows` })]);
+    tool('2026-10-28T20:15:40.000Z', 'c', 'run_in_terminal', { command: `python ${LIFECYCLE} contract direct pawstagram-dog-app "ARIA Prototype Creator" .hve/asks/request.md +ux-flows` })]);
   write(transcripts, 'follow-up', [row('user.message', '2026-10-29T09:00:00.000Z', { content: 'Add a dog profile page' }),
     tool('2026-10-29T09:00:05.000Z', 'o', 'run_in_terminal', { command: `$L=${LIFECYCLE}; python $L open ${PAWS} | Select-Object -Last 1; python $L open 20261028-0000-unknown` })]);
   write(transcripts, 'edited', [row('user.message', '2026-10-29T10:00:00.000Z', { content: 'Tidy the onboarding plan' }),
     tool('2026-10-29T10:00:05.000Z', 'r', 'read_file', { filePath: path.join(root, '.hve', 'asks', REPORTING, 'plan.md') }),
     tool('2026-10-29T10:00:09.000Z', 'e', 'replace_string_in_file', { filePath: path.join(root, '.hve', 'asks', ONBOARDING, 'plan.md'), oldString: 'a', newString: 'b' })]);
   write(transcripts, 'late-contract', [row('user.message', '2026-10-28T19:00:00.000Z', { content: 'Earlier attempt' }),
-    tool('2026-10-28T19:00:05.000Z', 'c', 'run_in_terminal', { command: `python ${LIFECYCLE} contract direct pawstagram-dog-app "Frontier Lite" request.md` })]);
+    tool('2026-10-28T19:00:05.000Z', 'c', 'run_in_terminal', { command: `python ${LIFECYCLE} contract direct pawstagram-dog-app "ARIA Lite" request.md` })]);
   write(transcripts, 'plain', [row('user.message', '2026-10-29T11:00:00.000Z', { content: 'What does this repo do?' })]);
   const { chats, claimed } = chatList(transcripts, root, ASKS, {}, null, Date.parse('2026-10-29T12:00:00Z'));
   assert.equal(claimed, null);

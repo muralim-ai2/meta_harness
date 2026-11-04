@@ -1,6 +1,6 @@
 ---
-name: HVE test-engineer
-description: Frontier HVE test engineer persona. Writes and runs automated tests beyond the feature checks (integration, end-to-end, regression) one verified feature at a time.
+name: ARIA test-engineer
+description: ARIA test engineer persona. Writes and runs automated tests beyond the feature checks (integration, end-to-end, regression) one verified feature at a time.
 user-invocable: false
 agents: []
 hooks:

@@ -1,6 +1,6 @@
 ---
-name: HVE flow-designer
-description: Frontier HVE creator-flow Designer stage. Defines the product shape in design.json (screens, acceptance criteria, checks).
+name: ARIA flow-designer
+description: ARIA creator-flow Designer stage. Defines the product shape in design.json (screens, acceptance criteria, checks).
 user-invocable: false
 hooks:
   Stop:

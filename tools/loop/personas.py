@@ -32,15 +32,15 @@ def load(path: Path = CATALOG) -> list[Json]:
             raise ValueError(f"persona {p['id']!r} is missing {missing}")
         if not ID.match(p["id"]) or p["id"] in seen:
             raise ValueError(f"persona id {p['id']!r} must be unique and match {ID.pattern}")
-        if p["kind"] != "existing" and p["agent"] != f"HVE {p['id']}":
-            raise ValueError(f"rendered persona {p['id']!r} must be named 'HVE {p['id']}', not {p['agent']!r}")
+        if p["kind"] != "existing" and p["agent"] != f"ARIA {p['id']}":
+            raise ValueError(f"rendered persona {p['id']!r} must be named 'ARIA {p['id']}', not {p['agent']!r}")
         seen.add(p["id"])
     return personas
 
 
 def description(p: Json) -> str:
     """Return a persona's agent description as a plain YAML scalar."""
-    text = f"Frontier HVE {p['title']} persona. {p['goal']}"
+    text = f"ARIA {p['title']} persona. {p['goal']}"
     if ": " in text or text[0] in "'\"" or "#" in text:
         raise ValueError(f"persona {p['id']!r} description must be a plain YAML scalar (no ': ', quotes or '#'): {text}")
     return text

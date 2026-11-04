@@ -1,6 +1,6 @@
 ---
-name: HVE db-engineer
-description: Frontier HVE database engineer persona. Builds schemas, migrations, stored logic, seed data and data access code one verified feature at a time.
+name: ARIA db-engineer
+description: ARIA database engineer persona. Builds schemas, migrations, stored logic, seed data and data access code one verified feature at a time.
 user-invocable: false
 agents: []
 hooks:

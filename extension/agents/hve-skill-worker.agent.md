@@ -1,6 +1,6 @@
 ---
-name: HVE skill-worker
-description: Frontier HVE skill evaluation worker. Answers one task directly, with no tools.
+name: ARIA skill-worker
+description: ARIA skill evaluation worker. Answers one task directly, with no tools.
 user-invocable: false
 tools: []
 agents: []

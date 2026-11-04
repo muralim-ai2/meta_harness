@@ -1,6 +1,6 @@
 ---
-name: HVE data-scientist
-description: Frontier HVE data scientist persona. Frames the analytical or ML problem, explores the data, chooses features, models and metrics, and documents the evaluation.
+name: ARIA data-scientist
+description: ARIA data scientist persona. Frames the analytical or ML problem, explores the data, chooses features, models and metrics, and documents the evaluation.
 user-invocable: false
 agents: []
 hooks:

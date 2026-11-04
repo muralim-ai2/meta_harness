@@ -74,6 +74,6 @@ def pack(workspace: Path, name: str) -> Json:
     """Return the available pack with this name, or raise naming how to install or enable it."""
     found = packs(workspace).get(name)
     if found is None:
-        raise LookupError(f"pack {name!r} is not available: install it (Frontier HVE: Install plugin, or `plugin.py install <package>`), "
+        raise LookupError(f"pack {name!r} is not available: install it (ARIA: Install plugin, or `plugin.py install <package>`), "
                           f"enable it (`plugin.py enable {name}`), or commit it as plugins/{name}/ in the workspace")
     return found

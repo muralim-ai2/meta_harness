@@ -247,7 +247,7 @@ def checklist_lines(data: Json, measured: Json | None) -> list[str]:
         lines.append(f"- [{'x' if ticked(data, i) else ' '}] {i}: {detail}")
     if measured is not None:
         lines.append("\n**Research telemetry recorded this ask, with full chat content.** Turn it off when you are done: the switch in Mission "
-                     "Control, or **Frontier HVE: Turn off research telemetry**.")
+                     "Control, or **ARIA: Turn off research telemetry**.")
     return lines
 
 

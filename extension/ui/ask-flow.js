@@ -8,7 +8,7 @@ const { claimsFrom, chatSessionUri } = require('./chats');
 const { snapshot } = require('./workspace-state');
 const NAME = /^[a-z0-9][a-z0-9-]{0,40}$/;
 const HANDOFF = 'askHandoff';
-const AGENT = 'Frontier HVE Collab';
+const AGENT = 'ARIA Collab';
 
 /** @typedef {import('./mission-control').MissionControl} MissionControl */
 /** @typedef {{title: string, description: string}} Brief */

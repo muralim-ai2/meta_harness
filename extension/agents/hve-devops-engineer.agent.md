@@ -1,6 +1,6 @@
 ---
-name: HVE devops-engineer
-description: Frontier HVE DevOps engineer persona. Builds pipelines, infrastructure as code, environments, configuration and observability one verified feature at a time.
+name: ARIA devops-engineer
+description: ARIA DevOps engineer persona. Builds pipelines, infrastructure as code, environments, configuration and observability one verified feature at a time.
 user-invocable: false
 agents: []
 hooks:

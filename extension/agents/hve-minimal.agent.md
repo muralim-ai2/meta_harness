@@ -1,7 +1,7 @@
 ---
-name: HVE minimal
+name: ARIA minimal
 user-invocable: false
-description: Frontier HVE baseline. The model answers with no tools, skills or sub-agents, as a quality and cost reference.
+description: ARIA baseline. The model answers with no tools, skills or sub-agents, as a quality and cost reference.
 tools: []
 agents: []
 ---

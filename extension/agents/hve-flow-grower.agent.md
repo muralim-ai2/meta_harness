@@ -1,6 +1,6 @@
 ---
-name: HVE flow-grower
-description: Frontier HVE creator-flow Grower stage. Writes roadmap.json linking growth opportunities to existing features.
+name: ARIA flow-grower
+description: ARIA creator-flow Grower stage. Writes roadmap.json linking growth opportunities to existing features.
 user-invocable: false
 hooks:
   Stop:

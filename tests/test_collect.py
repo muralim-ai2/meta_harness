@@ -159,7 +159,7 @@ def test_contract_plan_check_and_provenance() -> None:
                                   cwd=ws, capture_output=True, text=True, check=True).stdout
 
         (ws / "req.md").write_text("Build a leave portal in sprints", encoding="utf-8")
-        ask = json.loads(lifecycle("contract", "agile-scrum", "leave", "Frontier HVE Collab", "req.md", "sprint-design=No UI change"))["paths"]["ask"]
+        ask = json.loads(lifecycle("contract", "agile-scrum", "leave", "ARIA Collab", "req.md", "sprint-design=No UI change"))["paths"]["ask"]
         nxt = {"hook_event_name": "PreToolUse", "tool_name": "run_in_terminal", "tool_input": {"command": 'python "x/tools/loop/loop.py" next .'}}
         assert hook(nxt) == ""
         plan = ws / ask / "plan.md"
@@ -170,7 +170,7 @@ def test_contract_plan_check_and_provenance() -> None:
         assert hook(nxt) == ""
         lifecycle("stage", "backlog", "active", "PM writes the PRD")
         lifecycle("tick", "stage:backlog", "accepted", "PRD reviewed")
-        assert "- [x] stage:backlog" in plan.read_text(encoding="utf-8") and "persona HVE product-manager" in plan.read_text(encoding="utf-8")
+        assert "- [x] stage:backlog" in plan.read_text(encoding="utf-8") and "persona ARIA product-manager" in plan.read_text(encoding="utf-8")
         lifecycle("stage", "backlog", "planned", "sprint 2: redo")
         assert json.loads(lifecycle("checklist"))["items"]["stage:backlog"]["value"] == "open", "a stage set back to planned loses its sign-off"
         lifecycle("stage", "backlog", "done", "PRD and backlog agreed")
@@ -186,7 +186,7 @@ def test_contract_plan_check_and_provenance() -> None:
         plan.write_text("# Plan\n- Sprint 1: request and approve leave\n", encoding="utf-8")
         report = json.loads(subprocess.run(cli, capture_output=True, text=True).stdout)
         assert "changed since its last sync" in report["components"]["contract"]["detail"], report
-        assert "| backlog | done | HVE product-manager | prd ✓ | prd ✗ |" in lifecycle("report", "s1")
+        assert "| backlog | done | ARIA product-manager | prd ✓ | prd ✗ |" in lifecycle("report", "s1")
 
 
 def test_direct_contract_tracks_skills_tasks_briefs_and_reports() -> None:
@@ -204,7 +204,7 @@ def test_direct_contract_tracks_skills_tasks_briefs_and_reports() -> None:
 
         (ws / "req.md").write_text("Build a color palette page with Next.js", encoding="utf-8")
         assert json.loads(lifecycle("where", "req.md").stdout)["verdict"] == "new-project"
-        created = lifecycle("contract", "direct", "palette", "Frontier Lite", "req.md")
+        created = lifecycle("contract", "direct", "palette", "ARIA Lite", "req.md")
         assert created.returncode == 0, created.stderr
         paths = json.loads(created.stdout)["paths"]
         assert re.fullmatch(r"\.hve/asks/\d{8}-\d{4}-palette", paths["ask"]) and paths["feature_list"] == ".hve/project/feature_list.json"
@@ -221,29 +221,29 @@ def test_direct_contract_tracks_skills_tasks_briefs_and_reports() -> None:
         names = [r["name"] for r in data["skills"]["selected"]]
         assert names and data["skills"]["tokens"] == sum(r["skill_tokens"] for r in data["skills"]["selected"]), data["skills"]
         assert set(data["skills"]["suggested"]) <= set(names) and data["skills"]["suggested_tokens"] <= data["skills"]["tokens"], data["skills"]
-        assert data["personas"] == [{"agent": "Frontier Lite", "stages": ["deliver"]}] and data["tasks"] == [], data
+        assert data["personas"] == [{"agent": "ARIA Lite", "stages": ["deliver"]}] and data["tasks"] == [], data
         assert "graphify" in {s["name"] for s in data["environment"]["mcp_servers"]}, data["environment"]
         assert "graphify" in data["environment"]["tool_load"]["harnesses"]["vscode"]["servers"], data["environment"]
         assert (ws / ".hve" / "skills" / names[0] / "SKILL.md").is_file()
         plan = ws / paths["ask"] / "plan.md"
         assert "<!-- hve:skills -->" in plan.read_text(encoding="utf-8") and lifecycle("plan-status").stdout.strip() == "null"
         assert "- [ ] opt:evaluation" in plan.read_text(encoding="utf-8") and "- [ ] stage:deliver" in plan.read_text(encoding="utf-8")
-        assert "persona Frontier Lite" in plan.read_text(encoding="utf-8")
+        assert "persona ARIA Lite" in plan.read_text(encoding="utf-8")
         assert "MCP servers per harness:\n- vscode: " in plan.read_text(encoding="utf-8")
         if data["skills"]["over_budget"]:
             assert "Over the loadout guideline" in plan.read_text(encoding="utf-8") and "Suggested set" in plan.read_text(encoding="utf-8")
         (ws / paths["feature_list"]).write_text(json.dumps([{"name": "core", "passes": False}]), encoding="utf-8")
         tasks = json.loads(lifecycle("tasks-sync").stdout)
-        assert tasks == [{"name": "core", "milestone": "deliver", "persona": "Frontier Lite", "skills": names, "passes": False}], tasks
-        assert f"- [ ] task:core — deliver, Frontier Lite; check not passing yet; evidence `{paths['evidence']}/core/`" in plan.read_text(encoding="utf-8")
+        assert tasks == [{"name": "core", "milestone": "deliver", "persona": "ARIA Lite", "skills": names, "passes": False}], tasks
+        assert f"- [ ] task:core — deliver, ARIA Lite; check not passing yet; evidence `{paths['evidence']}/core/`" in plan.read_text(encoding="utf-8")
         text = lifecycle("brief", "frontend sub-agent", "task=core").stdout
         assert f".hve/skills/{names[0]}/SKILL.md" in text and "graphify" in text and "SKILLS-USED" in text, text
         assert "not in the contract" in lifecycle("brief", "x", "task=ghost").stderr
         lifecycle("used", "frontend sub-agent", "core", f"{names[0]}, made-up")
 
         def ledger(event: str, agent_id: str, **extra: str) -> None:
-            """Fire the agent ledger hook in the workspace for an HVE engineer sub-agent of session s9."""
-            payload = {"hook_event_name": event, "session_id": "s9", "agent_id": agent_id, "agent_type": "HVE engineer"} | extra
+            """Fire the agent ledger hook in the workspace for an ARIA engineer sub-agent of session s9."""
+            payload = {"hook_event_name": event, "session_id": "s9", "agent_id": agent_id, "agent_type": "ARIA engineer"} | extra
             subprocess.run([sys.executable, str(REPO / "hooks" / "agent_ledger.py")], input=json.dumps(payload), cwd=ws, check=True,
                            capture_output=True, text=True)
 
@@ -251,7 +251,7 @@ def test_direct_contract_tracks_skills_tasks_briefs_and_reports() -> None:
         ledger("SubagentStop", "a1", model="gpt-5")
         ledger("SubagentStart", "a2")
         rows = [json.loads(line) for line in (ws / ".hve" / "runs" / "s9.agents.jsonl").read_text(encoding="utf-8").splitlines()]
-        assert [(r["event"], r["agent"], r["subagent"], r["ask"]) for r in rows][0] == ("start", "Frontier Lite", "HVE engineer", paths["ask"].split("/")[-1]), rows
+        assert [(r["event"], r["agent"], r["subagent"], r["ask"]) for r in rows][0] == ("start", "ARIA Lite", "ARIA engineer", paths["ask"].split("/")[-1]), rows
         data = json.loads(path.read_text(encoding="utf-8"))
         assert data["delegations"][0]["persona"] == "frontend sub-agent" and data["reported"][0]["skills"] == [names[0], "made-up"], data
         plan.write_text("# Plan\n- Build it\n", encoding="utf-8")
@@ -272,11 +272,11 @@ def test_direct_contract_tracks_skills_tasks_briefs_and_reports() -> None:
         assert "## Pillars" in text and "| Cost | not measured (research telemetry off) |" in text and "0/1 feature checks pass" in text, text
         assert "- [x] task:core: accepted (form: checked the screenshot)" in text and "Turn off research telemetry" not in text, text
         agents = text.split("## Agents")[1]
-        assert f"| Frontier Lite | HVE engineer | a1 | s9 |" in agents and f"| frontend sub-agent: {', '.join(names)} | {names[0]}, made-up | gpt-5 |" in agents, agents
+        assert f"| ARIA Lite | ARIA engineer | a1 | s9 |" in agents and f"| frontend sub-agent: {', '.join(names)} | {names[0]}, made-up | gpt-5 |" in agents, agents
         assert "| a2 |" in agents and "| no brief | - | not measured |" in agents, agents
         assert "## Recommended against used" in text and f"| skill | {names[0]} |" in text and "reported by frontend sub-agent" in text, text
-        assert "| persona | frontend sub-agent | not planned | ✓ |" in text and "| persona | Frontier Lite | deliver | ✗ |" in text, text
-        assert "| task | core | deliver, Frontier Lite | ✗ passes |" in text and "| MCP server | graphify | available | ✗ |" in text, text
+        assert "| persona | frontend sub-agent | not planned | ✓ |" in text and "| persona | ARIA Lite | deliver | ✗ |" in text, text
+        assert "| task | core | deliver, ARIA Lite | ✗ passes |" in text and "| MCP server | graphify | available | ✗ |" in text, text
         assert "made-up" in text.split("outside the contract: ")[1].splitlines()[0], text
         assert "- Prompt cache: not measured" in text and f"- Skill load: {len(names)} skills" in text, text
         rows = [{"turn_id": "t1", "ts": "2026-10-19T08:00:00+00:00", "prompt_tokens": 1000, "completion_tokens": 50, "cost_nano_aiu": 2 * 10**8,
@@ -299,14 +299,14 @@ def test_direct_contract_tracks_skills_tasks_briefs_and_reports() -> None:
                                  "attributes": spans[0]["attributes"] | {"copilot_chat.chat_session_id": "sub-o1",
                                                                          "copilot_chat.parent_chat_session_id": "o1", "gen_ai.response.model": "claude-x"}})
         (ws / ".hve" / "runs" / "o1.agents.jsonl").write_text("".join(json.dumps(
-            {"ts": ts, "session": "o1", "ask": data["ask"], "agent": "Frontier Lite", "event": event, "agent_id": "b1", "subagent": "HVE council",
+            {"ts": ts, "session": "o1", "ask": data["ask"], "agent": "ARIA Lite", "event": event, "agent_id": "b1", "subagent": "ARIA council",
              "model": None}) + "\n" for ts, event in (("2027-01-15T08:00:04+00:00", "start"), ("2027-01-15T08:00:08+00:00", "stop"))),
             encoding="utf-8")
         (ws / ".hve" / "runs" / "copilot-otel.jsonl").write_text("".join(json.dumps(s) + "\n" for s in spans), encoding="utf-8")
         otel = lifecycle("report", "o1").stdout
         assert "| Cost | 1.5 AI units | Copilot OTel export (research telemetry) |" in otel and "14 s of model calls" in otel, otel
         assert "| Cache efficiency | 20% of prompt tokens read from cache |" in otel, otel
-        assert "| Frontier Lite | HVE council | b1 | o1 | 08:00:04 | 4 | no brief | - | claude-x (OTel) |" in otel, otel
+        assert "| ARIA Lite | ARIA council | b1 | o1 | 08:00:04 | 4 | no brief | - | claude-x (OTel) |" in otel, otel
         pool = [r["name"] for r in json.loads(path.read_text(encoding="utf-8"))["skills"]["selected"]]
         assert pool == names, (names, pool)
         (ws / "scores.json").write_text(json.dumps({n: {"score": 9 if n == names[0] else 0, "why": "fits" if n == names[0] else "off topic"}
@@ -324,7 +324,7 @@ def test_direct_contract_tracks_skills_tasks_briefs_and_reports() -> None:
         assert "Choice: " + names[0] in plan.read_text(encoding="utf-8")
         assert "not in the ask's skills" in lifecycle("skills", "made-up").stderr
         (ws / "req.md").write_text("Create a formal presentation on revenue forecasting for the board", encoding="utf-8")
-        shifted = json.loads(lifecycle("contract", "document", "revenue", "Frontier Lite", "req.md").stdout)
+        shifted = json.loads(lifecycle("contract", "document", "revenue", "ARIA Lite", "req.md").stdout)
         assert shifted["previous_open"] == {"ask": data["ask"], "why": ["milestones not done: deliver"]}, shifted["previous_open"]
         assert shifted["previous_ask"]["recommend"] == "new-workspace" and shifted["previous_ask"]["ask"] == data["ask"], shifted
         assert shifted["skills"]["plugin"] == {"presentation-deck": ["every stage"], "frontend-slides": ["every stage"]}, shifted["skills"]["plugin"]
@@ -341,7 +341,7 @@ def test_direct_contract_tracks_skills_tasks_briefs_and_reports() -> None:
         lifecycle("tick", "opt:evaluation", "done", "pass, 4.2")
         assert json.loads(lifecycle("checklist").stdout)["open"] == []
         (ws / "req.md").write_text("Write a memo on Q3 ad revenue", encoding="utf-8")
-        memo = json.loads(lifecycle("contract", "document", "memo", "Frontier Lite", "req.md").stdout)
+        memo = json.loads(lifecycle("contract", "document", "memo", "ARIA Lite", "req.md").stdout)
         assert memo["previous_open"] is None, "a finished ask is not reported as left open"
 
 

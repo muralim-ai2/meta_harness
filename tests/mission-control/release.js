@@ -11,7 +11,7 @@ const { runTests, resolveCliPathFromVSCodeExecutablePath } = createRequire(path.
 const ORIGINAL = ['frontierHve.setup', 'frontierHve.installHarnesses', 'frontierHve.researchTelemetry', 'frontierHve.researchTelemetryOff',
   'frontierHve.installPlugin', 'frontierHve.managePlugins'];
 const UI_FILES = ['mission-control.js', 'actions.js', 'ask-flow.js', 'asks.js', 'chats.js', 'harness-tree.js', 'insights.js', 'analysis.js', 'workspace-state.js', 'activity.js', 'workflow.js', 'lifecycle-cli.js',
-  'file-access.js', 'validate.js', 'media/app.css', 'media/app.js', 'media/vnode.js', 'media/markdown.js', 'media/views.js', 'media/telemetry.js', 'media/pages.js', 'media/hve.svg'];
+  'file-access.js', 'validate.js', 'media/app.css', 'media/app.js', 'media/vnode.js', 'media/markdown.js', 'media/views.js', 'media/telemetry.js', 'media/pages.js', 'media/aria.svg', 'media/aria.png'];
 const EXCLUDED = /(^|\/)node_modules\/|^package-lock\.json$|^tsconfig\.json$|^ui\/types\.d\.ts$|\.vsix$|^build\.py$|__pycache__\//;
 
 /** Run a command and return its standard output, failing with its output when it exits non-zero.
@@ -99,7 +99,7 @@ async function hostCheck(root, release) {
   if (!installed.includes(`muralim-ai2.frontier-hve@${release.version}`)) throw new Error(`The VSIX did not install:\n${installed}`);
   const runtime = path.join(extensions, `muralim-ai2.frontier-hve-${release.version}`, 'runtime', 'tools', 'loop', 'lifecycle.py');
   fs.writeFileSync(path.join(root, 'request.txt'), 'Build Pawstagram, a photo sharing app for pets.');
-  run('python', ['-B', runtime, 'contract', 'direct', 'pawstagram', 'Frontier Lite', path.join(root, 'request.txt')],
+  run('python', ['-B', runtime, 'contract', 'direct', 'pawstagram', 'ARIA Lite', path.join(root, 'request.txt')],
     { cwd: project, env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1', HVE_PLUGIN_HOME: path.join(root, 'packs') } });
   const report = path.join(root, 'host-report.json');
   const code = await runTests({

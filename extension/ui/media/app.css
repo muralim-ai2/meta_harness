@@ -31,7 +31,7 @@ code, pre { font-family: var(--vscode-editor-font-family); font-size: .92em; }
 
 /* Icons and motion */
 .icon { width: 16px; height: 16px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.icon.brand { width: 20px; height: 20px; color: var(--accent); }
+.brand-logo { flex: none; width: 20px; height: 20px; border-radius: 5px; background: url('aria.png') center / cover no-repeat; }
 .icon.spin { animation: spin 1.6s linear infinite; color: var(--accent); }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--good) 55%, transparent); } 100% { box-shadow: 0 0 0 7px transparent; } }

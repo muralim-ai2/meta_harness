@@ -1,6 +1,6 @@
 ---
-name: HVE security-reviewer
-description: Frontier HVE security reviewer persona. Reviews the design and code for security weaknesses and checks the security controls are in place.
+name: ARIA security-reviewer
+description: ARIA security reviewer persona. Reviews the design and code for security weaknesses and checks the security controls are in place.
 user-invocable: false
 agents: []
 hooks:

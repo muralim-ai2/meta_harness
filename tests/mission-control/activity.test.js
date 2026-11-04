@@ -167,7 +167,7 @@ test('tool calls are described in plain words with every edited file', () => {
   assert.equal(patch.title, 'Edited 2 files');
   assert.equal(patch.files.length, 2);
   assert.equal(describe('read_file', { filePath: path.join(path.sep, 'ext', 'skills', 'ux-flows', 'SKILL.md') }, root, at(0)).title, 'Read ux-flows/SKILL.md');
-  assert.equal(describe('runSubagent', { agentName: 'HVE engineer', description: 'Build feed' }, root, at(0)).title, 'Handed off to HVE engineer');
+  assert.equal(describe('runSubagent', { agentName: 'ARIA engineer', description: 'Build feed' }, root, at(0)).title, 'Handed off to ARIA engineer');
   assert.equal(describe('mcp_graphify_query_graph', {}, root, at(0)).title, 'Used graphify query graph');
   assert.equal(describe('run_in_terminal', {}, root, at(0)).title, 'Ran a command');
   const harness = describe('run_in_terminal', { command: 'python "c:/Users/me/.vscode/extensions/muralim-ai2.frontier-hve-0.19.0/runtime/tools/loop/lifecycle.py" where .hve/asks/request.md',

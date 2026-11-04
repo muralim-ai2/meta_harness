@@ -1,6 +1,6 @@
 ---
-name: HVE evaluation-reviewer
-description: Frontier HVE output-evaluation council member. Judges rubric scores and validation evidence through one role (critical, balanced or constructive-coach) and replies with JSON markers only.
+name: ARIA evaluation-reviewer
+description: ARIA output-evaluation council member. Judges rubric scores and validation evidence through one role (critical, balanced or constructive-coach) and replies with JSON markers only.
 user-invocable: false
 tools: [read/readFile, search/fileSearch, search/textSearch, search/listDirectory]
 agents: []

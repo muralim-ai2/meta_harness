@@ -1,6 +1,6 @@
 ---
-name: HVE test-reviewer
-description: Frontier HVE test reviewer persona. Reviews the test strategy, the tests and their results for coverage, reliability and traceability.
+name: ARIA test-reviewer
+description: ARIA test reviewer persona. Reviews the test strategy, the tests and their results for coverage, reliability and traceability.
 user-invocable: false
 agents: []
 hooks:

@@ -1,6 +1,6 @@
 ---
-name: HVE security-architect
-description: Frontier HVE security architect persona. Models threats and sets identity, access, data protection, network and secrets controls for the solution.
+name: ARIA security-architect
+description: ARIA security architect persona. Models threats and sets identity, access, data protection, network and secrets controls for the solution.
 user-invocable: false
 agents: []
 hooks:

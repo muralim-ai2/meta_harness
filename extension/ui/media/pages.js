@@ -350,7 +350,7 @@
         : h('p', { class: 'muted' }, 'Skills are chosen when an ask starts.'),
       session ? h('span', { class: 'muted' }, `Loaded in the chat shown on Live: ${plural(session.skills, 'skill')}, ${count(session.tokens)} tokens.`) : null),
       card('Always-on harness skills', snap?.pluginSkills.length ? h('div', { class: 'chips' }, ...snap.pluginSkills.map(name => h('span', { class: 'pill' }, name)))
-        : h('p', { class: 'muted' }, 'Listed once an ask starts.'), h('span', { class: 'muted' }, 'Shipped with Frontier HVE and available to every agent.')),
+        : h('p', { class: 'muted' }, 'Listed once an ask starts.'), h('span', { class: 'muted' }, 'Shipped with ARIA and available to every agent.')),
       card('Expertise packs', [
         h('p', { class: 'muted' }, 'A pack adds a practice\'s skills, agents, templates and lifecycles. Packs are installed for you, not per workspace.'),
         model.packsError ? h('div', { class: 'notice error' }, model.packsError)
@@ -384,14 +384,14 @@
     const guard = model.connection.guard;
     return [
       card('Workspace', h('div', { class: 'stats' }, stat('Folder', model.workspace ? model.workspace.path : 'None selected'),
-        stat('Frontier HVE', model.connection.version), stat('Python', model.connection.python || 'not found: install Python 3.11+'),
+        stat('ARIA', model.connection.version), stat('Python', model.connection.python || 'not found: install Python 3.11+'),
         stat('Loop guard', guard === 'advise' ? 'Advisory: warns in chat, does not block' : guard === 'enforce' ? 'Enforced: blocks' : 'unknown'),
         stat('Live activity from', model.transcripts || 'no workspace storage')),
       button('Change folder', 'selectWorkspace', { icon: 'folder', disabled: model.busy })),
       card('Research telemetry', [telemetrySwitch(model), h('p', { class: 'muted' }, 'When on, Copilot writes every new chat, with its full content, tokens and cost, to '
         + `${model.telemetry.file || '.hve/runs/copilot-otel.jsonl'}. Mission Control and the ask report use it for token and cost figures. Turn it off when you are done.`)]),
       card('Set-up', h('div', { class: 'actions' }, action('Set up this workspace', 'setup', 'Choose assisted or pro mode, add .hve/ to .gitignore, and see how many tokens load into every request.', model),
-        action('Install for other tools', 'installHarnesses', 'Make the HVE agents, skills and guards available in Copilot CLI, Claude Code, Codex, Cursor or the Copilot cloud agent.', model))),
+        action('Install for other tools', 'installHarnesses', 'Make the ARIA agents, skills and guards available in Copilot CLI, Claude Code, Codex, Cursor or the Copilot cloud agent.', model))),
     ];
   }
 
@@ -405,8 +405,8 @@
     const snap = model.snapshot;
     const pages = { live, plan, progress, files, others, telemetry, visuals, skills: () => skills(model), settings: () => settings(model) };
     return h('div', { class: `dashboard ${model.busy ? 'busy' : ''}`.trim() },
-      h('header', { class: 'dash-head' }, h('div', { class: 'dash-title' }, icon('logo', 'brand'),
-        h('div', null, h('span', { class: 'section-label' }, snap?.project ? pretty(snap.project.name) : 'Frontier HVE'), h('h1', null, snap?.ask?.title || 'Mission Control')), h('span', { class: 'early', title: 'Early release: features may change' }, 'Early release'), chip(model),
+      h('header', { class: 'dash-head' }, h('div', { class: 'dash-title' }, h('span', { class: 'brand-logo', 'aria-hidden': 'true' }),
+        h('div', null, h('span', { class: 'section-label' }, snap?.project ? pretty(snap.project.name) : 'ARIA'), h('h1', null, snap?.ask?.title || 'Mission Control')), h('span', { class: 'early', title: 'Early release: features may change' }, 'Early release'), chip(model),
         button('New ask', 'newAsk', { icon: 'plus', disabled: model.busy || !model.workspace, title: 'Start a new piece of work in this project' }),
         button('', 'refresh', { kind: 'icon', icon: 'refresh', title: 'Refresh', disabled: model.busy })),
       askPicker(model),

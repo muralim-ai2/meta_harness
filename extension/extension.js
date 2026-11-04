@@ -1,5 +1,5 @@
 'use strict';
-/** Frontier HVE extension: renders the agent plugin, registers it with Copilot Chat, and sets up the workspace. */
+/** ARIA extension: renders the agent plugin, registers it with Copilot Chat, and sets up the workspace. */
 
 const vscode = require('vscode');
 const fs = require('fs');
@@ -91,8 +91,8 @@ async function withPython(action) {
 /** Explain that Python is missing and offer the download page. */
 async function warnNoPython() {
   const open = await vscode.window.showWarningMessage(
-    `Frontier HVE needs Python ${MIN_PYTHON.join('.')}+ on PATH for its guards and harness tools; agents run without them until then. `
-    + 'Install Python, then run "Frontier HVE: Set up".', 'Download Python');
+    `ARIA needs Python ${MIN_PYTHON.join('.')}+ on PATH for its guards and harness tools; agents run without them until then. `
+    + 'Install Python, then run "ARIA: Set up".', 'Download Python');
   if (open) {
     vscode.env.openExternal(vscode.Uri.parse(PYTHON_DOWNLOAD));
   }
@@ -108,7 +108,7 @@ async function setUpWorkspace(workspace) {
   const profileFile = path.join(state, 'user_profile.json');
   const profile = fs.existsSync(profileFile) ? JSON.parse(fs.readFileSync(profileFile, 'utf8')) : { ...EMPTY_PROFILE };
   const preference = await vscode.window.showQuickPick(PREFERENCES, {
-    title: 'Frontier HVE: how do you prefer to build?', placeHolder: 'A starting point; the agents adapt to how you work', ignoreFocusOut: true,
+    title: 'ARIA: how do you prefer to build?', placeHolder: 'A starting point; the agents adapt to how you work', ignoreFocusOut: true,
   });
   if (preference) {
     profile.build_preference = preference.value;
@@ -116,7 +116,7 @@ async function setUpWorkspace(workspace) {
   fs.writeFileSync(profileFile, JSON.stringify(profile, null, 2) + '\n');
   const gitignore = path.join(workspace, '.gitignore');
   const ignored = fs.existsSync(gitignore) && fs.readFileSync(gitignore, 'utf8').split(/\r?\n/).includes('.hve/');
-  if (!ignored && await vscode.window.showQuickPick(['Yes', 'No'], { title: 'Add .hve/ (Frontier HVE state) to .gitignore?' }) === 'Yes') {
+  if (!ignored && await vscode.window.showQuickPick(['Yes', 'No'], { title: 'Add .hve/ (ARIA state) to .gitignore?' }) === 'Yes') {
     fs.appendFileSync(gitignore, `${fs.existsSync(gitignore) ? '\n' : ''}.hve/\n`);
   }
 }
@@ -132,7 +132,7 @@ async function enableResearchTelemetry(context) {
     return;
   }
   const choice = await vscode.window.showWarningMessage(
-    'Turn on the Copilot telemetry file export? It records full chat content into .hve/runs/copilot-otel.jsonl. Use it for benchmarks or an ask that opted in, then turn it off ("Frontier HVE: Turn off research telemetry").',
+    'Turn on the Copilot telemetry file export? It records full chat content into .hve/runs/copilot-otel.jsonl. Use it for benchmarks or an ask that opted in, then turn it off ("ARIA: Turn off research telemetry").',
     { modal: true }, 'Turn on');
   if (choice !== 'Turn on') {
     return;
@@ -165,7 +165,7 @@ async function trimTelemetry(context, workspace, python) {
     notes.push('added .hve/runs/copilot-otel.jsonl to .gitignore (it holds full chat content)');
   }
   if (notes.length) {
-    vscode.window.showInformationMessage(`Frontier HVE ${notes.join(' and ')}.`);
+    vscode.window.showInformationMessage(`ARIA ${notes.join(' and ')}.`);
   }
 }
 
@@ -220,7 +220,7 @@ async function reportContextLoad(context, workspace, python) {
   const script = path.join(context.extensionPath, 'runtime', 'tools', 'skills', 'context_load.py');
   const report = await runPythonJson(python, script, [], workspace);
   const shares = Object.entries(report.share_pct).map(([window, pct]) => `${pct}% of ${Number(window) / 1000}K`).join(', ');
-  const summary = `Frontier HVE: ${report.total_tokens.toLocaleString()} tokens load into every request before you type `
+  const summary = `ARIA: ${report.total_tokens.toLocaleString()} tokens load into every request before you type `
     + `(${report.skill_count} skills; ${shares}).`;
   const warnings = report.warnings.length ? ` Warnings: ${report.warnings.join('; ')}. Run /check-context-load for fixes.` : '';
   const open = await vscode.window.showInformationMessage(summary + warnings, 'Show report');
@@ -230,7 +230,7 @@ async function reportContextLoad(context, workspace, python) {
 }
 
 /**
- * Install the HVE agents, skills and hooks for the harnesses the user picks (user scope; Cloud into this repository), and keep the
+ * Install the ARIA agents, skills and hooks for the harnesses the user picks (user scope; Cloud into this repository), and keep the
  * Local harness from running the Copilot hook file next to its own agent-scoped hooks.
  * @param {vscode.ExtensionContext} context
  */
@@ -241,7 +241,7 @@ async function installHarnesses(context) {
     return;
   }
   const picked = await vscode.window.showQuickPick(HARNESSES, {
-    canPickMany: true, ignoreFocusOut: true, title: 'Frontier HVE: install the HVE agents, skills and guard hooks for',
+    canPickMany: true, ignoreFocusOut: true, title: 'ARIA: install the ARIA agents, skills and guard hooks for',
   });
   if (!picked || picked.length === 0) {
     return;
@@ -268,7 +268,7 @@ async function installHarnesses(context) {
     const report = await runPythonJson(python, script, args, cwd);
     lines.push(`${item.label}: ${report.invoke}.`);
   }
-  vscode.window.showInformationMessage(`Frontier HVE installed. ${lines.join(' ')} Known gaps per harness: docs/wiki/Adapters.md.`);
+  vscode.window.showInformationMessage(`ARIA installed. ${lines.join(' ')} Known gaps per harness: docs/wiki/Adapters.md.`);
 }
 
 /**
@@ -284,12 +284,12 @@ async function setUp(context) {
   }
   const folders = vscode.workspace.workspaceFolders;
   if (!folders || folders.length === 0) {
-    vscode.window.showErrorMessage('Open the project folder first, then run "Frontier HVE: Set up" again.');
+    vscode.window.showErrorMessage('Open the project folder first, then run "ARIA: Set up" again.');
     return;
   }
   await setUpWorkspace(folders[0].uri.fsPath);
   await reportContextLoad(context, folders[0].uri.fsPath, python);
-  await offerReload(`Frontier HVE is ready (Python: ${python}).`);
+  await offerReload(`ARIA is ready (Python: ${python}).`);
 }
 
 /**
@@ -298,7 +298,7 @@ async function setUp(context) {
  */
 async function offerReload(message) {
   const reload = await vscode.window.showInformationMessage(
-    `${message} Reload the window, then pick a Frontier agent (E2E Delivery, BYOW or Prototype Creator) or Frontier Lite in a new chat with Session Target: Local.`,
+    `${message} Reload the window, then pick an ARIA agent (ARIA Auto, ARIA Collab or ARIA Prototype Creator) or ARIA Lite in a new chat with Session Target: Local.`,
     'Reload Window');
   if (reload) {
     vscode.commands.executeCommand('workbench.action.reloadWindow');
@@ -333,16 +333,16 @@ async function activate(context) {
   const folders = vscode.workspace.workspaceFolders;
   if (python && folders && folders.length > 0 && fs.existsSync(path.join(folders[0].uri.fsPath, '.hve', 'runs', 'copilot-otel.jsonl'))) {
     // Not awaited: activation must not wait on a large file; a failure is shown, not swallowed.
-    trimTelemetry(context, folders[0].uri.fsPath, python).catch((error) => vscode.window.showErrorMessage(`Frontier HVE: ${error.message}`));
+    trimTelemetry(context, folders[0].uri.fsPath, python).catch((error) => vscode.window.showErrorMessage(`ARIA: ${error.message}`));
   }
   if (python) {
     // Not awaited: activation must not wait on the store or on the user's answers; a failure is shown, not swallowed.
-    packs.startPacks(context, python, host).catch((error) => vscode.window.showErrorMessage(`Frontier HVE expertise packs: ${error.message}`));
+    packs.startPacks(context, python, host).catch((error) => vscode.window.showErrorMessage(`ARIA expertise packs: ${error.message}`));
   }
   if (!python) {
     const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
-    item.text = '$(warning) Frontier HVE: guards off (no Python)';
-    item.tooltip = `Install Python ${MIN_PYTHON.join('.')}+, then click to run "Frontier HVE: Set up".`;
+    item.text = '$(warning) ARIA: guards off (no Python)';
+    item.tooltip = `Install Python ${MIN_PYTHON.join('.')}+, then click to run "ARIA: Set up".`;
     item.command = 'frontierHve.setup';
     item.show();
     context.subscriptions.push(item);
@@ -354,7 +354,7 @@ async function activate(context) {
   }
   await registerPlugin(context, python);
   // Not awaited: activation must not wait for the user to dismiss a notification.
-  void (python ? offerReload('Frontier HVE agents are installed.') : warnNoPython());
+  void (python ? offerReload('ARIA agents are installed.') : warnNoPython());
 }
 
 /** Nothing to clean up: the plugin stays registered until the extension is uninstalled. */

@@ -66,7 +66,7 @@ test('with no earlier chat, a new ask opens a new chat session with the starter 
   assert.deepEqual(calls.slice(0, 2).map(call => call.length), [1, 1]);
   const options = calls[2][1];
   assert.equal(options.isPartialQuery, true);
-  assert.equal(options.mode, 'Frontier HVE Collab');
+  assert.equal(options.mode, 'ARIA Collab');
   assert.equal(options.query, starterPrompt('new', ask, { title: 'Dog profile badges', description: 'Come up with 3 creative badge ideas and build them' }));
   assert.deepEqual(options.attachFiles.map(uri => path.relative(fixture.root, uri.fsPath)),
     [path.join('.hve', 'asks', ask.id, 'request.md'), path.join('.hve', 'asks', ask.id, 'plan.md')]);
@@ -90,7 +90,7 @@ test('with an earlier chat, a new ask asks which session: a new one first, or th
   const calls = chatCalls(fixture.controls);
   assert.deepEqual(calls.map(call => call[0]), ['workbench.action.chat.open']);
   assert.equal(calls[0][1].isPartialQuery, true);
-  assert.equal(calls[0][1].mode, 'Frontier HVE Collab');
+  assert.equal(calls[0][1].mode, 'ARIA Collab');
   assert.match(calls[0][1].query, /^Dog profile badges\n/);
   assert.deepEqual(fixture.context.workspaceState.get('chatAsks'), { earlier: { ask: ask.id, how: 'continued' } });
   assert.equal(fixture.context.workspaceState.get('pendingChat'), undefined);
@@ -119,7 +119,7 @@ test('a follow-up offers the ask\'s own chat first and reopens it with its histo
   assert.deepEqual(calls.map(call => call[0]), ['vscode.open', 'workbench.action.chat.open']);
   assert.equal(calls[0][1].toString(), 'vscode-chat-session://local/MjkwNjk1MTktOTRiOS00ZTRmLTlhNDgtZjQ2YjNhZjFmMmQy');
   assert.match(calls[1][1].query, /^Pawstagram, follow-up: Walk streaks\nAdd a walk streak counter to the dog profile\n/);
-  assert.equal(calls[1][1].mode, 'Frontier HVE Collab');
+  assert.equal(calls[1][1].mode, 'ARIA Collab');
   assert.equal(calls[1][1].isPartialQuery, true);
 });
 
@@ -144,7 +144,7 @@ test('New chat for this ask opens a new session straight away with a starter to 
   const calls = chatCalls({ calls: later });
   assert.deepEqual(calls.map(call => call[0]), ['workbench.action.chat.open', 'workbench.action.chat.newLocalChat', 'workbench.action.chat.open']);
   assert.equal(calls[2][1].query, starterPrompt('resume', ask, null));
-  assert.equal(calls[2][1].mode, 'Frontier HVE Collab');
+  assert.equal(calls[2][1].mode, 'ARIA Collab');
 });
 
 test('Attach files… adds the picked references to the chat, and the starter is never sent', async t => {

@@ -39,7 +39,7 @@ INVOKE = {
     "copilot": "pick an HVE agent with /agent in Copilot CLI, or in VS Code with Session Target Copilot",
     "cloud": "commit .github/agents, .github/skills, .github/hooks/hve.json and .github/hve/runtime to the default branch, then assign an "
              "issue to Copilot with an HVE agent",
-    "vscode": "start the ado server in the MCP view, sign in, then pick HVE azure-devops in the Chat view",
+    "vscode": "start the ado server in the MCP view, sign in, then pick ARIA azure-devops in the Chat view",
 }
 GAPS = {
     "claude": ["pr-push is not exported (it needs the VS Code GitHub Pull Requests extension)",

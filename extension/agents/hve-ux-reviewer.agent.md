@@ -1,6 +1,6 @@
 ---
-name: HVE ux-reviewer
-description: Frontier HVE UX reviewer persona. Reviews the screens and flows as built against the UX design, usability heuristics and accessibility.
+name: ARIA ux-reviewer
+description: ARIA UX reviewer persona. Reviews the screens and flows as built against the UX design, usability heuristics and accessibility.
 user-invocable: false
 agents: []
 hooks:

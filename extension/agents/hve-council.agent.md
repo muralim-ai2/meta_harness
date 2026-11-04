@@ -1,6 +1,6 @@
 ---
-name: HVE council
-description: Frontier HVE product council member. Challenges a product brief through one lens (analyst, strategist or skeptic) and replies in under 500 words.
+name: ARIA council
+description: ARIA product council member. Challenges a product brief through one lens (analyst, strategist or skeptic) and replies in under 500 words.
 user-invocable: false
 tools: []
 agents: []

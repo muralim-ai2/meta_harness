@@ -13,7 +13,6 @@
 
   /** @type {Record<string, (string | {cx: number, cy: number, r: number})[]>} */
   const ICONS = {
-    logo: ['M12 2 21 7v10l-9 5-9-5V7Z', 'M8.5 8v8m7-8v8m-7-4h7'],
     refresh: ['M20 5v5h-5M4 19v-5h5', 'M19 9A7 7 0 0 0 6.3 6.3M4.9 15a7 7 0 0 0 12.8 2.7'],
     plus: ['M12 5v14M5 12h14'],
     pencil: ['M4 20h4L19 9l-4-4L4 16v4Z', 'm13.5 6.5 4 4'],
@@ -301,7 +300,7 @@
     if (!snap?.ask) {
       return h('section', { class: 'card task empty' }, h('strong', null, model.asks?.length ? 'No ask is active' : 'No ask in this project yet'),
         h('p', { class: 'muted' }, model.asks?.length ? 'Choose an earlier ask above, or start one with New ask.'
-          : 'An ask is one piece of work in this project. Start one with New ask, or pick an HVE agent in Copilot Chat. Chat activity shows below either way.'));
+          : 'An ask is one piece of work in this project. Start one with New ask, or pick an ARIA agent in Copilot Chat. Chat activity shows below either way.'));
     }
     const done = session ? session.todos.filter(todo => todo.status === 'completed').length : 0;
     const stage = snap.stages.find(row => row.name === snap.ask?.current) || snap.stages[0];
@@ -366,7 +365,7 @@
    */
   function sidebar(model, ui, now) {
     return h('div', { class: `sidebar ${model.busy ? 'busy' : ''}`.trim(), 'data-page': ui.page },
-      h('header', { class: 'top' }, icon('logo', 'brand'), h('strong', null, 'Frontier HVE'), h('span', { class: 'early', title: 'Early release: features may change' }, 'Early'), chip(model),
+      h('header', { class: 'top' }, h('span', { class: 'brand-logo', 'aria-hidden': 'true' }), h('strong', null, 'ARIA'), h('span', { class: 'early', title: 'Early release: features may change' }, 'Early'), chip(model),
         button('', 'refresh', { kind: 'icon', icon: 'refresh', title: 'Refresh', disabled: model.busy })),
       model.workspaceMessage ? h('div', { class: 'notice' }, model.workspaceMessage, button('Choose folder', 'selectWorkspace')) : null,
       button('New ask', 'newAsk', { kind: 'primary new-ask', icon: 'plus', disabled: model.busy || !model.workspace,

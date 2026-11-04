@@ -1,6 +1,6 @@
 ---
-name: HVE flow-prototyper
-description: Frontier HVE creator-flow Prototyper stage. Builds the smallest prototype that proves the design, or sends it back with a reason.
+name: ARIA flow-prototyper
+description: ARIA creator-flow Prototyper stage. Builds the smallest prototype that proves the design, or sends it back with a reason.
 user-invocable: false
 hooks:
   Stop:

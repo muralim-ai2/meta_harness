@@ -1,5 +1,5 @@
 ---
-name: HVE research-single
+name: ARIA research-single
 user-invocable: false
 description: Benchmark single node. One model with file, search and shell tools and a best-practice system message; no skills, hooks or sub-agents.
 tools: [read/readFile, search/fileSearch, search/textSearch, search/listDirectory, edit/editFiles, edit/createFile, edit/createDirectory, execute/runInTerminal, execute/getTerminalOutput]

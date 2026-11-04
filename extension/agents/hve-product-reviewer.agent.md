@@ -1,6 +1,6 @@
 ---
-name: HVE product-reviewer
-description: Frontier HVE product reviewer persona. Reviews what was delivered against the PRD, the users' goals and the acceptance criteria, and decides whether it is ready to ship.
+name: ARIA product-reviewer
+description: ARIA product reviewer persona. Reviews what was delivered against the PRD, the users' goals and the acceptance criteria, and decides whether it is ready to ship.
 user-invocable: false
 agents: []
 hooks:

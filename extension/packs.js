@@ -1,5 +1,5 @@
 'use strict';
-/** Frontier HVE expertise packs in the editor: install, manage, reconcile on start, and render pack agents into chat.pluginLocations. */
+/** ARIA expertise packs in the editor: install, manage, reconcile on start, and render pack agents into chat.pluginLocations. */
 
 const vscode = require('vscode');
 const os = require('os');
@@ -106,14 +106,14 @@ async function installPack(context, python, host, source) {
 async function installPackCommand(context, python, host) {
   const kind = await vscode.window.showQuickPick(
     ['Organization index (name@version)', 'Folder', '.hveplugin file', 'Git URL (https, ending in .git)'],
-    { title: 'Frontier HVE: install an expertise pack from' });
+    { title: 'ARIA: install an expertise pack from' });
   let source;
   if (kind === 'Organization index (name@version)') {
     const value = await vscode.window.showInputBox({ prompt: 'Pack name@version from the frontierHve.pluginIndex setting' });
     source = value && `index:${value}`;
   } else if (kind === 'Folder' || kind === '.hveplugin file') {
     const picked = await vscode.window.showOpenDialog({ canSelectFolders: kind === 'Folder', canSelectFiles: kind !== 'Folder',
-      filters: kind === 'Folder' ? undefined : { 'Frontier HVE pack': ['hveplugin'] } });
+      filters: kind === 'Folder' ? undefined : { 'ARIA pack': ['hveplugin'] } });
     source = picked && picked[0].fsPath;
   } else if (kind) {
     source = await vscode.window.showInputBox({ prompt: 'https git URL of the pack repository, ending in .git' });
@@ -136,14 +136,14 @@ async function installPackCommand(context, python, host) {
 async function managePacksCommand(context, python, host) {
   const packs = await packTool(context, python, host, ['list']);
   if (!packs.length) {
-    vscode.window.showInformationMessage('No expertise packs are installed. Run "Frontier HVE: Install plugin", or commit a pack as plugins/<pack>/.');
+    vscode.window.showInformationMessage('No expertise packs are installed. Run "ARIA: Install plugin", or commit a pack as plugins/<pack>/.');
     return;
   }
   const picked = await vscode.window.showQuickPick(packs.map((p) => ({
     label: p.name, description: `${p.version} ${p.enabled ? 'enabled' : `disabled (${p.disabledReason})`}`,
     detail: `agents: ${p.agents.join(', ')}; lifecycles: ${p.lifecycles.join(', ') || 'none'}; knowledge: ${p.knowledge.join(', ') || 'none'}`,
     pack: p,
-  })), { title: 'Frontier HVE: manage expertise packs' });
+  })), { title: 'ARIA: manage expertise packs' });
   if (!picked) {
     return;
   }
@@ -170,19 +170,19 @@ async function startPacks(context, python, host) {
     const report = await packTool(context, python, host, ['requirements', folders[0].uri.fsPath]);
     for (const conflict of report.conflicts) {
       vscode.window.showWarningMessage(`This workspace needs expertise pack ${conflict.name} ${conflict.range}; installed is `
-        + `${conflict.installed}${conflict.enabled ? '' : ' (disabled)'}. Other workspaces share the global install, so Frontier HVE `
-        + 'does not change it: use "Frontier HVE: Manage plugins" or "Install plugin".');
+        + `${conflict.installed}${conflict.enabled ? '' : ' (disabled)'}. Other workspaces share the global install, so ARIA `
+        + 'does not change it: use "ARIA: Manage plugins" or "Install plugin".');
     }
     for (const need of report.missing) {
       const choice = await vscode.window.showInformationMessage(
-        `This workspace needs Frontier HVE expertise pack ${need.name} ${need.range} (from ${need.source}).`, 'Install', 'Not now');
+        `This workspace needs ARIA expertise pack ${need.name} ${need.range} (from ${need.source}).`, 'Install', 'Not now');
       if (choice === 'Install') {
         await installPack(context, python, host, need.source);
       }
     }
   }
   if (await refreshPacks(context, python, host)) {
-    await host.offerReload('Frontier HVE expertise pack agents changed.');
+    await host.offerReload('ARIA expertise pack agents changed.');
   }
 }
 

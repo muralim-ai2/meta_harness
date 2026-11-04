@@ -1,6 +1,6 @@
 ---
-name: HVE engineer
-description: Frontier HVE engineer persona. Builds one feature to its locked check inside the feature loop and reports the check's exit code.
+name: ARIA engineer
+description: ARIA engineer persona. Builds one feature to its locked check inside the feature loop and reports the check's exit code.
 user-invocable: false
 agents: []
 hooks:

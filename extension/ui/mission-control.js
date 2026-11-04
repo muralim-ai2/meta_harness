@@ -1,5 +1,5 @@
 'use strict';
-/** Mission Control: the Frontier HVE sidebar and dashboard, kept live from the harness files and this window's chat transcripts. */
+/** Mission Control: the ARIA sidebar and dashboard, kept live from the harness files and this window's chat transcripts. */
 const vscode = require('vscode');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -33,7 +33,7 @@ function documentHtml(webview, media) {
   const uri = name => webview.asWebviewUri(vscode.Uri.joinPath(media, name)).toString();
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource}; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
-<title>Frontier HVE Mission Control</title><link rel="stylesheet" href="${uri('app.css')}"></head>
+<title>ARIA Mission Control</title><link rel="stylesheet" href="${uri('app.css')}"></head>
 <body><div id="root" aria-busy="true"><p class="loading">Connecting to the harness…</p></div><div id="announce" class="sr-only" role="status" aria-live="polite"></div>
 ${SCRIPTS.map(name => `<script nonce="${nonce}" src="${uri(name)}"></script>`).join('\n')}</body></html>`;
 }
@@ -47,7 +47,7 @@ class MissionControl {
   constructor(context, findPython) {
     this.context = context;
     this.findPython = findPython;
-    this.output = vscode.window.createOutputChannel('Frontier HVE Mission Control');
+    this.output = vscode.window.createOutputChannel('ARIA Mission Control');
     /** @type {Map<vscode.Webview, 'sidebar' | 'editor'>} */
     this.views = new Map();
     /** @type {vscode.WebviewView | null} */
@@ -185,7 +185,7 @@ class MissionControl {
     const root = this.target().uri.fsPath;
     if (this.flow) return this.flow;
     const python = await this.findPython();
-    if (!python) throw new Error('Mission Control needs Python 3.11+ on PATH (python, python3 or py -3). Install it, then run "Frontier HVE: Set up".');
+    if (!python) throw new Error('Mission Control needs Python 3.11+ on PATH (python, python3 or py -3). Install it, then run "ARIA: Set up".');
     const connection = runtime(this.context.extensionPath, python.split(' '));
     await inspect(connection, root);
     this.python = python;
@@ -281,7 +281,7 @@ class MissionControl {
    * @returns {Error}
    */
   show(error) {
-    const contextual = new Error(`Frontier HVE Mission Control: ${errorText(error)}`, { cause: error });
+    const contextual = new Error(`ARIA Mission Control: ${errorText(error)}`, { cause: error });
     this.state.error = contextual.message;
     this.output.appendLine(contextual.message);
     this.paint();
@@ -320,7 +320,7 @@ class MissionControl {
     if (!PAGES.includes(page)) throw new Error(`Unknown page: ${page}`);
     this.navigate = { page: /** @type {import('./types').Page} */ (page), seq: this.navigate.seq + 1 };
     if (!this.panel) {
-      const panel = vscode.window.createWebviewPanel('frontierHve.missionControlDetail', 'HVE Mission Control', vscode.ViewColumn.Active, {});
+      const panel = vscode.window.createWebviewPanel('frontierHve.missionControlDetail', 'ARIA Mission Control', vscode.ViewColumn.Active, {});
       this.panel = panel;
       const attached = this.attach(panel.webview, 'editor');
       panel.onDidDispose(() => { attached.dispose(); this.panel = null; });
@@ -335,7 +335,7 @@ class MissionControl {
     const folders = vscode.workspace.workspaceFolders || [];
     if (!folders.length) throw new Error('Open a local folder in VS Code first.');
     const selected = await vscode.window.showQuickPick(folders.map(folder => ({ label: folder.name, description: folder.uri.fsPath, folder })),
-      { title: 'Frontier HVE: which folder should Mission Control follow?', ignoreFocusOut: true });
+      { title: 'ARIA: which folder should Mission Control follow?', ignoreFocusOut: true });
     if (!selected) return;
     if (selected.folder.uri.scheme !== 'file') throw new Error('Choose a local folder.');
     this.workspace = selected.folder;

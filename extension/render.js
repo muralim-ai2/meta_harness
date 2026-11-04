@@ -1,5 +1,5 @@
 'use strict';
-/** Render the Frontier HVE agent plugin from the packaged templates; no VS Code API, so it can be tested with plain Node. */
+/** Render the ARIA agent plugin from the packaged templates; no VS Code API, so it can be tested with plain Node. */
 
 const fs = require('fs');
 const path = require('path');
@@ -10,8 +10,8 @@ const FRONTMATTER = /^---\r?\n[\s\S]*?\r?\n---\r?\n/;
 const HOOKS_BLOCK = /^hooks:\r?\n(?:[ \t]+.*\n)*/m;
 const LOCAL_CHECK = '\nHarness check: the session hooks add a line starting `Frontier HVE deliverable templates: session` to your context. '
   + 'If it is missing, the guards are not running: tell the user to start a new chat with Session Target **Local** before you continue.\n';
-const NO_PYTHON = '\n> **Python not found.** Frontier HVE found no Python 3.11+ when it set up this agent, so its guard hooks are off and its '
-  + 'harness commands will fail. Before anything else, tell the user to install Python 3.11+, run **Frontier HVE: Set up** and reload the window.\n';
+const NO_PYTHON = '\n> **Python not found.** ARIA found no Python 3.11+ when it set up this agent, so its guard hooks are off and its '
+  + 'harness commands will fail. Before anything else, tell the user to install Python 3.11+, run **ARIA: Set up** and reload the window.\n';
 
 /**
  * Return one agent rendered for this machine: runtime path and Python launcher filled in, or, without Python, no hooks and a warning.
@@ -60,9 +60,9 @@ function renderPlugin(extensionDir, pluginDir, version, python) {
   fs.mkdirSync(agentsOut, { recursive: true });
   fs.writeFileSync(path.join(pluginDir, 'plugin.json'), JSON.stringify({
     $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json',
-    name: 'frontier-hve',
+    name: 'aria',
     version,
-    description: 'Frontier HVE agents and skills, rendered by the Frontier HVE extension.',
+    description: 'ARIA agents and skills, rendered by the ARIA extension.',
   }, null, 2) + '\n');
   for (const part of ['skills', 'scripts']) {
     const source = part === 'skills' ? path.join(extensionDir, 'skills') : path.join(extensionDir, 'runtime', 'scripts');
@@ -112,7 +112,7 @@ function renderPacks(extensionDir, python, renderedRoot, packs) {
       $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json',
       name: pack.name,
       version: pack.version,
-      description: `${pack.manifest.displayName} (Frontier HVE expertise pack by ${pack.manifest.publisher}), rendered by Frontier HVE.`,
+      description: `${pack.manifest.displayName} (ARIA expertise pack by ${pack.manifest.publisher}), rendered by ARIA.`,
     }, null, 2) + '\n');
     const files = [];
     for (const agent of pack.manifest.agents) {

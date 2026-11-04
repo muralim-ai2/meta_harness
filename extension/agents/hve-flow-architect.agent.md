@@ -1,6 +1,6 @@
 ---
-name: HVE flow-architect
-description: Frontier HVE creator-flow Architect stage. Checks structure (module sizes, boundaries, error handling) and passes or sends back for rework.
+name: ARIA flow-architect
+description: ARIA creator-flow Architect stage. Checks structure (module sizes, boundaries, error handling) and passes or sends back for rework.
 user-invocable: false
 tools: [read/readFile, search/fileSearch, search/textSearch, search/listDirectory, execute/runInTerminal]
 hooks:

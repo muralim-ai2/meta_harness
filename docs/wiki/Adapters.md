@@ -10,7 +10,7 @@ Use the Frontier HVE agents, skills and guard hooks outside VS Code's Local harn
 - Agent-scoped `hooks:` and `handoffs:` in an agent file are Local-only features (VS Code docs).
 - Cursor is a separate editor that does not run VS Code chat.
 
-**Fix:** run **Frontier HVE: Install for other harnesses** (or `export.py <client> --user`). It installs every HVE agent, the harness skills and the guard hooks in each harness's own user-level folders, from the same agent templates, and copies the runtime to `~/.hve/runtime/`. The agents' ask contract (`lifecycle.py contract`, `brief`, `report`) is a terminal command, so skills, briefs and provenance work even where a hook channel is missing.
+**Fix:** run **ARIA: Install for other harnesses** (or `export.py <client> --user`). It installs every HVE agent, the harness skills and the guard hooks in each harness's own user-level folders, from the same agent templates, and copies the runtime to `~/.hve/runtime/`. The agents' ask contract (`lifecycle.py contract`, `brief`, `report`) is a terminal command, so skills, briefs and provenance work even where a hook channel is missing.
 
 ## At a glance
 
@@ -40,7 +40,7 @@ Every client gets every HVE agent (hidden helpers included), and the harness ski
 
 **From chat:** pick an HVE agent in VS Code and type `/export-harness`. The agent asks which harnesses and scope, and the Azure DevOps organization, runs the exporter and shows how to start each client.
 
-**From the Command Palette:** **Frontier HVE: Install for other harnesses** installs at user scope for the harnesses you tick (the cloud agent into the open repository, after a confirmation).
+**From the Command Palette:** **ARIA: Install for other harnesses** installs at user scope for the harnesses you tick (the cloud agent into the open repository, after a confirmation).
 
 **From a terminal**, in the project root:
 
@@ -120,7 +120,7 @@ The adapter uses Microsoft's official server, [`@azure-devops/mcp`](https://gith
 
 Microsoft also offers a hosted remote server (`https://mcp.dev.azure.com/<organization>`, type `http`). The exporter does not configure it, because the remote server cannot be limited to tool groups.
 
-**The HVE azure-devops agent:**
+**The ARIA azure-devops agent:**
 - **Feature list to work items:** one work item per feature in the project's `.hve/project/feature_list.json` (or `feature_list.json` when no ask is open). The check command becomes the acceptance criterion.
 - **Status sync:** state updates from `tracker.json`, with the check command and its exit code as a comment.
 - **Pull requests:** for feature branches you ticked, linked to their work items. It never pushes.

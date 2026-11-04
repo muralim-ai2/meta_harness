@@ -1,6 +1,6 @@
 ---
-name: HVE code-reviewer
-description: Frontier HVE code reviewer persona. Reviews the code changes of the stages under review for correctness, clarity and maintainability.
+name: ARIA code-reviewer
+description: ARIA code reviewer persona. Reviews the code changes of the stages under review for correctness, clarity and maintainability.
 user-invocable: false
 agents: []
 hooks:

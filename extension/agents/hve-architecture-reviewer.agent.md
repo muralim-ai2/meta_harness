@@ -1,6 +1,6 @@
 ---
-name: HVE architecture-reviewer
-description: Frontier HVE architecture reviewer persona. Reviews the solution, data and security designs against requirements, standards and the code as built.
+name: ARIA architecture-reviewer
+description: ARIA architecture reviewer persona. Reviews the solution, data and security designs against requirements, standards and the code as built.
 user-invocable: false
 agents: []
 hooks:

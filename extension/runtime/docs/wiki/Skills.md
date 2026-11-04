@@ -16,8 +16,8 @@ Pick the pathway by who should get the skill and how much evidence you have. Eve
 
 | Pathway | For | How | Gate | Lands in | Loads |
 |---|---|---|---|---|---|
-| 1. Workspace, evaluated in chat | One project or team, no Azure needed | `HVE skill-evaluator` with the skill folder (below) | Scan, then blind with/without pairs: lift at least 10 points, token overhead under 20%, at most one task lost | `.hve/skill-library/<name>/`, `.hve/skills-registry.json` | Per task, like the harness library |
-| 2. Workspace, evaluated on Foundry | As 1, faster and with a fixed model pair | `HVE skill-evaluator`, answer yes to Foundry (needs `AZURE_OPENAI_ENDPOINT` in `.env.local` and `az login`), or `python <tools>/skills/evaluate.py foundry <skill_dir>` after writing `tasks.json` | As 1 | As 1 | As 1 |
+| 1. Workspace, evaluated in chat | One project or team, no Azure needed | `ARIA skill-evaluator` with the skill folder (below) | Scan, then blind with/without pairs: lift at least 10 points, token overhead under 20%, at most one task lost | `.hve/skill-library/<name>/`, `.hve/skills-registry.json` | Per task, like the harness library |
+| 2. Workspace, evaluated on Foundry | As 1, faster and with a fixed model pair | `ARIA skill-evaluator`, answer yes to Foundry (needs `AZURE_OPENAI_ENDPOINT` in `.env.local` and `az login`), or `python <tools>/skills/evaluate.py foundry <skill_dir>` after writing `tasks.json` | As 1 | As 1 | As 1 |
 | 3. Harness library, provisional | Every user of the extension, small skills | `python tools/skills/onboard.py <skill_dir> "<source>" provisional`, then rebuild and release the extension | Scan, a category match, at most 800 tokens, description at most 200 characters, Python-only scripts | `skills/admitted/<name>/`, `skills/registry.json` (`provisional`) | Per task for agents whose floor is `provisional` (all working agents) |
 | 4. Harness library, admitted | Every user, with measured lift | Micro paired evaluation to `skills/evals/<name>.json` (`tools/skills/micro_eval.py`), then `onboard.py <skill_dir> "<source>" eval` | Lift and overhead thresholds (`skills/categories.json` → `thresholds`) | As 3 (`admitted`) | Per task for every agent |
 | 5. Bulk import from a repository | Many skills from one licensed source | `python tools/skills/import_eval.py untested <clone>` (copied verbatim with `LICENSE` and `NOTICE`, evaluation pending) or `import_eval.py eval <clone>` (strict: must win every task) | Scan and category; `eval` adds the strict gate | `skills/imported/` and `skills/admitted/` | As 3 or 4 |
@@ -26,16 +26,16 @@ Pick the pathway by who should get the skill and how much evidence you have. Eve
 
 After any pathway, check it with `python <tools>/skills/recommend.py provisional "<a task it targets>"`: the skill should be listed with a reason. If it never shows up, its category does not match the tasks you expect; add or widen a category's `skill_pattern` and `task_pattern` in `skills/categories.json` (harness) and re-run the gate.
 
-## Onboard a skill with `HVE skill-evaluator`
+## Onboard a skill with `ARIA skill-evaluator`
 
-Pick `HVE skill-evaluator` in a Local chat and give it the skill folder (the one holding `SKILL.md`). It runs `<tools>/skills/evaluate.py` through these steps:
+Pick `ARIA skill-evaluator` in a Local chat and give it the skill folder (the one holding `SKILL.md`). It runs `<tools>/skills/evaluate.py` through these steps:
 
 | Step | What happens | You do |
 |---|---|---|
 | 1. Static check | Security and structure scan, overlap with existing skills, token cost per request and when loaded. Stops on any finding | Fix and retry if it stops |
 | 2. Tasks | Writes 5 small tasks with 3-4 checks each to `.hve/evals/<name>/tasks.json` | Approve or edit them |
-| 3. Paired answers | `HVE skill-worker` answers each task with and without the skill (or Foundry, if `.env.local` sets `AZURE_OPENAI_ENDPOINT` and you agree) | — |
-| 4. Blind judging | `HVE skill-judge` scores each pair as anonymous A and B | — |
+| 3. Paired answers | `ARIA skill-worker` answers each task with and without the skill (or Foundry, if `.env.local` sets `AZURE_OPENAI_ENDPOINT` and you agree) | — |
+| 4. Blind judging | `ARIA skill-judge` scores each pair as anonymous A and B | — |
 | 5. Record and admit | Admits when quality lift is at least 10 points, token overhead at most 20% and at most one task lost (`skills/categories.json` → `thresholds`); otherwise records the rejection with reasons | Read lift, wins/ties/losses, worst task |
 | 6. Context load | Reports always-on tokens and warnings | Act on warnings |
 
@@ -43,7 +43,7 @@ Five tasks are a small sample, and in-chat answers come from the model you picke
 
 ## Check the skill is used
 
-Ask `Frontier Lite` (or another agent with `skill_loader`) for a task the skill targets. The session's loadout is in `.hve/runs/<session>.skills.json`; `/recommend-skills` shows the ranking. `provenance.py <agent file> latest --require skills` ([Install](Install.md#check-that-it-works)) confirms the loader ran.
+Ask `ARIA Lite` (or another agent with `skill_loader`) for a task the skill targets. The session's loadout is in `.hve/runs/<session>.skills.json`; `/recommend-skills` shows the ranking. `provenance.py <agent file> latest --require skills` ([Install](Install.md#check-that-it-works)) confirms the loader ran.
 
 ## Ship a skill in the harness library (maintainers)
 

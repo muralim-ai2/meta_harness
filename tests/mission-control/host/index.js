@@ -33,8 +33,8 @@ async function run() {
   const folder = vscode.workspace.workspaceFolders?.[0];
   assert.ok(folder, 'Expected the isolated Pawstagram workspace.');
   const extension = vscode.extensions.getExtension('muralim-ai2.frontier-hve');
-  assert.ok(extension, 'Frontier HVE must be installed in the isolated host.');
-  assert.ok(extension.extensionPath.startsWith(setting('HVE_HOST_EXTENSIONS')), 'Frontier HVE must load from its installed VSIX, not a development path.');
+  assert.ok(extension, 'ARIA must be installed in the isolated host.');
+  assert.ok(extension.extensionPath.startsWith(setting('HVE_HOST_EXTENSIONS')), 'ARIA must load from its installed VSIX, not a development path.');
   assert.equal(vscode.extensions.getExtension('GitHub.copilot-chat'), undefined, 'Copilot Chat must be disabled for this check.');
   const { snapshot } = require(path.join(extension.extensionPath, 'ui', 'workspace-state.js'));
   const before = snapshot(folder.uri.fsPath).revision;
@@ -51,8 +51,8 @@ async function run() {
   await vscode.commands.executeCommand('workbench.view.extension.frontierHve');
   const state = await vscode.commands.executeCommand('frontierHve.openMissionControl');
   assert.match(state.ask.id, /-pawstagram$/);
-  assert.equal(state.ask.agent, 'Frontier Lite');
-  assert.ok(vscode.window.tabGroups.all.some(group => group.tabs.some(tab => tab.label === 'HVE Mission Control')), 'Mission Control editor must open.');
+  assert.equal(state.ask.agent, 'ARIA Lite');
+  assert.ok(vscode.window.tabGroups.all.some(group => group.tabs.some(tab => tab.label === 'ARIA Mission Control')), 'Mission Control editor must open.');
   assert.equal(snapshot(folder.uri.fsPath).revision, before, 'Opening Mission Control must not change project state.');
   const opened = await vscode.commands.executeCommand('frontierHve.missionControlModel');
   assert.ok(opened.asks.some(ask => ask.id === state.ask.id && ask.active), 'The ask dropdown must list the active ask.');

@@ -76,7 +76,7 @@ test('Make an infographic opens a new Local chat with the skill and the subject 
   await fixture.controls.provider.execute({ action: 'infographic' });
   const chat = fixture.controls.calls.filter(call => String(call[0]).startsWith('workbench.action.chat.'));
   assert.deepEqual(chat.map(call => call[0]), ['workbench.action.chat.open', 'workbench.action.chat.newLocalChat', 'workbench.action.chat.open']);
-  assert.deepEqual(chat[2][1], { query: '/clickable-infographic How Pawstagram turns a photo into a post', isPartialQuery: true, mode: 'Frontier HVE Collab' });
+  assert.deepEqual(chat[2][1], { query: '/clickable-infographic How Pawstagram turns a photo into a post', isPartialQuery: true, mode: 'ARIA Collab' });
 });
 
 test('Progress lists evaluation reports and the ask\'s contract and provenance, and they open beside Mission Control', async t => {
@@ -125,9 +125,9 @@ test('a chat\'s agent, model and Local execution come from VS Code\'s own sessio
   const sessions = path.join(path.dirname(path.dirname(fixture.transcripts)), 'chatSessions');
   fs.mkdirSync(sessions, { recursive: true });
   fs.writeFileSync(path.join(sessions, 'chat-1.jsonl'), '{"kind":0,"v":{"requests":[]}}\n'
-    + '{"kind":2,"v":[{"modelId":"copilot/claude-opus-5.5","modeInfo":{"telemetryModeName":"Frontier Prototype Creator"}}]}\n'
-    + '{"kind":2,"v":[{"modelId":"copilot/claude-haiku-5.5","modeInfo":{"telemetryModeName":"Frontier HVE Collab"}}]}\n');
-  assert.deepEqual(chatMeta(fixture.transcripts, 'chat-1'), { agent: 'Frontier HVE Collab', model: 'claude-haiku-5.5', mode: 'Local' });
+    + '{"kind":2,"v":[{"modelId":"copilot/claude-opus-5.5","modeInfo":{"telemetryModeName":"ARIA Prototype Creator"}}]}\n'
+    + '{"kind":2,"v":[{"modelId":"copilot/claude-haiku-5.5","modeInfo":{"telemetryModeName":"ARIA Collab"}}]}\n');
+  assert.deepEqual(chatMeta(fixture.transcripts, 'chat-1'), { agent: 'ARIA Collab', model: 'claude-haiku-5.5', mode: 'Local' });
   assert.deepEqual(chatMeta(fixture.transcripts, 'chat-2'), { agent: null, model: null, mode: null });
   assert.throws(() => chatMeta(fixture.transcripts, '../x'), /Invalid chat session id/);
 });
@@ -136,6 +136,6 @@ test('every surface is marked as an early release', async t => {
   const fixture = mission(t);
   await fixture.controls.commands.get('frontierHve.refreshMissionControl')();
   const model = fixture.controls.commands.get('frontierHve.missionControlModel')();
-  assert.match(text(sidebar({ ...model, surface: 'sidebar' }, UI, Date.now())), /^Frontier HVEEarly/);
+  assert.match(text(sidebar({ ...model, surface: 'sidebar' }, UI, Date.now())), /^ARIAEarly/);
   assert.match(text(dashboard(model, UI, Date.now())), /Early release/);
 });

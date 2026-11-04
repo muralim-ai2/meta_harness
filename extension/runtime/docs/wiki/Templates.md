@@ -7,10 +7,10 @@ from any other installed extension. Only the requested document types are loaded
 
 ## End-User Workflow
 
-After installing the updated VSIX and running **Frontier HVE: Set up**, ask
-`Frontier Lite`, `HVE creator-flow`, `HVE creator-github` or `HVE single` to create
+After installing the updated VSIX and running **ARIA: Set up**, ask
+`ARIA Lite`, `ARIA creator-flow`, `ARIA creator-github` or `ARIA single` to create
 the documents. For example: "Create a PRD, technical design specification and
-test strategy for the employee leave portal." `HVE product-manager` authors PRDs
+test strategy for the employee leave portal." `ARIA product-manager` authors PRDs
 only (see [Product Manager](Product-Manager.md)).
 
 Defaults work without configuration. Output locations are:
@@ -29,7 +29,7 @@ minimal, evaluation and specialist agents are not document-authoring entry point
 An agent can limit which types its prompt hook registers with the
 `HVE_TEMPLATE_TYPES` environment variable on its `template_guard.py` hooks (a
 comma list of `prd`, `technicalDesign`, `testStrategy`; an unknown type is an
-error). `HVE product-manager` sets `prd`, so a request that also names a technical
+error). `ARIA product-manager` sets `prd`, so a request that also names a technical
 design does not leave an unwritten document blocking its Stop gate. Without the
 variable, all three types are registered.
 

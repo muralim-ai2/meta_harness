@@ -1,6 +1,6 @@
 ---
-name: HVE test-architect
-description: Frontier HVE test architect persona. Sets the test strategy, covering levels, types, environments, data, tools, entry and exit criteria and how acceptance is proven.
+name: ARIA test-architect
+description: ARIA test architect persona. Sets the test strategy, covering levels, types, environments, data, tools, entry and exit criteria and how acceptance is proven.
 user-invocable: false
 agents: []
 hooks:

@@ -59,7 +59,7 @@ test('without telemetry the summary estimates tokens and AI units, counts calls,
 test('with research telemetry the totals, AI units and thinking tokens are measured', () => {
   const run = { session: { title: 'Feed', turns: 2, tools: 3, commands: 1, failures: 0, events: [], todos: [],
     stats: { chars: { user: 400, agent: 400, args: 400 }, skills: [], repeats: [], gap: null, context: [] } }, chats: [], errors: null,
-  meta: { agent: 'Frontier HVE Collab', model: 'claude-haiku-5.5', mode: 'Local' },
+  meta: { agent: 'ARIA Collab', model: 'claude-haiku-5.5', mode: 'Local' },
   loadout: { skills: 4, tokens: 9000, overBudget: false, maxSkills: 10, maxTokens: 32000 },
   tokens: { models: [{ model: 'claude-haiku-5.5', calls: 2, failed: 0, input: 50000, output: 2000, cached: 30000, reasoning: 1500 }], aiu: 2.5 } };
   const data = insights(run);
@@ -67,7 +67,7 @@ test('with research telemetry the totals, AI units and thinking tokens are measu
   assert.deepEqual([data.input, data.output, data.total, data.aiu, data.thinkingTokens], [50000, 2000, 52000, 2.5, 1500]);
   assert.deepEqual(data.skills, { count: 4, names: [], tokens: 9000, measured: true });
   assert.equal(data.method, 'Measured by research telemetry for this chat.');
-  assert.deepEqual([data.agent, data.model, data.mode], ['Frontier HVE Collab', 'claude-haiku-5.5', 'Local']);
+  assert.deepEqual([data.agent, data.model, data.mode], ['ARIA Collab', 'claude-haiku-5.5', 'Local']);
   assert.deepEqual(data.context.map(row => row.group), ['thinking', 'messages']);
 });
 

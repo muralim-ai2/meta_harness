@@ -1,10 +1,11 @@
 {
   "name": "frontier-hve",
-  "displayName": "Frontier HVE",
-  "description": "Enterprise AI harness for GitHub Copilot: HVE agents with a verified feature loop, graph workflow, guards and human-ticked PRs.",
-  "version": "0.22.1",
+  "displayName": "ARIA",
+  "description": "Enterprise AI harness for GitHub Copilot: ARIA agents with a verified feature loop, graph workflow, guards and human-ticked PRs.",
+  "version": "0.23.0",
   "publisher": "muralim-ai2",
   "license": "UNLICENSED",
+  "icon": "ui/media/aria.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/muralim-ai2/Frontier-HVE"
@@ -17,7 +18,7 @@
   "activationEvents": ["onStartupFinished"],
   "contributes": {
     "viewsContainers": {
-      "activitybar": [{ "id": "frontierHve", "title": "Frontier HVE", "icon": "ui/media/hve.svg" }]
+      "activitybar": [{ "id": "frontierHve", "title": "ARIA", "icon": "ui/media/aria.svg" }]
     },
     "views": {
       "frontierHve": [
@@ -34,51 +35,51 @@
     "commands": [
       {
         "command": "frontierHve.setup",
-        "title": "Frontier HVE: Set up"
+        "title": "ARIA: Set up"
       },
       {
         "command": "frontierHve.installHarnesses",
-        "title": "Frontier HVE: Install for other harnesses (Copilot CLI, Claude, Codex, Cursor, cloud agent)"
+        "title": "ARIA: Install for other harnesses (Copilot CLI, Claude, Codex, Cursor, cloud agent)"
       },
       {
         "command": "frontierHve.researchTelemetry",
-        "title": "Frontier HVE: Turn on research telemetry (benchmarks only)"
+        "title": "ARIA: Turn on research telemetry (benchmarks only)"
       },
       {
         "command": "frontierHve.researchTelemetryOff",
-        "title": "Frontier HVE: Turn off research telemetry"
+        "title": "ARIA: Turn off research telemetry"
       },
       {
         "command": "frontierHve.installPlugin",
-        "title": "Frontier HVE: Install plugin (expertise pack)"
+        "title": "ARIA: Install plugin (expertise pack)"
       },
       {
         "command": "frontierHve.managePlugins",
-        "title": "Frontier HVE: Manage plugins (expertise packs)"
+        "title": "ARIA: Manage plugins (expertise packs)"
       },
       {
         "command": "frontierHve.openMissionControl",
-        "title": "Frontier HVE: Open Mission Control"
+        "title": "ARIA: Open Mission Control"
       },
       {
         "command": "frontierHve.refreshMissionControl",
-        "title": "Frontier HVE: Refresh Mission Control"
+        "title": "ARIA: Refresh Mission Control"
       },
       {
         "command": "frontierHve.selectWorkspace",
-        "title": "Frontier HVE: Select Mission Control workspace"
+        "title": "ARIA: Select Mission Control workspace"
       },
       {
         "command": "frontierHve.newAsk",
-        "title": "Frontier HVE: New ask"
+        "title": "ARIA: New ask"
       },
       {
         "command": "frontierHve.editPlan",
-        "title": "Frontier HVE: Edit plan"
+        "title": "ARIA: Edit plan"
       }
     ],
     "configuration": {
-      "title": "Frontier HVE",
+      "title": "ARIA",
       "properties": {
         "frontierHve.pluginIndex": {
           "type": "string",

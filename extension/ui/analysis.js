@@ -46,7 +46,7 @@ async function run(mc, id, prompt, topic, subject, question) {
   const cancel = new vscode.CancellationTokenSource();
   try {
     const response = await model.sendRequest([vscode.LanguageModelChatMessage.User(prompt)],
-      { justification: 'Frontier HVE Mission Control reviews the chat or ask on screen, at your request.' }, cancel.token);
+      { justification: 'ARIA Mission Control reviews the chat or ask on screen, at your request.' }, cancel.token);
     for await (const chunk of response.text) {
       analysis.text += chunk;
       mc.paint();

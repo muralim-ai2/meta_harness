@@ -1,6 +1,6 @@
 # Mission Control
 
-Mission Control is the Frontier HVE sidebar (marked **Early release**: features may change). Click the **HVE icon in the Activity Bar** (the left edge of VS Code) to see what the agent is doing right now, with the **Harness files** pane below it; any page link opens the dashboard in the editor (**Frontier HVE: Open Mission Control** does too). It ships inside the Frontier HVE extension; there is nothing else to install.
+Mission Control is the Frontier HVE sidebar (marked **Early release**: features may change). Click the **HVE icon in the Activity Bar** (the left edge of VS Code) to see what the agent is doing right now, with the **Harness files** pane below it; any page link opens the dashboard in the editor (**ARIA: Open Mission Control** does too). It ships inside the Frontier HVE extension; there is nothing else to install.
 
 ## Asks and chats
 
@@ -55,7 +55,7 @@ It only shows files: it does not create an ask for work an agent did without one
 | New work in this project, or a first ask | **Create ask**, or **Change folder name…** | The harness writes `.hve/asks/<UTC date-time>-<name>/` and the ask becomes active; the open ask stays on disk. A name already used in the same minute fails instead of overwriting |
 
 4. **Which chat**: for a new ask, **New chat session** (recommended for unrelated work; the agent does not carry the earlier conversation) or **This chat session** (keep going in the chat you were using; it is linked to the new ask). For a follow-up, **The ask's own chat** (recommended; it reopens with its full history) or **New chat session**. With only one option there is no question.
-5. The chat opens with the **Frontier HVE Collab** agent selected (a new chat is a **Local** session), the ask's `request.md` and `plan.md` attached, and a short starter message filled in: the title, your description, "if you are an HVE agent, use this ask and do not create another; otherwise ignore this", and to ask you for references first. **The message is not sent**: edit it, add detail, drag in files or screenshots, then send it. A notification offers **Attach files…** to pick references.
+5. The chat opens with the **ARIA Collab** agent selected (a new chat is a **Local** session), the ask's `request.md` and `plan.md` attached, and a short starter message filled in: the title, your description, "if you are an HVE agent, use this ask and do not create another; otherwise ignore this", and to ask you for references first. **The message is not sent**: edit it, add detail, drag in files or screenshots, then send it. A notification offers **Attach files…** to pick references.
 
 If an ask's files were deleted while the project still lists it, Mission Control says so and New ask first offers **Forget and continue**: the harness (`lifecycle.py forget`) removes it from the project record and as the active ask, and removes its folder if empty. It refuses an ask that still has its contract or owns features.
 
@@ -88,7 +88,7 @@ Accept needs finished work, a recorded passing check for feature tasks, and an a
 - A trusted, local workspace folder. Python 3.11+ on PATH (`python`, `python3` or `py -3`) for New ask, Make active, sign-offs and the pack list; the views work without it.
 - Live activity reads Copilot Chat's transcript files. If their format changes in a Copilot update, Needs you shows "Mission Control cannot read the live activity" with the reason, and the ask views keep working.
 - Chat links come from what the chat ran or edited. A chat that works on an ask without creating, reopening or editing it, or that ran the lifecycle script through a variable set in an earlier command, is listed as not linked until you link it.
-- With several workspace folders, choose one with **Frontier HVE: Select Mission Control workspace**. Set-up and pack buttons act on the first folder of the window, so they refuse another selection; open that folder in its own window.
+- With several workspace folders, choose one with **ARIA: Select Mission Control workspace**. Set-up and pack buttons act on the first folder of the window, so they refuse another selection; open that folder in its own window.
 - The dropdown lists up to 200 asks. The Files page shows up to 400 entries and six folder levels and says when it stops; use **Show in Explorer** for the rest. Links (symlinks, junctions) inside an ask are listed but never opened. Evidence previews are limited to 8 MB per file and 500 files. Malformed state files are shown as errors.
 - The sign-off guard is optimistic: it rejects stale screens, but it is not a lock against an agent editing the same ask at the same moment.
 

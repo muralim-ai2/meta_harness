@@ -52,20 +52,20 @@ def test_collab_scoped_asks_pack_stage_and_ledger() -> None:
         (ws / ".hve" / "runs").mkdir(parents=True)
         shutil.copytree(REPO / "examples" / "plugins" / "oracle-offering", ws / "plugins" / "oracle-offering")
         (ws / "req.md").write_text("Design the data model for the leave portal", encoding="utf-8")
-        first = json.loads(run(ws, "contract", "team-delivery", "data-model", "Frontier HVE Collab", "req.md", "only=data-architecture"))
+        first = json.loads(run(ws, "contract", "team-delivery", "data-model", "ARIA Collab", "req.md", "only=data-architecture"))
         assert first["scope"] == ["data-architecture"] and first["for_stage"] is None
         assert [s["name"] for s in first["stages"] if s["status"] != "skipped"] == ["data-architecture"]
-        assert "Your role: database architect." in run(ws, "brief", "HVE db-architect", "stage=data-architecture")
+        assert "Your role: database architect." in run(ws, "brief", "ARIA db-architect", "stage=data-architecture")
         run(ws, "stage", "data-architecture", "done", "model accepted")
         (ws / "req.md").write_text("Migrate the Oracle database schema and data for the leave portal", encoding="utf-8")
-        second = json.loads(run(ws, "contract", "oracle-offering:oracle-migration", "ora-build", "Frontier HVE Collab", "req.md",
+        second = json.loads(run(ws, "contract", "oracle-offering:oracle-migration", "ora-build", "ARIA Collab", "req.md",
                                 "for=team-delivery:data-build", "@oracle-offering"))
         assert second["for_stage"] == "team-delivery:data-build" and [p["name"] for p in second["packs"]] == ["oracle-offering"]
         ledger = json.loads(run(ws, "ledger"))
         assert ledger["latest"]["data-architecture"] == "done" and ledger["latest"]["requirements"] == "not started"
         assert ledger["stages"]["data-build"][0]["via"] == "oracle-offering:oracle-migration" and len(ledger["asks"]) == 2
         assert "data-architecture" not in ledger["open"] and "data-build" in ledger["open"]
-        bad = subprocess.run([sys.executable, str(REPO / "tools" / "loop" / "lifecycle.py"), "contract", "team-delivery", "x", "Frontier HVE Collab",
+        bad = subprocess.run([sys.executable, str(REPO / "tools" / "loop" / "lifecycle.py"), "contract", "team-delivery", "x", "ARIA Collab",
                               "req.md", "only=no-such-stage"], cwd=ws, capture_output=True, text=True)
         assert bad.returncode != 0 and "unknown stages" in bad.stderr
 
@@ -76,15 +76,15 @@ def test_auto_pauses_only_at_ticked_gates() -> None:
         ws = Path(tmp)
         (ws / ".hve" / "runs").mkdir(parents=True)
         (ws / "req.md").write_text("Build a leave request service", encoding="utf-8")
-        data = json.loads(run(ws, "contract", "sdlc", "leave", "Frontier HVE Auto", "req.md", "gates=ticked", "test=feature checks cover it"))
-        assert data["gates"] == "ticked" and next(s for s in data["stages"] if s["name"] == "design")["agent"] == "HVE solution-architect"
+        data = json.loads(run(ws, "contract", "sdlc", "leave", "ARIA Auto", "req.md", "gates=ticked", "test=feature checks cover it"))
+        assert data["gates"] == "ticked" and next(s for s in data["stages"] if s["name"] == "design")["agent"] == "ARIA solution-architect"
         items = json.loads(run(ws, "checklist"))["items"]
         assert {"gate:design", "gate:build", "gate:release"} <= set(items) and "gate:test" not in items
         run(ws, "tick", "gate:design", "on", "review the architecture")
         plan = (Path(ws) / data["paths"]["plan"]).read_text(encoding="utf-8")
         assert "- [x] gate:design" in plan and "- [ ] gate:build" in plan and "Pause for my review after" in plan
         (ws / "req.md").write_text("Build a second service", encoding="utf-8")
-        plain = json.loads(run(ws, "contract", "sdlc", "second", "Frontier HVE Auto", "req.md"))
+        plain = json.loads(run(ws, "contract", "sdlc", "second", "ARIA Auto", "req.md"))
         assert plain["gates"] == "all" and not [i for i in json.loads(run(ws, "checklist"))["items"] if i.startswith("gate:")]
 
 

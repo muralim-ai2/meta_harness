@@ -25,15 +25,17 @@ function posted(controls) {
 
 test('the existing extension contributes Mission Control, keeps its commands and has no Copilot extension dependency', () => {
   assert.equal(manifest.name, 'frontier-hve');
+  assert.equal(manifest.displayName, 'ARIA');
+  assert.ok(fs.statSync(path.join(EXTENSION, manifest.icon)).isFile(), manifest.icon);
   assert.equal(manifest.extensionDependencies, undefined);
   assert.equal(manifest.dependencies, undefined);
   assert.deepEqual(manifest.activationEvents, ['onStartupFinished']);
   assert.deepEqual(manifest.contributes.commands.map(command => command.command), [...ORIGINAL, ...MISSION]);
-  assert.deepEqual(manifest.contributes.viewsContainers.activitybar, [{ id: 'frontierHve', title: 'Frontier HVE', icon: 'ui/media/hve.svg' }]);
+  assert.deepEqual(manifest.contributes.viewsContainers.activitybar, [{ id: 'frontierHve', title: 'ARIA', icon: 'ui/media/aria.svg' }]);
   assert.deepEqual(manifest.contributes.views.frontierHve, [{ type: 'webview', id: 'frontierHve.missionControl', name: 'Mission Control' },
     { id: 'frontierHve.harnessFiles', name: 'Harness files' }]);
   assert.ok(manifest.contributes.configuration.properties['frontierHve.pluginIndex']);
-  for (const file of ['hve.svg', 'app.css', 'app.js', 'vnode.js', 'markdown.js', 'views.js', 'pages.js']) {
+  for (const file of ['aria.svg', 'aria.png', 'app.css', 'app.js', 'vnode.js', 'markdown.js', 'views.js', 'pages.js']) {
     assert.ok(fs.statSync(path.join(EXTENSION, 'ui', 'media', file)).isFile(), file);
   }
 });

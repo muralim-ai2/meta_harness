@@ -74,14 +74,14 @@ def test_extension_js_parses() -> None:
 
 
 def test_rendered_plugin_shape() -> None:
-    """The plugin has its manifest, 19 skills, guardrail scripts and 41 HVE agents (16 rendered from the persona catalog, 2 benchmark
+    """The plugin has its manifest, 19 skills, guardrail scripts and 41 ARIA agents (16 rendered from the persona catalog, 2 benchmark
     research arms) with every runtime path filled in; only the three
-    Frontier agents are user-invocable and they, with the uplift judge, pin top models."""
+    ARIA lead agents are user-invocable and they, with the uplift judge, pin top models."""
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "plugin"
         agents = render(out)
         assert len(agents) == 41, agents
-        assert json.loads((out / "plugin.json").read_text(encoding="utf-8"))["name"] == "frontier-hve"
+        assert json.loads((out / "plugin.json").read_text(encoding="utf-8"))["name"] == "aria"
         assert len(list((out / "skills").glob("*/SKILL.md"))) == 19
         assert (EXTENSION / "runtime" / "tools" / "map" / "explorer" / "app.js").is_file()
         assert (out / "skills" / "deliverable-templates" / "SKILL.md").is_file()
@@ -98,8 +98,8 @@ def test_rendered_plugin_shape() -> None:
         for name in agents:
             text = (out / "com.github.copilot" / "agents" / name).read_text(encoding="utf-8")
             short = name.removeprefix("hve-").removesuffix(".agent.md")
-            assert "{{RUNTIME}}" not in text and re.search(r"^name: (HVE |Frontier )", text, re.M), name
-            assert bool(re.search(r"^user-invocable: false", text, re.M)) == (short not in visible), f"{name}: only the Frontier agents show"
+            assert "{{RUNTIME}}" not in text and re.search(r"^name: ARIA ", text, re.M), name
+            assert bool(re.search(r"^user-invocable: false", text, re.M)) == (short not in visible), f"{name}: only the ARIA lead agents show"
             assert bool(re.search(r"^model: \[.*'GPT-6 Astra \(copilot\)'", text, re.M)) == (short in pinned), f"{name}: model pin"
             assert not re.search(r"budget\.py|HARNESS_BUDGET", text), f"{name}: product agents have no time budget"
             assert bool(re.search(r"^tools:", text, re.M)) == (short in restricted), \
@@ -184,7 +184,7 @@ def test_product_manager_agent() -> None:
         pm = (folder / "hve-product-manager.agent.md").read_text(encoding="utf-8")
         assert pm.count("HVE_TEMPLATE_TYPES: prd") == 3, pm
         assert "HARNESS_REQUIRED_SKILLS: prd" in pm
-        assert "`search_issues`" in pm and "scoped to that repository" in pm and "contract direct <slug> \"HVE product-manager\"" in pm
+        assert "`search_issues`" in pm and "scoped to that repository" in pm and "contract direct <slug> \"ARIA product-manager\"" in pm
         assert "+prd" in pm and "The council gets no brief" in pm
         assert "host-selected; actual model unconfirmed" in pm and 'label it "session model"' not in pm
         assert "read `.hve/skills/prd/SKILL.md`" in pm and "skills/admitted/prd/SKILL.md" not in pm
@@ -262,7 +262,7 @@ def test_rendered_flow_and_loop_tools_run() -> None:
         designer = (out / "com.github.copilot" / "agents" / "hve-flow-designer.agent.md").read_text(encoding="utf-8")
         flow_py = re.search(r'python "([^"]+/tools/loop/flow\.py)"', designer)[1]  # type: ignore[index]
         subprocess.run([sys.executable, flow_py, "init", ".", "--profile", "product"], cwd=ws, check=True, capture_output=True)
-        stop = {"hook_event_name": "SubagentStop", "agent_id": "a", "agent_type": "HVE flow-designer", "stop_hook_active": False}
+        stop = {"hook_event_name": "SubagentStop", "agent_id": "a", "agent_type": "ARIA flow-designer", "stop_hook_active": False}
         blocked = run(hook(designer, "flow_guard.py"), ws, stop, HARNESS_PROJECT=".", FLOW_STAGE="designer")
         assert blocked and blocked["decision"] == "block", blocked
         (ws / "check.py").write_text("import pathlib, sys\nsys.exit(0 if pathlib.Path(sys.argv[1]).exists() else 1)\n", encoding="utf-8")

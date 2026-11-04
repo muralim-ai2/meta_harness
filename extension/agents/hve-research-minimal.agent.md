@@ -1,5 +1,5 @@
 ---
-name: HVE research-minimal
+name: ARIA research-minimal
 user-invocable: false
 description: Benchmark baseline. The model answers with no tools, skills, hooks or sub-agents and writes the code inline.
 tools: []

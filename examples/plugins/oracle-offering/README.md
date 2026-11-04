@@ -8,7 +8,7 @@ its own rubrics.
 - Support: open an issue in the pack's own repository
 - Use in one workspace: copy this folder to `plugins/oracle-offering/` in the workspace.
 - Install for every workspace: `python <tools>/plugins/plugin.py inspect examples/plugins/oracle-offering`, then
-  `plugin.py install examples/plugins/oracle-offering --confirm <sha256>`, or run **Frontier HVE: Install plugin**.
+  `plugin.py install examples/plugins/oracle-offering --confirm <sha256>`, or run **ARIA: Install plugin**.
 - Package for release: `plugin.py pack examples/plugins/oracle-offering --out dist`
 
 The skills and templates are illustrative; an organization replaces them with its vetted content.
