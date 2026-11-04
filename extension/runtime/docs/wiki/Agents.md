@@ -31,18 +31,18 @@ Other hidden helpers: `ARIA council` and `ARIA evaluation-reviewer` (read-only r
 
 ## Ask contract (every agent, every harness)
 
-Every working agent starts with `lifecycle.py where .hve/asks/request.md`: it prints the workspace's project, the open ask with its paths, and a verdict (`continue`, `new-ask`, `new-workspace` or `new-project`) that the agent confirms with you in one form. To continue it runs `lifecycle.py open <ask>`; for a new ask, `lifecycle.py contract <lifecycle> <slug> "<agent>" .hve/asks/request.md` (`direct` for agents without a lifecycle; `+<skill>` requires a skill, as `ARIA product-manager` does with `+prd`). Both are terminal commands, so they work with or without hooks. One workspace holds one project; each ask gets its own timestamped folder (UTC), so nothing from one ask clutters the workspace root or another ask:
+Every working agent starts with `lifecycle.py where .aria/asks/request.md`: it prints the workspace's project, the open ask with its paths, and a verdict (`continue`, `new-ask`, `new-workspace` or `new-project`) that the agent confirms with you in one form. To continue it runs `lifecycle.py open <ask>`; for a new ask, `lifecycle.py contract <lifecycle> <slug> "<agent>" .aria/asks/request.md` (`direct` for agents without a lifecycle; `+<skill>` requires a skill, as `ARIA product-manager` does with `+prd`). Both are terminal commands, so they work with or without hooks. One workspace holds one project; each ask gets its own timestamped folder (UTC), so nothing from one ask clutters the workspace root or another ask:
 
 ```
-.hve/project/                      project.json, feature_list.json (+ feature_list.add.json), progress.txt, tracker.json, state.json
-.hve/asks/
+.aria/project/                      project.json, feature_list.json (+ feature_list.add.json), progress.txt, tracker.json, state.json
+.aria/asks/
   active.json                      the open ask
   <YYYYMMDD-HHMM>-<slug>/
     request.md  contract.json  plan.md  provenance.md  prototype/
     loop/                          attempts/, evidence/<feature>/, prs/, choices/, checks/, tool_log.jsonl
 ```
 
-The contract prints `paths` (ask, plan, loop, evidence, project, feature list, feature list add) and `project` (goal, asks, features, and `loop`: `init` for the first ask, `amend` afterwards). The skill loader repeats the open ask's paths on every prompt and the compaction hook gives them to every sub-agent, so agents never search for `plan.md`. `.hve/` is git-ignored, so the loop's commits carry a read-only copy of the locked checks: `[init]` and `[amend]` list each `name: verify`, `[progress]` names the check that passed. Each locked feature records the ask that added it; an ask's tasks and report count only its own features. Checks write screenshots and logs to `$HVE_EVIDENCE/<feature>/`, which `loop.py` and the output evaluation set to the open ask's `loop/evidence/`. With no ask open in a project (the research arms, `bench.py`), the loop keeps its old layout: loop files in the project root and state in `.harness/`. `contract.json` maps:
+The contract prints `paths` (ask, plan, loop, evidence, project, feature list, feature list add) and `project` (goal, asks, features, and `loop`: `init` for the first ask, `amend` afterwards). The skill loader repeats the open ask's paths on every prompt and the compaction hook gives them to every sub-agent, so agents never search for `plan.md`. `.aria/` is git-ignored, so the loop's commits carry a read-only copy of the locked checks: `[init]` and `[amend]` list each `name: verify`, `[progress]` names the check that passed. Each locked feature records the ask that added it; an ask's tasks and report count only its own features. Checks write screenshots and logs to `$HVE_EVIDENCE/<feature>/`, which `loop.py` and the output evaluation set to the open ask's `loop/evidence/`. With no ask open in a project (the research arms, `bench.py`), the loop keeps its old layout: loop files in the project root and state in `.harness/`. `contract.json` maps:
 
 | Field | Holds |
 |---|---|
@@ -59,7 +59,7 @@ When another ask is still open (milestones not done, or an evaluation you asked 
 
 **Skills per ask (D-056).** The contract shortlists every relevant library skill, with no cap, ranked by relevance (shared categories plus rare shared words); all of them load when the shortlist fits the guideline of 10 skills and 32,000 tokens. Over it (say 40 skills), the agent scores each shortlisted skill 0-10 for this ask across its stages, judging from its description, and runs `lifecycle.py skills score <scores.json>`: the shortlist is re-ranked by score and the required skills plus the top-scored, up to 10, become the suggested set. The agent shows you the shortlist size and the suggested skills with scores, reasons and tokens, and asks once: suggested top 10, all, or named (`lifecycle.py skills suggested|all|<a,b>`). Scores and reasons show in `plan.md`. The choice stops the skill loader adding prompt-ranked skills for the rest of the ask. The provenance report adds the skill load and the prompt cache: cache reads against prompt tokens when the session has metrics rows (the research arms' metrics hook with Copilot OTel), otherwise "not measured".
 
-**Different projects.** One workspace holds one project (`.hve/project/project.json`, started by the first ask). When a prompt starts a different project (a different kind of deliverable, for example a War of the Worlds app then a revenue-forecast presentation: `sdlc` against `document`; or a new build sharing almost no subject words with the project's goal, asks and features), `where`, the skill loader (once per ask) and `contract` recommend a new workspace. It never blocks; if you stay, the agent opens a new ask. `lifecycle.py shift "<prompt>"` shows the verdict.
+**Different projects.** One workspace holds one project (`.aria/project/project.json`, started by the first ask). When a prompt starts a different project (a different kind of deliverable, for example a War of the Worlds app then a revenue-forecast presentation: `sdlc` against `document`; or a new build sharing almost no subject words with the project's goal, asks and features), `where`, the skill loader (once per ask) and `contract` recommend a new workspace. It never blocks; if you stay, the agent opens a new ask. `lifecycle.py shift "<prompt>"` shows the verdict.
 
 `plan.md` carries a generated skills-and-tools block (kept out of the plan check's hash). Sub-agent prompts start with `lifecycle.py brief "<persona>" [task=<feature>|stage=<stage>]`: skills to read, plugin skills, MCP servers, rules and the `SKILLS-USED` reply line; the parent records it with `lifecycle.py used`. `lifecycle.py report` adds a recommended-against-used table (skills read by hook or self-reported, personas delegated, tasks, MCP servers called, hook files) to `provenance.md`. `lifecycle.py close` stops workspace and user-level hooks from acting in the workspace; `lifecycle.py open <ask-id>` reopens an ask and prints its paths, current milestone and open items.
 
@@ -71,12 +71,12 @@ When another ask is still open (milestones not done, or an evaluation you asked 
 |---|---|---|
 | Built-in | `templates/lifecycles/` (`sdlc`, `agile-scrum`, `team-delivery`, `consulting-delivery`, `document`, `direct`) | - |
 | Plugin | `plugins/<name>/lifecycles/` (folders without `hve-plugin.json`) | built-in |
-| Workspace | `.hve/lifecycles/` | built-in and plugin |
+| Workspace | `.aria/lifecycles/` | built-in and plugin |
 | Expertise pack | `<pack>/lifecycles/`, named `<pack>:<name>` ([Expertise packs](Plugins.md)) | - (own names) |
 
 `lifecycle.py contract` writes the ask's `contract.json` (expected agent, skills and templates per stage, plus the fields above); `stage` records each stage's status with a one-line note; the skill loader loads and allows the current stage's skills; `lifecycle.py report <session>` (in `tools/loop/ask_report.py`) writes the ask's `provenance.md` with expected against used skills and authored templates, gaps in done stages, plan revisions and sync state, guard trips and waivers, and every decision. `tools/observe/provenance.py` adds the same facts as its `contract` component (failed on gaps or an unsynced plan) and a `guards` summary for every agent.
 
-The repository's `.github/agents/` holds the research arms (`minimal`, `single`, `creator`, `creator-flow`, `creator-github`): pinned model, time budget, metrics and Graphify, working in `.hve/outputs/<mode>/current/`. They exist for `tools/observe/bench.py` and differ from the product agents on purpose.
+The repository's `.github/agents/` holds the research arms (`minimal`, `single`, `creator`, `creator-flow`, `creator-github`): pinned model, time budget, metrics and Graphify, working in `.aria/outputs/<mode>/current/`. They exist for `tools/observe/bench.py` and differ from the product agents on purpose.
 
 ## Personas, Collab stage entry and Auto gates
 
@@ -107,7 +107,7 @@ Example: a team with a partial build runs data-architecture and data-build with 
 
 | Guard | File | When | Enforces |
 |---|---|---|---|
-| loop | `hooks/loop_guard.py` | before/after tools, stop | Loop state (`.harness/`, or `.hve/project/` and the ask's `loop/` folder) always, and the loop files `feature_list.json`, `progress.txt` and `tracker.json` while features still fail, change only through `loop.py` (edit targets are matched by path, shell commands only when they write); new features go through `feature_list.add.json` and `loop.py amend`; pushes only for ticked PRs; stop on escalation; a victory check before stopping. **Awareness mode (D-056, `hooks/guard_mode.json`):** loop-file and loop-state edits and the victory check are shown to the user as "Advisory alert (experimental): surfaces LLM behaviour that helps to know" with the change, not blocked; escalation, hook bypass, resume and push rules still block |
+| loop | `hooks/loop_guard.py` | before/after tools, stop | Loop state (`.harness/`, or `.aria/project/` and the ask's `loop/` folder) always, and the loop files `feature_list.json`, `progress.txt` and `tracker.json` while features still fail, change only through `loop.py` (edit targets are matched by path, shell commands only when they write); new features go through `feature_list.add.json` and `loop.py amend`; pushes only for ticked PRs; stop on escalation; a victory check before stopping. **Awareness mode (D-056, `hooks/guard_mode.json`):** loop-file and loop-state edits and the victory check are shown to the user as "Advisory alert (experimental): surfaces LLM behaviour that helps to know" with the change, not blocked; escalation, hook bypass, resume and push rules still block |
 | error | `hooks/error_guard.py` | prompt, before/after tools (Auto, Collab, Prototype Creator, engineer) | After 3 failed terminal commands in a row (feature-loop checks excluded) the agent pauses with "Error guard - paused for your attention", the commands and their output, and must ask you for direction (fix the environment, change approach or skip); only reading and asking are allowed until you answer |
 | module | `hooks/module_guard.py` | after edits | No file over 500 lines; the agent proposes a split |
 | prototype | `scripts/guardrail.py` | after tools | Flags code over 5,000 lines, files over 20 MB, non-enterprise components and self-built infrastructure, and names the experts to involve |
@@ -120,9 +120,9 @@ Example: a team with a partial build runs data-architecture and data-build with 
 | plan check | `hooks/plan_check.py` | prompt, before tools (`ARIA Auto`, `ARIA Collab`) | When the ask's `plan.md` changed since `lifecycle.py plan-sync`, adds a reconcile instruction to each prompt and holds `loop.py init/next/amend` and `lifecycle.py stage` until the agent reconciles and syncs |
 | no fallback | `hooks/no_fallback.py` | git pre-commit (set by `loop.py init`) | Rejects swallowed errors and TODOs in committed code |
 
-Every deny, block or stop is logged to `.hve/runs/<session>.interventions.jsonl`.
+Every deny, block or stop is logged to `.aria/runs/<session>.interventions.jsonl`.
 
-**Waivers** (`hooks/guard_policy.py`): after 3 trips in a session of the loop-file, skill or module guard, its message asks the agent to put a `guard-waiver:<guard>` question to you: keep it on, or lay it down for this session (saved in `.hve/runs/<session>.waivers.json`). `.harness/` state, escalation, hook bypass, pushes and the plan check are never waivable, and waivers are ignored while an output evaluation run is open. `provenance.py` and `lifecycle.py report` list trips, your answers and the calls let through.
+**Waivers** (`hooks/guard_policy.py`): after 3 trips in a session of the loop-file, skill or module guard, its message asks the agent to put a `guard-waiver:<guard>` question to you: keep it on, or lay it down for this session (saved in `.aria/runs/<session>.waivers.json`). `.harness/` state, escalation, hook bypass, pushes and the plan check are never waivable, and waivers are ignored while an output evaluation run is open. `provenance.py` and `lifecycle.py report` list trips, your answers and the calls let through.
 
 ## Onboard an agent
 

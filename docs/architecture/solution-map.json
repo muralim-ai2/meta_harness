@@ -155,7 +155,7 @@
   {
    "id": "concept:skills",
    "name": "Skills and loading",
-   "explain": "Skills are folders with a SKILL.md (name and description in front matter) that agents load when a task matches. Library skills live in skills/admitted and are listed in skills/registry.json with categories and measured lift; plugin skills ship with the extension in plugins/harness-assist/skills and are always available. On every prompt the skill_loader hook ranks library skills with recommend.py, copies the relevant ones into .hve/skills for the session, flags a load over the guideline in skills/categories.json, and blocks reads of the others. context_load.py measures what skills, instructions and MCP tools add to every request.",
+   "explain": "Skills are folders with a SKILL.md (name and description in front matter) that agents load when a task matches. Library skills live in skills/admitted and are listed in skills/registry.json with categories and measured lift; plugin skills ship with the extension in plugins/harness-assist/skills and are always available. On every prompt the skill_loader hook ranks library skills with recommend.py, copies the relevant ones into .aria/skills for the session, flags a load over the guideline in skills/categories.json, and blocks reads of the others. context_load.py measures what skills, instructions and MCP tools add to every request.",
    "keywords": [
     "skill",
     "skills",
@@ -329,7 +329,7 @@
   {
    "id": "concept:telemetry",
    "name": "Telemetry and metrics",
-   "explain": "Telemetry has two sources. Hooks write what they see per session into .hve/runs/<session>: metrics.py joins tool-call events with token counts, agent_ledger.py records sub-agent starts and stops, and interventions.py logs every deny, block and stop. Copilot's own OpenTelemetry export (.hve/runs/copilot-otel.jsonl) carries tokens, cost and cache per chat call; the extension's research-telemetry command turns it on, otel_trim.py keeps it small and otel_prune.py archives it per benchmark run. trajectory.py, collect.py and provenance.py read both to show context growth, collect runs and prove which harness parts left evidence. Product agents do not run metrics.py, so per-call tokens are measured only in research runs or with OTel on.",
+   "explain": "Telemetry has two sources. Hooks write what they see per session into .aria/runs/<session>: metrics.py joins tool-call events with token counts, agent_ledger.py records sub-agent starts and stops, and interventions.py logs every deny, block and stop. Copilot's own OpenTelemetry export (.aria/runs/copilot-otel.jsonl) carries tokens, cost and cache per chat call; the extension's research-telemetry command turns it on, otel_trim.py keeps it small and otel_prune.py archives it per benchmark run. trajectory.py, collect.py and provenance.py read both to show context growth, collect runs and prove which harness parts left evidence. Product agents do not run metrics.py, so per-call tokens are measured only in research runs or with OTel on.",
    "keywords": [
     "telemetry",
     "otel",
@@ -452,7 +452,7 @@
   {
    "id": "concept:guards",
    "name": "Guards and hooks",
-   "explain": "Hooks run before or after every tool call, prompt and sub-agent, as middleware between the model and the workspace. Policy guards deny or stop: module_guard.py blocks files over 500 lines, no_fallback.py rejects code that hides errors, error_guard.py pauses after a streak of failed commands, budget.py enforces a time budget, loop_guard.py protects loop state and flow_guard.py keeps creator-flow stages on their edges. guard_policy.py lets the user waive a guard after repeated trips. Context hooks add information: compaction.py tells sub-agents what to return, profile_detector.py learns user preferences, template_guard.py announces template policy. hve_paths.py locates .hve state for all of them.",
+   "explain": "Hooks run before or after every tool call, prompt and sub-agent, as middleware between the model and the workspace. Policy guards deny or stop: module_guard.py blocks files over 500 lines, no_fallback.py rejects code that hides errors, error_guard.py pauses after a streak of failed commands, budget.py enforces a time budget, loop_guard.py protects loop state and flow_guard.py keeps creator-flow stages on their edges. guard_policy.py lets the user waive a guard after repeated trips. Context hooks add information: compaction.py tells sub-agents what to return, profile_detector.py learns user preferences, template_guard.py announces template policy. hve_paths.py locates .aria state for all of them.",
    "keywords": [
     "guard",
     "hook",
@@ -560,7 +560,7 @@
   {
    "id": "concept:extension",
    "name": "VS Code extension",
-   "explain": "The harness ships as one VSIX. build.py copies hooks/, tools/, skills and templates into extension/runtime and checks every runtime path the agent templates name; package.json declares the commands and settings. On activation extension.js finds Python, renders the agents (render.js) into a plugin folder registered with Copilot Chat, sets up the workspace's .hve folder, and offers telemetry and context-load commands; packs.js installs and manages expertise packs. Never edit extension/runtime: it is rebuilt from the sources.",
+   "explain": "The harness ships as one VSIX. build.py copies hooks/, tools/, skills and templates into extension/runtime and checks every runtime path the agent templates name; package.json declares the commands and settings. On activation extension.js finds Python, renders the agents (render.js) into a plugin folder registered with Copilot Chat, sets up the workspace's .aria folder, and offers telemetry and context-load commands; packs.js installs and manages expertise packs. Never edit extension/runtime: it is rebuilt from the sources.",
    "keywords": [
     "extension",
     "vsix",
@@ -881,7 +881,7 @@
    "level": "view",
    "view": "state",
    "name": "State and data stores",
-   "purpose": "Files the harness reads and writes under .hve and the user's home folder.",
+   "purpose": "Files the harness reads and writes under .aria and the user's home folder.",
    "roles": [
     "harness-engineer"
    ]
@@ -1450,7 +1450,7 @@
    "kind": "doc",
    "lang": "markdown",
    "name": "Skills.md",
-   "purpose": "Skills: Library skills are copied to .hve/skills/ for the session that loads them; other library skills are blocked so they cannot leak into context.",
+   "purpose": "Skills: Library skills are copied to .aria/skills/ for the session that loads them; other library skills are blocked so they cannot leak into context.",
    "source": "docs/wiki/Skills.md",
    "tokens": 1544,
    "lines": 51,
@@ -2605,7 +2605,7 @@
    "module": "extension:host",
    "kind": "function",
    "name": "setUpWorkspace",
-   "purpose": "Create <workspace>/.hve with runs/ and the user profile, ask how the user prefers to build, and optionally ignore .hve in git.",
+   "purpose": "Create <workspace>/.aria with runs/ and the user profile, ask how the user prefers to build, and optionally ignore .aria in git.",
    "source": "extension/extension.js:104-126"
   },
   {
@@ -2665,7 +2665,7 @@
    "module": "extension:host",
    "kind": "function",
    "name": "reportContextLoad",
-   "purpose": "Measure the always-on context load (skills, instructions, MCP) and show its size and any warnings; the report is .hve/context_load.json.",
+   "purpose": "Measure the always-on context load (skills, instructions, MCP) and show its size and any warnings; the report is .aria/context_load.json.",
    "source": "extension/extension.js:218-235"
   },
   {
@@ -2939,7 +2939,7 @@
    "level": "module",
    "view": "guards",
    "name": "Hook runtime",
-   "purpose": "Shared hook plumbing: client payload mapping and .hve paths.",
+   "purpose": "Shared hook plumbing: client payload mapping and .aria paths.",
    "roles": [
     "harness-engineer",
     "security-engineer"
@@ -3066,7 +3066,7 @@
    "module": "observability:hooks",
    "kind": "function",
    "name": "main",
-   "purpose": "Append one row per SubagentStart or SubagentStop to .hve/runs/<session>.agents.jsonl.",
+   "purpose": "Append one row per SubagentStart or SubagentStop to .aria/runs/<session>.agents.jsonl.",
    "source": "hooks/agent_ledger.py:18-34"
   },
   {
@@ -3456,7 +3456,7 @@
    "kind": "code",
    "lang": "python",
    "name": "hve_paths.py",
-   "purpose": "Workspace state locations for harness hooks: <workspace>/.hve, since hooks run with the workspace root as working directory.",
+   "purpose": "Workspace state locations for harness hooks: <workspace>/.aria, since hooks run with the workspace root as working directory.",
    "source": "hooks/hve_paths.py",
    "tokens": 124,
    "lines": 12,
@@ -3471,7 +3471,7 @@
    "kind": "code",
    "lang": "python",
    "name": "interventions.py",
-   "purpose": "Append hook interventions (denies, blocks, stops) to the session log and blindspot-coded ones to .hve/blindspots/.",
+   "purpose": "Append hook interventions (denies, blocks, stops) to the session log and blindspot-coded ones to .aria/blindspots/.",
    "source": "hooks/interventions.py",
    "tokens": 263,
    "lines": 24,
@@ -3485,7 +3485,7 @@
    "module": "observability:hooks",
    "kind": "function",
    "name": "record",
-   "purpose": "Append one intervention to .hve/runs/<session_id>.interventions.jsonl, and to the blindspot log when coded.",
+   "purpose": "Append one intervention to .aria/runs/<session_id>.interventions.jsonl, and to the blindspot log when coded.",
    "source": "hooks/interventions.py:12-23"
   },
   {
@@ -3651,7 +3651,7 @@
    "kind": "code",
    "lang": "python",
    "name": "metrics.py",
-   "purpose": "Hook that joins tool-call hook events with Copilot OTel chat spans into .hve/runs/<session_id>.jsonl.",
+   "purpose": "Hook that joins tool-call hook events with Copilot OTel chat spans into .aria/runs/<session_id>.jsonl.",
    "source": "hooks/metrics.py",
    "tokens": 3902,
    "lines": 316,
@@ -3685,7 +3685,7 @@
    "module": "observability:hooks",
    "kind": "class",
    "name": "MetricRecord",
-   "purpose": "One line of .hve/runs/<session_id>.jsonl.",
+   "purpose": "One line of .aria/runs/<session_id>.jsonl.",
    "source": "hooks/metrics.py:57-75"
   },
   {
@@ -5296,7 +5296,7 @@
    "module": "solution-design:decisions",
    "kind": "decision",
    "name": "D-032",
-   "purpose": "Frontier HVE as a standalone VS Code extension; workspace state in .hve/.",
+   "purpose": "Frontier HVE as a standalone VS Code extension; workspace state in .aria/.",
    "source": "research/decisions/decision_log.md:167"
   },
   {
@@ -6908,7 +6908,7 @@
    "module": "tests:suite",
    "kind": "function",
    "name": "start_loop",
-   "purpose": "Write the loop state the guards read: one feature and the loop state file, in .hve/project/ when an ask is open.",
+   "purpose": "Write the loop state the guards read: one feature and the loop state file, in .aria/project/ when an ask is open.",
    "source": "tests/test_adapters.py:78-84"
   },
   {
@@ -7638,7 +7638,7 @@
    "module": "tests:suite",
    "kind": "function",
    "name": "make_root",
-   "purpose": "Return a temp workspace with the hooks, .hve/runs and the given .hve/user_profile.json.",
+   "purpose": "Return a temp workspace with the hooks, .aria/runs and the given .aria/user_profile.json.",
    "source": "tests/test_hooks.py:17-25"
   },
   {
@@ -7933,7 +7933,7 @@
    "module": "tests:suite",
    "kind": "function",
    "name": "test_ask_mode_keeps_loop_files_in_the_ask_folder",
-   "purpose": "With an open ask the feature list, progress, tracker and state live in .hve/project/ and the evidence in the ask's loop/ folder, all out of git; commits carry the locked checks, checks get HVE_EVIDENCE, locks record the ask, and the guard protects both.",
+   "purpose": "With an open ask the feature list, progress, tracker and state live in .aria/project/ and the evidence in the ask's loop/ folder, all out of git; commits carry the locked checks, checks get HVE_EVIDENCE, locks record the ask, and the guard protects both.",
    "source": "tests/test_loop.py:245-278"
   },
   {
@@ -7953,7 +7953,7 @@
    "module": "tests:suite",
    "kind": "function",
    "name": "make_root",
-   "purpose": "Return a temp workspace with the guard hooks (loop guard in the given mode), .hve/runs, a 20-minute budget at 08:00 UTC, and a project folder.",
+   "purpose": "Return a temp workspace with the guard hooks (loop guard in the given mode), .aria/runs, a 20-minute budget at 08:00 UTC, and a project folder.",
    "source": "tests/test_loop.py:291-305"
   },
   {
@@ -9704,7 +9704,7 @@
    "module": "orchestration:git",
    "kind": "function",
    "name": "worktree",
-   "purpose": "Return the worktree folder of one approach, inside the project's ignored .hve/discovery/ folder.",
+   "purpose": "Return the worktree folder of one approach, inside the project's ignored .aria/discovery/ folder.",
    "source": "tools/git/parallel_options.py:28-30"
   },
   {
@@ -10651,7 +10651,7 @@
    "module": "orchestration:asks",
    "kind": "function",
    "name": "install",
-   "purpose": "Copy skills into <workspace>/.hve/skills/<name>/ ('<pack>:<skill>' into '<pack>__<skill>') so every harness reads them in the workspace.",
+   "purpose": "Copy skills into <workspace>/.aria/skills/<name>/ ('<pack>:<skill>' into '<pack>__<skill>') so every harness reads them in the workspace.",
    "source": "tools/loop/lifecycle.py:76-80"
   },
   {
@@ -12467,7 +12467,7 @@
    "kind": "code",
    "lang": "python",
    "name": "collect.py",
-   "purpose": "Collect each finished benchmark session's output into .hve/outputs/<mode>/<session_id>/ and write .hve/runs/<session_id>.run.json.",
+   "purpose": "Collect each finished benchmark session's output into .aria/outputs/<mode>/<session_id>/ and write .aria/runs/<session_id>.run.json.",
    "source": "tools/observe/collect.py",
    "tokens": 1801,
    "lines": 150,
@@ -12481,7 +12481,7 @@
    "module": "observability:research",
    "kind": "class",
    "name": "RunManifest",
-   "purpose": "One .hve/runs/<session_id>.run.json.",
+   "purpose": "One .aria/runs/<session_id>.run.json.",
    "source": "tools/observe/collect.py:23-33"
   },
   {
@@ -12551,7 +12551,7 @@
    "module": "observability:research",
    "kind": "function",
    "name": "collect",
-   "purpose": "Move or extract one finished session's output into .hve/outputs/<mode>/<session_id>/ and return its manifest.",
+   "purpose": "Move or extract one finished session's output into .aria/outputs/<mode>/<session_id>/ and return its manifest.",
    "source": "tools/observe/collect.py:95-129"
   },
   {
@@ -12561,7 +12561,7 @@
    "module": "observability:research",
    "kind": "function",
    "name": "main",
-   "purpose": "Collect every session in .hve/runs/ that has no run manifest yet.",
+   "purpose": "Collect every session in .aria/runs/ that has no run manifest yet.",
    "source": "tools/observe/collect.py:132-145"
   },
   {
@@ -12716,7 +12716,7 @@
    "module": "observability:research",
    "kind": "function",
    "name": "ensure_ignored",
-   "purpose": "Add the export to the workspace's .gitignore unless .hve/ or the export is already ignored; return True when a line was added.",
+   "purpose": "Add the export to the workspace's .gitignore unless .aria/ or the export is already ignored; return True when a line was added.",
    "source": "tools/observe/otel_trim.py:26-34"
   },
   {
@@ -12771,7 +12771,7 @@
    "module": "observability:research",
    "kind": "function",
    "name": "provenance",
-   "purpose": "Return and save to .hve/runs/<session>.provenance.json each declared component's evidence status and whether all is ok.",
+   "purpose": "Return and save to .aria/runs/<session>.provenance.json each declared component's evidence status and whether all is ok.",
    "source": "tools/observe/provenance.py:120-156"
   },
   {
@@ -13707,7 +13707,7 @@
    "module": "knowledge:loadout",
    "kind": "function",
    "name": "measure",
-   "purpose": "Return the always-on load report, compare it with the previous check, and save it to .hve/context_load.json.",
+   "purpose": "Return the always-on load report, compare it with the previous check, and save it to .aria/context_load.json.",
    "source": "tools/skills/context_load.py:171-205"
   },
   {
@@ -14209,7 +14209,7 @@
    "module": "knowledge:loadout",
    "kind": "function",
    "name": "skill_dir",
-   "purpose": "Return the .hve/skills folder name of a skill ('<pack>:<skill>' becomes '<pack>__<skill>').",
+   "purpose": "Return the .aria/skills folder name of a skill ('<pack>:<skill>' becomes '<pack>__<skill>').",
    "source": "tools/skills/recommend.py:48-50"
   },
   {
@@ -14644,7 +14644,7 @@
    "view": "state",
    "name": "Ask contract",
    "purpose": "One ask: lifecycle, stages, skills, packs, personas, tasks, checklist, decisions.",
-   "source": ".hve/asks/<id>/contract.json",
+   "source": ".aria/asks/<id>/contract.json",
    "kind": "store",
    "roles": []
   },
@@ -14654,7 +14654,7 @@
    "view": "state",
    "name": "Ask plan",
    "purpose": "The plan the user approves, with generated skills and checklist blocks.",
-   "source": ".hve/asks/<id>/plan.md",
+   "source": ".aria/asks/<id>/plan.md",
    "kind": "store",
    "roles": []
   },
@@ -14664,7 +14664,7 @@
    "view": "state",
    "name": "Provenance",
    "purpose": "Expected against actual for an ask or session.",
-   "source": ".hve/asks/<id>/provenance.md, .hve/runs/<session>.provenance.json",
+   "source": ".aria/asks/<id>/provenance.md, .aria/runs/<session>.provenance.json",
    "kind": "store",
    "roles": []
   },
@@ -14674,7 +14674,7 @@
    "view": "state",
    "name": "Feature list and lock",
    "purpose": "Locked features, checks and loop state.",
-   "source": ".hve/project/feature_list.json, state.json",
+   "source": ".aria/project/feature_list.json, state.json",
    "kind": "store",
    "roles": []
   },
@@ -14684,7 +14684,7 @@
    "view": "state",
    "name": "Run logs",
    "purpose": "Per-session loadouts, metrics, events, agent ledger and errors.",
-   "source": ".hve/runs/<session>.*",
+   "source": ".aria/runs/<session>.*",
    "kind": "store",
    "roles": []
   },
@@ -14704,7 +14704,7 @@
    "view": "state",
    "name": "Loaded skills",
    "purpose": "Skills copied in for the open ask or session.",
-   "source": ".hve/skills/<name>/",
+   "source": ".aria/skills/<name>/",
    "kind": "store",
    "roles": []
   },
@@ -14714,7 +14714,7 @@
    "view": "state",
    "name": "Deliverable registry",
    "purpose": "Documents a session initialized from templates.",
-   "source": ".hve/deliverables/<session>.json",
+   "source": ".aria/deliverables/<session>.json",
    "kind": "store",
    "roles": []
   },
@@ -14724,7 +14724,7 @@
    "view": "state",
    "name": "Evaluation runs",
    "purpose": "Contract snapshots, scores, validation, council and reports.",
-   "source": ".hve/evaluations/<run>/",
+   "source": ".aria/evaluations/<run>/",
    "kind": "store",
    "roles": []
   },
@@ -14734,7 +14734,7 @@
    "view": "state",
    "name": "Copilot OTel export",
    "purpose": "Chat spans with tokens, cost and cache when research telemetry is on.",
-   "source": ".hve/runs/copilot-otel.jsonl",
+   "source": ".aria/runs/copilot-otel.jsonl",
    "kind": "store",
    "roles": []
   },
@@ -14744,7 +14744,7 @@
    "view": "state",
    "name": "Solution map",
    "purpose": "This map: nodes, edges with evidence, concepts and file hashes.",
-   "source": ".hve/map/map.json, docs/architecture/solution-map.json",
+   "source": ".aria/map/map.json, docs/architecture/solution-map.json",
    "kind": "store",
    "roles": []
   },
@@ -14770,7 +14770,7 @@
    "level": "concept",
    "name": "Skills and loading",
    "purpose": "Skills are folders with a SKILL.md (name and description in front matter) that agents load when a task matches.",
-   "explain": "Skills are folders with a SKILL.md (name and description in front matter) that agents load when a task matches. Library skills live in skills/admitted and are listed in skills/registry.json with categories and measured lift; plugin skills ship with the extension in plugins/harness-assist/skills and are always available. On every prompt the skill_loader hook ranks library skills with recommend.py, copies the relevant ones into .hve/skills for the session, flags a load over the guideline in skills/categories.json, and blocks reads of the others. context_load.py measures what skills, instructions and MCP tools add to every request.",
+   "explain": "Skills are folders with a SKILL.md (name and description in front matter) that agents load when a task matches. Library skills live in skills/admitted and are listed in skills/registry.json with categories and measured lift; plugin skills ship with the extension in plugins/harness-assist/skills and are always available. On every prompt the skill_loader hook ranks library skills with recommend.py, copies the relevant ones into .aria/skills for the session, flags a load over the guideline in skills/categories.json, and blocks reads of the others. context_load.py measures what skills, instructions and MCP tools add to every request.",
    "keywords": [
     "skill",
     "skills",
@@ -14826,7 +14826,7 @@
    "level": "concept",
    "name": "Telemetry and metrics",
    "purpose": "Telemetry has two sources.",
-   "explain": "Telemetry has two sources. Hooks write what they see per session into .hve/runs/<session>: metrics.py joins tool-call events with token counts, agent_ledger.py records sub-agent starts and stops, and interventions.py logs every deny, block and stop. Copilot's own OpenTelemetry export (.hve/runs/copilot-otel.jsonl) carries tokens, cost and cache per chat call; the extension's research-telemetry command turns it on, otel_trim.py keeps it small and otel_prune.py archives it per benchmark run. trajectory.py, collect.py and provenance.py read both to show context growth, collect runs and prove which harness parts left evidence. Product agents do not run metrics.py, so per-call tokens are measured only in research runs or with OTel on.",
+   "explain": "Telemetry has two sources. Hooks write what they see per session into .aria/runs/<session>: metrics.py joins tool-call events with token counts, agent_ledger.py records sub-agent starts and stops, and interventions.py logs every deny, block and stop. Copilot's own OpenTelemetry export (.aria/runs/copilot-otel.jsonl) carries tokens, cost and cache per chat call; the extension's research-telemetry command turns it on, otel_trim.py keeps it small and otel_prune.py archives it per benchmark run. trajectory.py, collect.py and provenance.py read both to show context growth, collect runs and prove which harness parts left evidence. Product agents do not run metrics.py, so per-call tokens are measured only in research runs or with OTel on.",
    "keywords": [
     "telemetry",
     "otel",
@@ -14888,7 +14888,7 @@
    "level": "concept",
    "name": "Guards and hooks",
    "purpose": "Hooks run before or after every tool call, prompt and sub-agent, as middleware between the model and the workspace.",
-   "explain": "Hooks run before or after every tool call, prompt and sub-agent, as middleware between the model and the workspace. Policy guards deny or stop: module_guard.py blocks files over 500 lines, no_fallback.py rejects code that hides errors, error_guard.py pauses after a streak of failed commands, budget.py enforces a time budget, loop_guard.py protects loop state and flow_guard.py keeps creator-flow stages on their edges. guard_policy.py lets the user waive a guard after repeated trips. Context hooks add information: compaction.py tells sub-agents what to return, profile_detector.py learns user preferences, template_guard.py announces template policy. hve_paths.py locates .hve state for all of them.",
+   "explain": "Hooks run before or after every tool call, prompt and sub-agent, as middleware between the model and the workspace. Policy guards deny or stop: module_guard.py blocks files over 500 lines, no_fallback.py rejects code that hides errors, error_guard.py pauses after a streak of failed commands, budget.py enforces a time budget, loop_guard.py protects loop state and flow_guard.py keeps creator-flow stages on their edges. guard_policy.py lets the user waive a guard after repeated trips. Context hooks add information: compaction.py tells sub-agents what to return, profile_detector.py learns user preferences, template_guard.py announces template policy. hve_paths.py locates .aria state for all of them.",
    "keywords": [
     "guard",
     "hook",
@@ -14946,7 +14946,7 @@
    "level": "concept",
    "name": "VS Code extension",
    "purpose": "The harness ships as one VSIX.",
-   "explain": "The harness ships as one VSIX. build.py copies hooks/, tools/, skills and templates into extension/runtime and checks every runtime path the agent templates name; package.json declares the commands and settings. On activation extension.js finds Python, renders the agents (render.js) into a plugin folder registered with Copilot Chat, sets up the workspace's .hve folder, and offers telemetry and context-load commands; packs.js installs and manages expertise packs. Never edit extension/runtime: it is rebuilt from the sources.",
+   "explain": "The harness ships as one VSIX. build.py copies hooks/, tools/, skills and templates into extension/runtime and checks every runtime path the agent templates name; package.json declares the commands and settings. On activation extension.js finds Python, renders the agents (render.js) into a plugin folder registered with Copilot Chat, sets up the workspace's .aria folder, and offers telemetry and context-load commands; packs.js installs and manages expertise packs. Never edit extension/runtime: it is rebuilt from the sources.",
    "keywords": [
     "extension",
     "vsix",
@@ -28240,7 +28240,7 @@
    "from": "file:tools/loop/loop.py",
    "to": "file:tests/test_adapters.py",
    "type": "tested-by",
-   "evidence": "tests/test_adapters.py names .hve/runtime/tools/loop/loop.py"
+   "evidence": "tests/test_adapters.py names .aria/runtime/tools/loop/loop.py"
   },
   {
    "from": "file:extension/build.py",
@@ -29008,7 +29008,7 @@
    "from": "file:feature_list.json",
    "to": "file:tests/test_skills.py",
    "type": "tested-by",
-   "evidence": "tests/test_skills.py names .hve/project/feature_list.json"
+   "evidence": "tests/test_skills.py names .aria/project/feature_list.json"
   },
   {
    "from": "file:tools/loop/ask_packs.py",
@@ -29836,7 +29836,7 @@
    "from": "view:state",
    "to": "store:contract",
    "type": "contains",
-   "evidence": ".hve/asks/<id>/contract.json"
+   "evidence": ".aria/asks/<id>/contract.json"
   },
   {
    "from": "file:hooks/agent_ledger.py",
@@ -29896,7 +29896,7 @@
    "from": "view:state",
    "to": "store:plan",
    "type": "contains",
-   "evidence": ".hve/asks/<id>/plan.md"
+   "evidence": ".aria/asks/<id>/plan.md"
   },
   {
    "from": "file:hooks/compaction.py",
@@ -29950,7 +29950,7 @@
    "from": "view:state",
    "to": "store:provenance",
    "type": "contains",
-   "evidence": ".hve/asks/<id>/provenance.md, .hve/runs/<session>.provenance.json"
+   "evidence": ".aria/asks/<id>/provenance.md, .aria/runs/<session>.provenance.json"
   },
   {
    "from": "file:tools/loop/ask_plan.py",
@@ -29992,7 +29992,7 @@
    "from": "view:state",
    "to": "store:feature-list",
    "type": "contains",
-   "evidence": ".hve/project/feature_list.json, state.json"
+   "evidence": ".aria/project/feature_list.json, state.json"
   },
   {
    "from": "file:hooks/compaction.py",
@@ -30088,7 +30088,7 @@
    "from": "view:state",
    "to": "store:runs",
    "type": "contains",
-   "evidence": ".hve/runs/<session>.*"
+   "evidence": ".aria/runs/<session>.*"
   },
   {
    "from": "file:extension/extension.js",
@@ -30208,7 +30208,7 @@
    "from": "view:state",
    "to": "store:loaded-skills",
    "type": "contains",
-   "evidence": ".hve/skills/<name>/"
+   "evidence": ".aria/skills/<name>/"
   },
   {
    "from": "file:hooks/compaction.py",
@@ -30250,7 +30250,7 @@
    "from": "view:state",
    "to": "store:deliverables",
    "type": "contains",
-   "evidence": ".hve/deliverables/<session>.json"
+   "evidence": ".aria/deliverables/<session>.json"
   },
   {
    "from": "file:extension/build.py",
@@ -30268,7 +30268,7 @@
    "from": "view:state",
    "to": "store:evaluations",
    "type": "contains",
-   "evidence": ".hve/evaluations/<run>/"
+   "evidence": ".aria/evaluations/<run>/"
   },
   {
    "from": "file:hooks/guard_policy.py",
@@ -30304,7 +30304,7 @@
    "from": "view:state",
    "to": "store:otel",
    "type": "contains",
-   "evidence": ".hve/runs/copilot-otel.jsonl"
+   "evidence": ".aria/runs/copilot-otel.jsonl"
   },
   {
    "from": "file:extension/extension.js",
@@ -30352,7 +30352,7 @@
    "from": "view:state",
    "to": "store:solution-map",
    "type": "contains",
-   "evidence": ".hve/map/map.json, docs/architecture/solution-map.json"
+   "evidence": ".aria/map/map.json, docs/architecture/solution-map.json"
   },
   {
    "from": "file:tools/loop/flow.py",

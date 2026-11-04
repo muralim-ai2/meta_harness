@@ -27,9 +27,9 @@ The design follows [reference/Enterprise AI Harness Blueprint v3.html](reference
 
 Install the VSIX and reload; the extension finds Python (3.11+ as `python`, `python3` or `py -3`), renders the HVE agents and skills and registers them. Without Python the agents run without guards and say so. Then pick an **HVE** agent in a new chat with Session Target: Local. Requirements, the optional **ARIA: Set up**, checking an install with the provenance report, updating and building the VSIX: [docs/wiki/Install.md](docs/wiki/Install.md). Agents and their guardrails: [docs/wiki/Agents.md](docs/wiki/Agents.md).
 
-Workspace state goes to `<workspace>/.hve/` (profile, interventions, loadouts). The Copilot telemetry export is only for research metrics and has its own command (D-032, D-047).
+Workspace state goes to `<workspace>/.aria/` (profile, interventions, loadouts). The Copilot telemetry export is only for research metrics and has its own command (D-032, D-047).
 
-**Mission Control (D-063 to D-067).** The **HVE icon in the Activity Bar** opens a live sidebar: a dropdown of the project's asks (an ask is one piece of work; **Make active** reopens an earlier one), what the agent is doing now (from Copilot Chat's transcripts of the window), its to-do list, what needs you, and the ask's plan, checks and sign-offs. Each ask lists its chats: those that created or reopened it, edited its files, or were opened for it with **New ask**: a title and an optional description, the harness's `where` recommendation (a different project goes to a new workspace, a follow-up continues the open ask), then the chat of your choice opens with a starter message filled in but not sent. A **Harness files** pane below it lists everything under `.hve/` and `.harness/` as a resizable tree. The dashboard shows the plan as formatted text with **Edit plan**, every step of the chosen chat, the ask's folder as a tree (**Files**), token use when research telemetry is on (one switch), skills and expertise packs. It never runs a check, starts an agent or writes into Chat: [docs/wiki/Mission-Control.md](docs/wiki/Mission-Control.md).
+**Mission Control (D-063 to D-067).** The **HVE icon in the Activity Bar** opens a live sidebar: a dropdown of the project's asks (an ask is one piece of work; **Make active** reopens an earlier one), what the agent is doing now (from Copilot Chat's transcripts of the window), its to-do list, what needs you, and the ask's plan, checks and sign-offs. Each ask lists its chats: those that created or reopened it, edited its files, or were opened for it with **New ask**: a title and an optional description, the harness's `where` recommendation (a different project goes to a new workspace, a follow-up continues the open ask), then the chat of your choice opens with a starter message filled in but not sent. A **Harness files** pane below it lists everything under `.aria/` and `.harness/` as a resizable tree. The dashboard shows the plan as formatted text with **Edit plan**, every step of the chosen chat, the ask's folder as a tree (**Files**), token use when research telemetry is on (one switch), skills and expertise packs. It never runs a check, starts an agent or writes into Chat: [docs/wiki/Mission-Control.md](docs/wiki/Mission-Control.md).
 
 **Configured deliverables.** The authoring agents use bundled PRD, Technical Design Specification and Test Strategy templates. Teams can commit `frontier-hve.templates.json` to select company templates and output locations. The template manager initializes documents without overwriting existing files and validates structure, placeholders and template provenance before handoff. Configuration, commands and enforcement limits: [Templates](docs/wiki/Templates.md).
 
@@ -37,7 +37,7 @@ Workspace state goes to `<workspace>/.hve/` (profile, interventions, loadouts). 
 
 | Step | Command or action |
 |---|---|
-| Check the setup | `bash init.sh` (needs the OTel export pointed at `.hve/runs/copilot-otel.jsonl`, see D-005 and D-032 in the [decision log](research/decisions/decision_log.md)) |
+| Check the setup | `bash init.sh` (needs the OTel export pointed at `.aria/runs/copilot-otel.jsonl`, see D-005 and D-032 in the [decision log](research/decisions/decision_log.md)) |
 | Run a benchmark | Set the model picker's reasoning effort to the agent's pin, then `python tools/observe/bench.py <minimal\|single\|creator\|creator-flow>`, open a new **Local** chat with that agent, and paste; the log ends with the run's provenance (which declared harness components left evidence) |
 | Compare runs | `python tools/observe/compare.py` |
 | Inspect one run | `python tools/observe/trajectory.py <session_id>` |
@@ -54,7 +54,7 @@ Workspace state goes to `<workspace>/.hve/` (profile, interventions, loadouts). 
 | `creator-flow` | Graph workflow: Designer → Prototyper → Builder ⇄ Architect → Sweeper → Grower ⇄ Maintainer | [.github/agents/creator-flow.agent.md](.github/agents/creator-flow.agent.md) and six `flow-*` stage agents |
 | `creator-github` | Product work: GitHub PRs the user ticks, human-picked parallel options; tick recording and guardrail hooks are wired in the agent | [.github/agents/creator-github.agent.md](.github/agents/creator-github.agent.md) |
 
-The installed extension ships the same five agents with an **HVE** prefix ([extension/agents](extension/agents)), plus `ARIA skill-evaluator` for onboarding a user's own skills, `ARIA azure-devops` for Azure DevOps work items, pull requests and builds through Microsoft's Azure DevOps MCP server (D-042), and `ARIA product-manager` for PRDs and backlogs (D-044, [Product Manager](docs/wiki/Product-Manager.md)); they work on the open workspace itself instead of `.hve/outputs/<mode>/current/`, and leave out the research-only metrics and Graphify hooks. They have no model pin and no time budget: they run on the model chosen in the picker, including Auto (D-033).
+The installed extension ships the same five agents with an **HVE** prefix ([extension/agents](extension/agents)), plus `ARIA skill-evaluator` for onboarding a user's own skills, `ARIA azure-devops` for Azure DevOps work items, pull requests and builds through Microsoft's Azure DevOps MCP server (D-042), and `ARIA product-manager` for PRDs and backlogs (D-044, [Product Manager](docs/wiki/Product-Manager.md)); they work on the open workspace itself instead of `.aria/outputs/<mode>/current/`, and leave out the research-only metrics and Graphify hooks. They have no model pin and no time budget: they run on the model chosen in the picker, including Auto (D-033).
 
 **Other clients (D-042).** `/export-harness` (or `python <extension>/runtime/tools/adapters/export.py <claude|cursor|codex|vscode> . [--ado <organization>]`) exports `ARIA Lite`, `ARIA single`, `ARIA azure-devops`, the plugin skills and the guard hooks to Claude Code (`claude --agent hve-creator`), Cursor (`/hve-creator`) or Codex CLI (`$hve-creator`), and adds the `ado` MCP server (`@azure-devops/mcp`, harness domains only). [agent_compat.py](hooks/agent_compat.py) maps each client's hook payloads to the VS Code shape so the same hooks run everywhere. Protocol-tested, not yet run live. How to use it, per-client guards and troubleshooting: [docs/wiki/Adapters.md](docs/wiki/Adapters.md); test results and gaps: [research/findings/phase-10-adapters.md](research/findings/phase-10-adapters.md).
 
@@ -109,12 +109,12 @@ tools/git/                 branch_workflow (PR records, push queue), parallel_op
 tools/skills/              scan, triage, eval_skill, onboard
 skills/                    categories.json, registry.json, admitted/
 plugins/harness-assist/    skills and the choice-recorder and guardrail scripts
-.hve/                      workspace state: runs, outputs, blindspots, user_profile.json
+.aria/                      workspace state: runs, outputs, blindspots, user_profile.json
 research/                  comparisons, findings, blind scoring, decisions, hypothesis
 tests/                     prompts, rubric, unit tests
 ```
 
-Machine state is JSON only (`feature_list.json`, `.hve/user_profile.json`, `.harness/*.json`, JSONL logs). Agent-scoped hooks run only on the Local session target.
+Machine state is JSON only (`feature_list.json`, `.aria/user_profile.json`, `.harness/*.json`, JSONL logs). Agent-scoped hooks run only on the Local session target.
 
 ## 3. System flow
 
@@ -122,7 +122,7 @@ Machine state is JSON only (`feature_list.json`, `.hve/user_profile.json`, `.har
 
 | Blueprint node | Frontier HVE implementation |
 |---|---|
-| Identity and behavior | Agent prompts; inferred `explanation_depth` and preferences from [.hve/user_profile.json](.hve/user_profile.json) injected at session start |
+| Identity and behavior | Agent prompts; inferred `explanation_depth` and preferences from [.aria/user_profile.json](.aria/user_profile.json) injected at session start |
 | Context and memory | Graphify MCP (creator), compaction hook, profile memory, explicit tool lists |
 | Model decision | Pinned model per mode, enforced at flush; reasoning effort recorded per call and checked by the bench (D-020). No dynamic routing |
 | Orchestration | Feature loop, `creator-flow` stages, sub-agents capped at 3 |
@@ -131,7 +131,7 @@ Machine state is JSON only (`feature_list.json`, `.hve/user_profile.json`, `.har
 | Verification | Locked shell checks per feature, no-fallback pre-commit scan, module guard, victory check |
 | Adaptation | Attempt ledger rules, Phase 9 skill gate with lift scoring |
 | Governance | Hooks deny, block, ask or stop deterministically (anti-gaming, hook bypass, unticked pushes, budget) |
-| Four metrics | `prompt_tokens`, `context_tokens`, `cache_tokens` / `cache_read_tokens`, `cost_nano_aiu` per call in `.hve/runs/<session>.jsonl` |
+| Four metrics | `prompt_tokens`, `context_tokens`, `cache_tokens` / `cache_read_tokens`, `cost_nano_aiu` per call in `.aria/runs/<session>.jsonl` |
 
 ## 4. Harness comparison: what is borrowed
 
@@ -259,7 +259,7 @@ See the [blueprint's ranked problems and research review](reference/Enterprise%2
 **SkillOpt-style admission: skills earn their place in context.** Discovery is not installation, and installation is not evidence of value. Thirteen skills were authored; a micro paired evaluation admitted ten and rejected three (D-022, D-037, D-038; method and results in [research/findings/phase-9-skill-micro-eval.md](research/findings/phase-9-skill-micro-eval.md)). NVIDIA SkillEvaluator is an optional scanner integration, not a currently running dependency.
 
 - **Skill gate (Phase 9, D-022, D-037)**: [scan.py](tools/skills/scan.py) blocks malformed or unsafe skills (prompt injection, external fetches, encoded payloads, destructive commands, secrets); [triage.py](tools/skills/triage.py) maps candidates to the selected categories ([skills/categories.json](skills/categories.json)); [onboard.py](tools/skills/onboard.py) `--provisional` admits a skill that passes the scan, matches a category, stays under 800 tokens and a 200-character description and ships no non-Python scripts; [eval_skill.py](tools/skills/eval_skill.py) runs paired with/without benchmarks of full sessions, [micro_eval.py](tools/skills/micro_eval.py) runs a fast micro version (below), and [onboard.py](tools/skills/onboard.py) without the flag promotes a skill to `admitted` at a lift of 10 or more points with token overhead under 20% (micro evals also need wins or ties on 3 of 5 tasks and no task lost by more than 1 point).
-- **Micro paired evaluation (D-038)**: each skill has 5 small tasks with 3-4 checks each ([tests/skill_tasks](tests/skill_tasks)). One tool-less call of `gpt-5.4-mini` answers each task with the skill in its instructions and once without; `gpt-5.2-chat` judges every pair blind (A/B order fixed by a hash of the task id) against the checks, scoring 0-5. Both answers come from the same model, so judge self-preference does not favour either condition. Token overhead is the extra prompt and answer tokens divided by a typical creator call (50K tokens). Keyless Entra auth through the Azure CLI; every response is cached in `.hve/evals/micro/`, so re-runs and resumes are free. The full run for 13 skills took 144 s and about 140K tokens.
+- **Micro paired evaluation (D-038)**: each skill has 5 small tasks with 3-4 checks each ([tests/skill_tasks](tests/skill_tasks)). One tool-less call of `gpt-5.4-mini` answers each task with the skill in its instructions and once without; `gpt-5.2-chat` judges every pair blind (A/B order fixed by a hash of the task id) against the checks, scoring 0-5. Both answers come from the same model, so judge self-preference does not favour either condition. Token overhead is the extra prompt and answer tokens divided by a typical creator call (50K tokens). Keyless Entra auth through the Azure CLI; every response is cached in `.aria/evals/micro/`, so re-runs and resumes are free. The full run for 13 skills took 144 s and about 140K tokens.
 
 | Skill | Lift (pp) | Wins/ties/losses | Result |
 |---|---|---|---|
@@ -276,7 +276,7 @@ See the [blueprint's ranked problems and research review](reference/Enterprise%2
 | `code-hygiene` | 8 | 2/1/2 | rejected |
 | `ui-content` | 4 | 2/1/2 | rejected |
 | `accessibility` | 0 | 1/3/1 | rejected |
-- **Skill library and budgeted loading (D-037)**: library skills ([skills/admitted](skills/admitted), registry [skills/registry.json](skills/registry.json)) are not discoverable, so they add nothing to ordinary chats. In creator sessions [hooks/skill_loader.py](hooks/skill_loader.py) ranks them per prompt with [recommend.py](tools/skills/recommend.py) (admitted first, then relevance to the prompt, measured lift, size), loads as many as fit the loadout budget (up to 10 skills and 2,000 tokens) by copying them to `.hve/skills/`, offers the rest ranked so the user can tick more (ask-questions `load-skills`), and denies reading any other library skill. Plugin skills stay readable. `/recommend-skills` shows the same ranking on demand with the evidence: [SkillsBench](https://www.skillsbench.ai) (arXiv 2602.12670) found curated skills raise pass rates by 16.6 points on average and that focused skills beat exhaustive bundles. HVE agents load `provisional` and `admitted` skills; research agents load `admitted` only.
+- **Skill library and budgeted loading (D-037)**: library skills ([skills/admitted](skills/admitted), registry [skills/registry.json](skills/registry.json)) are not discoverable, so they add nothing to ordinary chats. In creator sessions [hooks/skill_loader.py](hooks/skill_loader.py) ranks them per prompt with [recommend.py](tools/skills/recommend.py) (admitted first, then relevance to the prompt, measured lift, size), loads as many as fit the loadout budget (up to 10 skills and 2,000 tokens) by copying them to `.aria/skills/`, offers the rest ranked so the user can tick more (ask-questions `load-skills`), and denies reading any other library skill. Plugin skills stay readable. `/recommend-skills` shows the same ranking on demand with the evidence: [SkillsBench](https://www.skillsbench.ai) (arXiv 2602.12670) found curated skills raise pass rates by 16.6 points on average and that focused skills beat exhaustive bundles. HVE agents load `provisional` and `admitted` skills; research agents load `admitted` only.
 
 | Category | Library skills (admitted) |
 |---|---|
@@ -284,15 +284,15 @@ See the [blueprint's ranked problems and research review](reference/Enterprise%2
 | Architecture | `architecture-options`, `api-design`, `build-approach` (no code, low code or pro code) |
 | De-slop | `ui-anti-slop`, `prose-anti-slop` (`code-hygiene` rejected) |
 | Scrub | `scrub` |
-| Dreams / self-learning | `dreams` (lessons learned into `.hve/learnings.json`) |
+| Dreams / self-learning | `dreams` (lessons learned into `.aria/learnings.json`) |
 | Research | `web-research`, `analyst` |
 
   The skills are original text; their topics and several ideas were informed by the skill library of [AgentX](https://github.com/jnPiyush/AgentX) (Apache-2.0) and the projects its NOTICE credits. See [skills/authored/NOTICE](skills/authored/NOTICE).
-- **Skill evaluator for extension users (D-039)**: pick the `ARIA skill-evaluator` agent and give it a skill folder. It runs the static gate ([evaluate.py](tools/skills/evaluate.py) `static`), drafts 5 tasks for the user to approve, gets with/without answers from a tool-less `ARIA skill-worker` sub-agent (or from Foundry when `.env.local` is set), has a separate `ARIA skill-judge` sub-agent score blind pairs, and applies the same admission rule. Admitted skills go to the workspace library (`.hve/skill-library/`, `.hve/skills-registry.json`) and load per task like the harness library, never into every chat.
+- **Skill evaluator for extension users (D-039)**: pick the `ARIA skill-evaluator` agent and give it a skill folder. It runs the static gate ([evaluate.py](tools/skills/evaluate.py) `static`), drafts 5 tasks for the user to approve, gets with/without answers from a tool-less `ARIA skill-worker` sub-agent (or from Foundry when `.env.local` is set), has a separate `ARIA skill-judge` sub-agent score blind pairs, and applies the same admission rule. Admitted skills go to the workspace library (`.aria/skill-library/`, `.aria/skills-registry.json`) and load per task like the harness library, never into every chat.
 - **Context-load guardrail (D-039)**: [context_load.py](tools/skills/context_load.py) measures what loads into every request before the user types: every discoverable skill (workspace, user and plugin folders), always-on instructions (`copilot-instructions.md`, `AGENTS.md`, `*.instructions.md` with `applyTo: **`), the agent prompt and an estimate per MCP server. It reports the total, its share of the context window, the top contributors, duplicate and never-measured skills, and warns when the load grows noticeably or takes a large share of the window, with fixes. No fixed token limit. It runs on demand as `/check-context-load`, at **ARIA: Set up** (notification), at the delivery-coach close-out, and at the end of a skill evaluation. Details and invocation: [research/findings/phase-9-skill-evaluator-and-context-load.md](research/findings/phase-9-skill-evaluator-and-context-load.md).
 - **harness-assist plugin (D-029)**: [plugins/harness-assist](plugins/harness-assist) adds the skills `delivery-coach`, `recommend-skills`, `check-context-load`, `export-harness`, `feature-checklist`, `run-tests`, `code-review`, `parallel-options`, `pr-push`, `explain-walkthrough` and `prototype-guardrail`, plus two hook scripts wired into the creator agents. The choice recorder turns the user's ticks in ask-questions answers into files the harness enforces. The prototype guardrail flags code over 5,000 lines, files over 20 MB, non-enterprise components (for example FalkorDB, Tesseract, SQLite, local vector stores) with their licensed Azure alternative, and self-built infrastructure, and names the experts to involve. The extension ships these skills; in this repository enable them with the `chat.pluginLocations` setting.
 - **Explanation depth (D-034)**: the user is never asked how technical they are. Setup asks only how they prefer to build (no code, low code, pro code) as a starting point; the profile then infers `guided`, `balanced` or `expert` from role statements and how prompts are written, so a stated preference can be outweighed by behavior. Agents adapt silently and never label the user.
-- **delivery-coach: protection against vibe-coded production apps (D-035)**: once setup records a build preference, the ARIA Lite agents run every request as a participatory, verified loop. *Initializer*: `feature_list.json`, `tracker.json` and `progress.txt`. *Generator*: one fresh sub-agent per feature. *Evaluator*: the locked unit-test check, a screenshot captured by the check itself for UI features, and a second sub-agent reviewing the diff and screenshot. After each passing feature the user is offered a manual check (`looks right`, `needs changes`, `skip`), recorded by a hook into the tracker. Complex features get a discovery sprint: 2-3 approaches on their own branches and worktrees under `.hve/discovery/`, each built, run and reviewed before the user ticks the winner. For guided and balanced users the skill coaches first (`explain-walkthrough`) and challenges choices that need an enterprise stack or experts (`prototype-guardrail`), so non-experts are not left scaling a prototype without the right stack or design knowledge.
+- **delivery-coach: protection against vibe-coded production apps (D-035)**: once setup records a build preference, the ARIA Lite agents run every request as a participatory, verified loop. *Initializer*: `feature_list.json`, `tracker.json` and `progress.txt`. *Generator*: one fresh sub-agent per feature. *Evaluator*: the locked unit-test check, a screenshot captured by the check itself for UI features, and a second sub-agent reviewing the diff and screenshot. After each passing feature the user is offered a manual check (`looks right`, `needs changes`, `skip`), recorded by a hook into the tracker. Complex features get a discovery sprint: 2-3 approaches on their own branches and worktrees under `.aria/discovery/`, each built, run and reviewed before the user ticks the winner. For guided and balanced users the skill coaches first (`explain-walkthrough`) and challenges choices that need an enterprise stack or experts (`prototype-guardrail`), so non-experts are not left scaling a prototype without the right stack or design knowledge.
 - **Governance**: enforced by local hooks instead of the Microsoft Agent Governance Toolkit: budget stop or user-approved continuation, anti-gaming, git-hook bypass, human-only commands, force-push ban, and pushes or PRs only for branches the user ticked (D-026).
 - **Guardrails (D-025)**: [module_guard.py](hooks/module_guard.py) blocks files over 500 lines; [no_fallback.py](hooks/no_fallback.py) rejects commits that hide errors or ship TODOs.
 
@@ -304,7 +304,7 @@ The blueprint's three suites (Minecraft builder, FinCon, OpenHands) are not buil
 |---|---|
 | Pinned model and effort | Agent file pin; flush and bench reject mismatches |
 | Run | [bench.py](tools/observe/bench.py) follows a run live and stops waiting at a timeout |
-| Collect | [collect.py](tools/observe/collect.py) verifies the prompt and moves output to `.hve/outputs/<mode>/<session>/` |
+| Collect | [collect.py](tools/observe/collect.py) verifies the prompt and moves output to `.aria/outputs/<mode>/<session>/` |
 | Score | [blind.py](tools/observe/blind.py) shuffles runs for human and AI scoring from screenshots |
 | Compare | [compare.py](tools/observe/compare.py) reports all five pillars' run metrics into [research/comparisons/](research/comparisons); its legacy sorter has not yet added cost to the priority order (section 6) |
 | Cache accounting | `cache_ratio` counts cache reads only (D-020) |
@@ -334,7 +334,7 @@ Baseline, one run per mode (details in [phase-2-baseline-blind-eval.md](research
 | B9 Sub-agent leakage | Built: 2K-token return instruction at sub-agent start |
 | B10 DSPy over-optimization | Not applicable (DSPy not used) |
 
-Blindspot-coded interventions are logged to [.hve/blindspots/](.hve/blindspots).
+Blindspot-coded interventions are logged to [.aria/blindspots/](.aria/blindspots).
 
 ## 11. Research adoption
 
@@ -356,10 +356,10 @@ The full source trail is in the [blueprint](reference/Enterprise%20AI%20Harness%
 | Every design decision with evidence (D-001 onwards) | [research/decisions/decision_log.md](research/decisions/decision_log.md) |
 | Hypotheses and their status | [research/hypothesis.md](research/hypothesis.md) |
 | Findings per phase | [research/findings/](research/findings) |
-| Run data: per-call metrics, hook events, run manifests, interventions | [.hve/runs/](.hve/runs) |
+| Run data: per-call metrics, hook events, run manifests, interventions | [.aria/runs/](.aria/runs) |
 | Mode comparison tables | [research/comparisons/](research/comparisons) |
 | Blind scoring rounds | [research/blind/](research/blind) |
-| Collected run outputs | [.hve/outputs/](.hve/outputs) |
+| Collected run outputs | [.aria/outputs/](.aria/outputs) |
 | Phase status, next actions, what is validated | [tracker.json](tracker.json) |
 | Original request and design rules | [reference/initial_request.md](reference/initial_request.md) |
 

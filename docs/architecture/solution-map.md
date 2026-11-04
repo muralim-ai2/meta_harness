@@ -76,7 +76,7 @@ Hooks between the model and the workspace: deny, advise, stop, or add context. R
 
 | Module | Purpose | Files | Tokens |
 |---|---|---|---|
-| `guards:runtime` | Shared hook plumbing: client payload mapping and .hve paths. | 2 | 2,187 |
+| `guards:runtime` | Shared hook plumbing: client payload mapping and .aria paths. | 2 | 2,187 |
 | `guards:policy` | Guards that deny, advise or stop: loop state, file size, fallbacks, error streaks, flow stages, plan sync, budgets. | 9 | 9,056 |
 | `guards:context` | Hooks that add context: skill loadout and gating, templates, sub-agent briefs, user profile, code graph refresh. | 5 | 8,504 |
 
@@ -137,7 +137,7 @@ The VSIX: activation, agent rendering, pack commands, exports to other harnesses
 
 ## State and data stores
 
-Files the harness reads and writes under .hve and the user's home folder. Roles: harness-engineer.
+Files the harness reads and writes under .aria and the user's home folder. Roles: harness-engineer.
 
 | Module | Purpose | Files | Tokens |
 |---|---|---|---|

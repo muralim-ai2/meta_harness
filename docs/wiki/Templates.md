@@ -44,7 +44,7 @@ python <tools>/templates/manage.py configure
 
 This exclusively creates `frontier-hve.templates.json`; it never overwrites an
 existing file. Commit that file and your custom templates to share them with the
-team. They belong outside `.hve/`, which is runtime state, often git-ignored.
+team. They belong outside `.aria/`, which is runtime state, often git-ignored.
 
 ```json
 {
@@ -90,7 +90,7 @@ or line-ending conversion is a source change and requires document migration.
 
 The bundled `config.schema.json` describes the configuration shape. The Python
 manager also checks path safety and source identities. Paths must be relative,
-use `/`, stay inside the workspace and not traverse `.git`, `.hve` or `.harness`.
+use `/`, stay inside the workspace and not traverse `.git`, `.aria` or `.harness`.
 Linked paths, absolute paths, case aliases of protected names and components
 ending in dots/spaces are rejected. Output patterns require exactly
 one `{slug}` and a `.md` extension. Missing or malformed configured sources fail;

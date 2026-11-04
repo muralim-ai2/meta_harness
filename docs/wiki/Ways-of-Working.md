@@ -4,15 +4,15 @@ How a piece of work runs through the HVE agents since extension 0.13.0 (project 
 
 ## One project per workspace, one folder per ask
 
-A workspace holds one **project**. Every piece of work you give a working agent is an **ask** within it. The agent's first step is `lifecycle.py where`, which says whether your prompt continues the open ask, starts a new ask in the project, or belongs in another workspace; the agent confirms that with you in one form. A new ask runs `lifecycle.py contract`, which opens a timestamped folder (UTC) and makes it the active ask; the first ask also starts the project (`.hve/project/project.json`):
+A workspace holds one **project**. Every piece of work you give a working agent is an **ask** within it. The agent's first step is `lifecycle.py where`, which says whether your prompt continues the open ask, starts a new ask in the project, or belongs in another workspace; the agent confirms that with you in one form. A new ask runs `lifecycle.py contract`, which opens a timestamped folder (UTC) and makes it the active ask; the first ask also starts the project (`.aria/project/project.json`):
 
 ```
-.hve/project/                      shared by every ask of the workspace's project
+.aria/project/                      shared by every ask of the workspace's project
   project.json                     name, goal, kind of deliverable, asks
   feature_list.json                the product's features; each locked feature records the ask that added it
   feature_list.add.json            new features for `loop.py amend`
   progress.txt, tracker.json, state.json
-.hve/asks/
+.aria/asks/
   active.json                      the open ask
   20261019-1405-colour-palette/
     request.md                     your request, verbatim
@@ -23,8 +23,8 @@ A workspace holds one **project**. Every piece of work you give a working agent 
     loop/                          attempts/, evidence/<feature>/ (and evidence/prototype/), prs/, choices/, checks/, tool_log.jsonl
 ```
 
-- Your workspace root holds only the product: source code, tests and documents. Loop files stay in `.hve/project/`; screenshots and logs stay in the ask folder.
-- `.hve/` is git-ignored. The loop's commits carry a read-only record instead: `[init]` and `[amend]` list each locked `name: verify`, and `[progress] <feature> passes` names the check that passed.
+- Your workspace root holds only the product: source code, tests and documents. Loop files stay in `.aria/project/`; screenshots and logs stay in the ask folder.
+- `.aria/` is git-ignored. The loop's commits carry a read-only record instead: `[init]` and `[amend]` list each locked `name: verify`, and `[progress] <feature> passes` names the check that passed.
 - Feature checks write screenshots and logs to `$HVE_EVIDENCE/<feature>/`; `loop.py` and the output evaluation set it to the open ask's `loop/evidence/`.
 - The first ask runs `loop.py init`; later asks add features with `feature_list.add.json` and `loop.py amend`. An ask's tasks, sign-offs and report count only the features it added.
 - Every prompt gets the open ask's paths (plan, evidence, feature list) as context, and every sub-agent gets the ask folder, so agents never search for `plan.md`.
@@ -65,7 +65,7 @@ Every agent that opens asks also asks first whether to continue the open ask, st
 
 - **Skill choice.** Every library skill relevant to your ask is shortlisted, with no cap, and ranked by relevance. If the shortlist passes the guideline (10 skills or 32,000 tokens), the agent scores each skill 0-10 for your ask across its stages and `lifecycle.py skills score` re-ranks the shortlist and suggests the top 10; the agent shows you the shortlist size and the suggested skills with their scores and reasons and asks once: suggested, all, or named (scores and the choice are recorded in `plan.md`). Loaded skills cost their tokens on every turn of the ask; the provenance report then shows how much of the prompt was read from cache.
 - **Guards (D-056).** The loop guard is in awareness mode for now (`hooks/guard_mode.json`, `"loop_guard": "advise"`): edits to the loop files or loop state while features fail, and stopping with failing features, are not blocked but shown in the chat as **Advisory alert (experimental): surfaces LLM behaviour that helps to know**, with what was changed. Escalations, hook bypasses, resume and pushes stay blocked. The error guard pauses the agent after 3 failed commands in a row (the feature loop's own checks do not count) and shows **Error guard - paused for your attention** with the commands and their output; tools stay held until your next prompt.
-- **Telemetry file.** On every start, and when research telemetry is turned on, the extension trims `.hve/runs/copilot-otel.jsonl` to the last 3 days, at most 200 MB (`tools/observe/otel_trim.py`), adds it to `.gitignore`, and says what it did.
+- **Telemetry file.** On every start, and when research telemetry is turned on, the extension trims `.aria/runs/copilot-otel.jsonl` to the last 3 days, at most 200 MB (`tools/observe/otel_trim.py`), adds it to `.gitignore`, and says what it did.
 - **Plan.** `plan.md` is the agreement. If you edit it mid-run, the plan check holds `loop.py` and stage changes until the agent tells you what changes and runs `lifecycle.py plan-sync`.
 - **Guarded review commands (0.18.1+).** [Mission Control](Mission-Control.md) calls `lifecycle.py review-status <expected-ask>` to obtain a read-only revision, then `lifecycle.py tick-for <expected-ask> <revision> <stage-or-task-item> <accepted|changes> "<human note>"`. The guarded command refuses a different active ask or changed review inputs before writing. It records only human reviews, not telemetry options or stage advancement. The original `tick` command and agent forms remain unchanged. These are optimistic review guards, not a transaction lock across independently running agents.
 - **Sign-off checklist.** `plan.md` ends with a generated checklist you can tick in the file or through the agent's forms:
@@ -77,7 +77,7 @@ Every agent that opens asks also asks first whether to continue the open ask, st
   - [ ] stage:requirements — Agree the problem ... (persona ARIA product-manager; skills prd; templates prd; gate: ...; status planned)
   - stage:test — skipped: checks cover it
   **Tasks** (evidence from each check)
-  - [ ] task:feed — build, ARIA engineer; check passes; evidence `.hve/asks/<id>/loop/evidence/feed/`
+  - [ ] task:feed — build, ARIA engineer; check passes; evidence `.aria/asks/<id>/loop/evidence/feed/`
   ```
 
   After each milestone the agent asks: *Reviewed - accept*, *Continue without reviewing* (fine, recorded as such) or *Needs changes*; it skips the question when you already ticked the item. `lifecycle.py tick <item> <value> "<note>"` records an answer, `lifecycle.py checklist` takes in your ticks from `plan.md` and lists what is still open. Ticking inside the generated block does not trigger the plan check. A stage set back to planned (a new sprint, a change of direction) loses its sign-off.
@@ -100,7 +100,7 @@ One workspace holds one project. Before a new contract the agent runs `lifecycle
 | `continue` | "Fix the palette page contrast", or you come back the next day | `lifecycle.py open <ask>`: same plan, same feature list, open items listed |
 | `new-ask` | "Build a settings screen" | A new ask folder and plan; its features join the project's list through `loop.py amend` |
 | `new-workspace` | "Create a board presentation on revenue forecasting" (a different kind of deliverable), or a new build sharing almost no subject words with the project | Recommends another folder or git worktree in a new window; if you stay, a new ask records the recommendation (`previous_ask`) |
-| `new-project` | First ask in an empty workspace | The contract starts `.hve/project/project.json` |
+| `new-project` | First ask in an empty workspace | The contract starts `.aria/project/project.json` |
 
 The skill loader also recommends a new workspace once per ask when a prompt starts a different project. `lifecycle.py shift "<prompt>"` shows that verdict. The check compares subject words with the project's goal, asks and features, so a follow-up phrased very differently can trigger it; that costs one line and you decide.
 
@@ -120,28 +120,28 @@ flowchart TD
 | Pattern | Example | What HVE does |
 |---|---|---|
 | One ask with parts (recommended) | "Build the orders page and its API" | One contract and checklist; features `api-orders`, `ui-orders` run one after another, each by a fresh sub-agent |
-| One folder per parallel chat | `git worktree add ../shop-memo -b memo`, open it in a new window | Each folder has its own `.hve/` (ask, loop, evidence, logs); merge the branches when done. Use different feature names: loop branches are shared across worktrees |
+| One folder per parallel chat | `git worktree add ../shop-memo -b memo`, open it in a new window | Each folder has its own `.aria/` (ask, loop, evidence, logs); merge the branches when done. Use different feature names: loop branches are shared across worktrees |
 | Two chats in one folder | Prototype in chat 2 while creator plans in chat 1 | Chat 2's `contract` opens its own ask folder and reports `previous_open`; chat 1's skill loader tells it once that the open ask moved, and it runs `lifecycle.py open <its ask>` before going on. Two feature loops at the same time cannot share one checkout |
 
 An ask finishes when its milestones are done (agents end with `lifecycle.py stage deliver done`) and any evaluation you asked for has run. Personas delegated inside an ask (`ARIA product-manager`, `ARIA Prototype Creator`) work in the parent's ask and do not open their own.
 
 ## Skills, tools and hooks during an ask
 
-- **Skills**: the contract installs the chosen skills to `.hve/skills/`; other library skills are blocked so they cannot leak into context. Sub-agents get them through their brief (`lifecycle.py brief`) and end their reply with `SKILLS-USED: ...`, which the parent records (`lifecycle.py used`).
+- **Skills**: the contract installs the chosen skills to `.aria/skills/`; other library skills are blocked so they cannot leak into context. Sub-agents get them through their brief (`lifecycle.py brief`) and end their reply with `SKILLS-USED: ...`, which the parent records (`lifecycle.py used`).
 - **Tools**: working agents have no fixed tool list, so they see your MCP servers. The contract records each harness's MCP servers with an estimated tool-definition load and warns over 6,000 tokens; disable servers the ask does not need.
 - **Hooks** (VS Code Local runs them per agent; other harnesses after **ARIA: Install for other harnesses**):
 
 | Hook | Fires | Leaves |
 |---|---|---|
-| `skill_loader` | prompt submit, before and after tools | `.hve/runs/<session>.skills.json`; the open ask's paths on every prompt; new-workspace message |
-| `loop_guard` | before and after tools, stop | `<ask>/loop/tool_log.jsonl`; denies in `.hve/runs/<session>.interventions.jsonl` |
+| `skill_loader` | prompt submit, before and after tools | `.aria/runs/<session>.skills.json`; the open ask's paths on every prompt; new-workspace message |
+| `loop_guard` | before and after tools, stop | `<ask>/loop/tool_log.jsonl`; denies in `.aria/runs/<session>.interventions.jsonl` |
 | `module_guard` | after edits | split request for files over 500 lines |
 | `plan_check` (Auto, Collab) | prompt submit, before loop and stage commands | holds runs while `plan.md` is out of sync |
 | `compaction` | sub-agent start | ask folder, evidence path, ask skills and rules in every sub-agent |
-| `agent_ledger` | sub-agent start and stop | `.hve/runs/<session>.agents.jsonl`: parent agent, sub-agent name and id, ask, time, and the model when the client sends it (Cursor, Codex) |
+| `agent_ledger` | sub-agent start and stop | `.aria/runs/<session>.agents.jsonl`: parent agent, sub-agent name and id, ask, time, and the model when the client sends it (Cursor, Codex) |
 | `template_guard` | session start and stop | deliverables only from configured templates |
-| `profile_detector` | session start, prompt submit | `.hve/user_profile.json` (build preference, explanation depth) |
-| `metrics` (research arms in `.github/agents/` only) | every event | `.hve/runs/<session>.events.jsonl` and, with research telemetry, `<session>.jsonl` (tokens, cost, cache per model call) |
+| `profile_detector` | session start, prompt submit | `.aria/user_profile.json` (build preference, explanation depth) |
+| `metrics` (research arms in `.github/agents/` only) | every event | `.aria/runs/<session>.events.jsonl` and, with research telemetry, `<session>.jsonl` (tokens, cost, cache per model call) |
 
 `ARIA Prototype Creator` runs only `loop_guard` (safety); creator, Auto and Collab run all but `metrics`.
 
@@ -189,11 +189,11 @@ What to check after each chat:
 
 | Check | Expect |
 |---|---|
-| `.hve/asks/` and `.hve/project/` | One timestamped folder per ask with `request.md`, `contract.json`, `plan.md`; the prototype in its `prototype/` with screenshots in `loop/evidence/prototype/`; creator's `evidence/` in its `loop/`; the feature list, progress, tracker and state in `.hve/project/`. Nothing new in the workspace root except product files |
-| Continuation | The copy-to-clipboard prompt in chat 2's second chat: the agent asks continue / new ask / new workspace (recommended: continue or new ask), and on continue works from the same `plan.md` without searching for it; on new ask the feature joins `.hve/project/feature_list.json` through `loop.py amend` |
-| Skills | Over the guideline, each agent writes `.hve/asks/skill-scores.json`, runs `lifecycle.py skills score` and asks you suggested/all/named with the scores shown; `plan.md` shows each skill with its score and why. `.hve/runs/<session>.skills.json` lists what loaded and was read |
+| `.aria/asks/` and `.aria/project/` | One timestamped folder per ask with `request.md`, `contract.json`, `plan.md`; the prototype in its `prototype/` with screenshots in `loop/evidence/prototype/`; creator's `evidence/` in its `loop/`; the feature list, progress, tracker and state in `.aria/project/`. Nothing new in the workspace root except product files |
+| Continuation | The copy-to-clipboard prompt in chat 2's second chat: the agent asks continue / new ask / new workspace (recommended: continue or new ask), and on continue works from the same `plan.md` without searching for it; on new ask the feature joins `.aria/project/feature_list.json` through `loop.py amend` |
+| Skills | Over the guideline, each agent writes `.aria/asks/skill-scores.json`, runs `lifecycle.py skills score` and asks you suggested/all/named with the scores shown; `plan.md` shows each skill with its score and why. `.aria/runs/<session>.skills.json` lists what loaded and was read |
 | Briefs | Collab's call to `ARIA Prototype Creator` and creator's sub-agents start with "Frontier HVE brief"; `contract.json` → `delegations` and `reported` filled |
-| Hooks | `.hve/runs/<session>.skills.json` for creator, Auto and Collab (skill loader); creator's `loop/tool_log.jsonl` has pre and post rows (loop guard); `.hve/user_profile.json` exists (profile detector); `.hve/runs/<session>.interventions.jsonl` only if a guard tripped |
+| Hooks | `.aria/runs/<session>.skills.json` for creator, Auto and Collab (skill loader); creator's `loop/tool_log.jsonl` has pre and post rows (loop guard); `.aria/user_profile.json` exists (profile detector); `.aria/runs/<session>.interventions.jsonl` only if a guard tripped |
 | Topic switch | The War of the Worlds prompt in chat 3 is recommended a new workspace (in the where form, or as a one-line message) |
 | Git | `git log` shows `[init] scaffold` with the locked checks in its body and one `[progress]` commit per feature |
 | Provenance | `provenance.py` per agent file is `ok` or names what failed; `provenance.md` in each ask gives pillars, sign-off checklist, skill load, recommended against used and decisions |

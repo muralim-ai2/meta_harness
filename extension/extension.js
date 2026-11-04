@@ -8,6 +8,7 @@ const { execFile } = require('child_process');
 const { renderPlugin } = require('./render');
 const packs = require('./packs');
 const missionControl = require('./ui/mission-control');
+const { planDigest } = require('./ui/workspace-state');
 
 const MIN_PYTHON = [3, 11];
 const PYTHON_LAUNCHERS = [['python'], ['python3'], ['py', '-3']];
@@ -306,10 +307,116 @@ async function offerReload(message) {
 }
 
 /**
+ * Move every entry of a folder into another, recursing into folders present in both; return the files that exist in both.
+ * @param {string} from
+ * @param {string} to
+ * @returns {string[]}
+ */
+function mergeFolder(from, to) {
+  fs.mkdirSync(to, { recursive: true });
+  const clashes = [];
+  for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
+    const source = path.join(from, entry.name);
+    const target = path.join(to, entry.name);
+    if (!fs.existsSync(target)) {
+      fs.renameSync(source, target);
+    } else if (entry.isDirectory() && fs.statSync(target).isDirectory()) {
+      clashes.push(...mergeFolder(source, target));
+    } else {
+      clashes.push(source);
+    }
+  }
+  if (clashes.length === 0) {
+    fs.rmdirSync(from);
+  }
+  return clashes;
+}
+
+/**
+ * Rewrite '.hve/' to '.aria/' in the ask and project records, keeping each recorded plan digest valid.
+ * @param {string} state The workspace's .aria folder.
+ */
+function rewriteStatePaths(state) {
+  const asks = path.join(state, 'asks');
+  const plans = fs.existsSync(asks) ? fs.readdirSync(asks, { withFileTypes: true }).filter((entry) => entry.isDirectory())
+    .map((entry) => path.join(asks, entry.name)).filter((ask) => fs.existsSync(path.join(ask, 'plan.md'))
+      && fs.existsSync(path.join(ask, 'contract.json')))
+    .map((ask) => ({ ask, before: planDigest(fs.readFileSync(path.join(ask, 'plan.md'), 'utf8')) })) : [];
+  for (const folder of [asks, path.join(state, 'project')].filter((item) => fs.existsSync(item))) {
+    for (const entry of fs.readdirSync(folder, { recursive: true, withFileTypes: true })) {
+      const file = path.join(entry.parentPath, entry.name);
+      const text = entry.isFile() && /\.(json|md)$/.test(entry.name) ? fs.readFileSync(file, 'utf8') : '';
+      if (text.includes('.hve/')) {
+        fs.writeFileSync(file, text.replaceAll('.hve/', '.aria/'));
+      }
+    }
+  }
+  for (const { ask, before } of plans) {
+    const contractFile = path.join(ask, 'contract.json');
+    const contract = JSON.parse(fs.readFileSync(contractFile, 'utf8'));
+    const after = planDigest(fs.readFileSync(path.join(ask, 'plan.md'), 'utf8'));
+    if (contract.plan.sha256 === before && before !== after) {
+      contract.plan.sha256 = after;
+      fs.writeFileSync(contractFile, JSON.stringify(contract, null, 2) + '\n');
+    }
+  }
+}
+
+/**
+ * Move a workspace's state from .hve (versions before 0.24) into .aria, rewrite stored paths and keep the state git-ignored.
+ * @param {string} workspace
+ * @returns {string[]} Files left in .hve because .aria already has them.
+ */
+function migrateStateFolder(workspace) {
+  const legacy = path.join(workspace, '.hve');
+  if (!fs.existsSync(legacy)) {
+    return [];
+  }
+  const state = path.join(workspace, '.aria');
+  const clashes = mergeFolder(legacy, state);
+  rewriteStatePaths(state);
+  const gitignore = path.join(workspace, '.gitignore');
+  if (fs.existsSync(gitignore)) {
+    const text = fs.readFileSync(gitignore, 'utf8');
+    const lines = text.split(/\r?\n/);
+    const added = [...new Set(lines.filter((line) => /^\/?\.hve(\/|$)/.test(line)).map((line) => line.replace('.hve', '.aria')))]
+      .filter((line) => !lines.includes(line));
+    if (added.length) {
+      fs.appendFileSync(gitignore, `${text === '' || text.endsWith('\n') ? '' : '\n'}${added.join('\n')}\n`);
+    }
+  }
+  return clashes;
+}
+
+/**
+ * Migrate every open workspace folder from .hve to .aria and repoint a research telemetry export that wrote into .hve.
+ */
+function migrateWorkspaces() {
+  const otel = vscode.workspace.getConfiguration('github.copilot.chat.otel');
+  for (const folder of vscode.workspace.workspaceFolders || []) {
+    const workspace = folder.uri.fsPath;
+    if (otel.get('outfile') === path.join(workspace, '.hve', 'runs', 'copilot-otel.jsonl')) {
+      otel.update('outfile', path.join(workspace, '.aria', 'runs', 'copilot-otel.jsonl'), vscode.ConfigurationTarget.Global)
+        .then(undefined, (error) => vscode.window.showErrorMessage(`ARIA could not repoint research telemetry: ${error.message}`));
+    }
+    try {
+      const clashes = migrateStateFolder(workspace);
+      if (clashes.length) {
+        vscode.window.showErrorMessage(`ARIA moved ${folder.name}/.hve into .aria except ${clashes.length} file(s) that exist in both, for `
+          + `example ${clashes.slice(0, 3).map((file) => path.relative(workspace, file)).join(', ')}. Keep the copy you need in .aria, then delete .hve.`);
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(`ARIA could not move ${folder.name}/.hve to .aria: ${error.message}`);
+    }
+  }
+}
+
+/**
  * Register the commands, render the plugin on first install, update or Python change, and show a status item while Python is missing.
  * @param {vscode.ExtensionContext} context
  */
 async function activate(context) {
+  migrateWorkspaces();
   const host = { run: runPythonJson, offerReload };
   context.subscriptions.push(
     vscode.commands.registerCommand('frontierHve.setup', () => setUp(context)),

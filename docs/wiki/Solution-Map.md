@@ -16,12 +16,12 @@ It works on any repository. Nothing in `tools/map/` is specific to this repo; re
 /solution-map create
 ```
 
-The agent builds the map in `.hve/map/`, reports its size and counts, and opens the explorer. Say `/solution-map publish` to also write the release snapshot to `docs/architecture/` for committing.
+The agent builds the map in `.aria/map/`, reports its size and counts, and opens the explorer. Say `/solution-map publish` to also write the release snapshot to `docs/architecture/` for committing.
 
 **From a terminal**, at the repository root:
 
 ```powershell
-python tools\map\solution_map.py build              # create or refresh .hve\map\ (map.json, overview.md, explorer.html)
+python tools\map\solution_map.py build              # create or refresh .aria\map\ (map.json, overview.md, explorer.html)
 python tools\map\solution_map.py open               # open the explorer
 python tools\map\solution_map.py build --snapshot   # publish docs\architecture\solution-map.{json,md,html}
 ```
@@ -33,7 +33,7 @@ $ext = Get-ChildItem "$HOME/.vscode/extensions/muralim-ai2.frontier-hve-*" | Sor
 python "$($ext.FullName)/runtime/tools/map/solution_map.py" build --root .
 ```
 
-The script lives in `tools\map\`; `.hve\map\` holds only the output. Running `python solution_map.py` from inside `.hve\map\` fails with file not found.
+The script lives in `tools\map\`; `.aria\map\` holds only the output. Running `python solution_map.py` from inside `.aria\map\` fails with file not found.
 
 ## Understand a part of the code
 
@@ -102,7 +102,7 @@ The page loads nothing from the network. If your system is set to reduce motion,
 
 The build also classes the app as small, medium or large: medium from 50 code files or 5,000 code lines, large from 300 files or 50,000 lines.
 
-It always skips dependencies and build output (`node_modules`, `dist`, `.venv` and the like) and the harness's own state (`.hve/`, `.github/hve/`). A file that does not parse or is not UTF-8 is not fatal: it stays in the map without functions, marked "Not mapped", and is listed under `unreadable_files` in the build output and in the overview. Add a path to `exclude` in the config only if you want it gone.
+It always skips dependencies and build output (`node_modules`, `dist`, `.venv` and the like) and the harness's own state (`.aria/`, `.github/hve/`). A file that does not parse or is not UTF-8 is not fatal: it stays in the map without functions, marked "Not mapped", and is listed under `unreadable_files` in the build output and in the overview. Add a path to `exclude` in the config only if you want it gone.
 
 ## Add or improve a concept
 

@@ -42,7 +42,7 @@
 **Confirmed:**
 - Agents run in VS Code Copilot Chat (Local harness, agent-scoped hooks) and are exported to other harnesses; hooks cannot rewrite chat history (D-013) and cannot trigger compaction. They can add context on `UserPromptSubmit`, `PreToolUse`, `PostToolUse` and `SubagentStart`, and `PreCompact` is notification only, with `trigger: "auto"` when the conversation exceeds the prompt budget (VS Code Local hooks reference; GitHub Copilot hooks reference).
 - Hook payloads do not carry the context size. Measured prompt tokens exist only in metrics rows (research arms) or the Copilot OTel export when research telemetry is on (`ask_report.measures`).
-- `.hve/` holds workspace state and is usually git-ignored; asks already record requests, features, stages, PRDs and designs (`contract.json`, `feature_list.json`, template registry).
+- `.aria/` holds workspace state and is usually git-ignored; asks already record requests, features, stages, PRDs and designs (`contract.json`, `feature_list.json`, template registry).
 - Graphify (`graphifyy` 0.9.71) extracts a code-only graph locally with tree-sitter (D-016) but must be installed separately with `uv`; extension users usually do not have it.
 - The skill loader, compaction hook and provenance report already exist and are the places to add map context and evidence.
 
@@ -70,12 +70,12 @@ flowchart TD
     EX --> VIEW
     FW --> VIEW
     ASK --> VIEW
-    VIEW --> SUM --> MAP[.hve/map/map.json + overview.md]
+    VIEW --> SUM --> MAP[.aria/map/map.json + overview.md]
     MAP --> Q[solution_map.py overview, impact, path, node, status]
     Q --> AG[E2E, BYOW, sub-agent briefs]
     METER[context_meter hook: running context estimate] -->|"over 25% of window"| CP[checkpoint: refresh changed nodes, inject overview, log event]
     CP --> MAP
-    CP --> EV[.hve/runs/session.map.jsonl]
+    CP --> EV[.aria/runs/session.map.jsonl]
     Q --> EV
     EV --> PROV[provenance.md and provenance.json: Solution map section]
     REL[release tag, ask close, on demand] --> BUILD
@@ -101,7 +101,7 @@ Principal flows:
 <!-- hve-section: data -->
 ## Data Design
 
-**Map file** (`.hve/map/map.json`, one per workspace, JSON only):
+**Map file** (`.aria/map/map.json`, one per workspace, JSON only):
 
 ```json
 {
@@ -127,9 +127,9 @@ Principal flows:
 - **Levels:** `system`, `view`, `module`, `symbol`. Ids are `<view>:<module>[.<symbol>]`, stable across builds for unchanged code.
 - **Every edge has evidence** (a source line or document anchor); edges without evidence are not written.
 - **Roles** (`skills/map_roles.json`): view to roles, for example `data` to `db-engineer`, `infra` to `devops`, `identity` to `security`, `integration` to `platform-apim`, `ml` to `data-scientist`, `requirements` to `product-manager`. Expertise packs may add roles and views for their domain.
-- **Snapshots:** `.hve/map/snapshots/<release-or-utc-stamp>.json`, never edited. A release snapshot is also written to `docs/architecture/solution-map.json` and `solution-map.md` and committed (Q-3).
-- **Events** (`.hve/runs/<session>.map.jsonl`), one line per event: `{"ts", "event": "checkpoint"|"query"|"build"|"precompact", "context_estimate", "window", "share", "map_commit", "changed_files", "answer_tokens", "cited_file_tokens", "measured_prompt"}`.
-- **Retention:** the map and snapshots stay with the workspace; events follow the `.hve/runs` retention. The map holds code structure and summaries, no secrets: files matched by `.gitignore` and secret patterns from `tools/skills/scan.py` are skipped.
+- **Snapshots:** `.aria/map/snapshots/<release-or-utc-stamp>.json`, never edited. A release snapshot is also written to `docs/architecture/solution-map.json` and `solution-map.md` and committed (Q-3).
+- **Events** (`.aria/runs/<session>.map.jsonl`), one line per event: `{"ts", "event": "checkpoint"|"query"|"build"|"precompact", "context_estimate", "window", "share", "map_commit", "changed_files", "answer_tokens", "cited_file_tokens", "measured_prompt"}`.
+- **Retention:** the map and snapshots stay with the workspace; events follow the `.aria/runs` retention. The map holds code structure and summaries, no secrets: files matched by `.gitignore` and secret patterns from `tools/skills/scan.py` are skipped.
 
 <!-- hve-section: interfaces -->
 ## Interfaces and Contracts
@@ -149,7 +149,7 @@ Principal flows:
 
 **Contract additions** (`contract.json`): `map: {enabled, size, why, commit, path}`; the plan's generated block shows the size class, the map's age and staleness.
 
-**Hook contract** (`context_meter.py`): on `UserPromptSubmit`, `PostToolUse` and `SubagentStart` it adds the text it saw to the session estimate (`.hve/runs/<session>.context.json`); when the estimate crosses a band (25%, then 50% and 75%) it runs `build --changed`, returns `additionalContext` with the overview and the current impact, and writes a `checkpoint` event. On `PreCompact` it writes a `precompact` event with the estimate. It never blocks a tool call.
+**Hook contract** (`context_meter.py`): on `UserPromptSubmit`, `PostToolUse` and `SubagentStart` it adds the text it saw to the session estimate (`.aria/runs/<session>.context.json`); when the estimate crosses a band (25%, then 50% and 75%) it runs `build --changed`, returns `additionalContext` with the overview and the current impact, and writes a `checkpoint` event. On `PreCompact` it writes a `precompact` event with the estimate. It never blocks a tool call.
 
 **Agent contract:** E2E and BYOW read `overview` after `where` when `map.enabled`; for a feature on existing code they run `impact` before choosing the lifecycle and show touchpoints and roles in the plan; briefs carry the impact's files for the stage. Errors: a missing map when enabled builds it; a stale map is refreshed with `--changed` before use; extractor failures stop the build with the file and reason.
 
@@ -207,7 +207,7 @@ The saving shown per session is an **estimate** (cited file tokens minus answer 
 
 **Compatibility:** existing asks without a `map` field behave as `map: off`. The map is additive: no current flow depends on it.
 
-**Rollback:** set `map.enabled` off in the contract (or remove the `context_meter` hook from an agent); the agents fall back to their current exploration. Deleting `.hve/map/` removes all state.
+**Rollback:** set `map.enabled` off in the contract (or remove the `context_meter` hook from an agent); the agents fall back to their current exploration. Deleting `.aria/map/` removes all state.
 
 <!-- hve-section: alternatives -->
 ## Alternatives, Risks and Decisions
@@ -248,13 +248,13 @@ A throwaway builder mapped this repository (commit `2d8dd33`) into `docs/archite
 
 What changed in the design because of it:
 1. **Impact needs seeds from the agent.** Word matching on purposes picked the wrong start points for both test changes (for example `agent_compat.py` for a context meter). With seeds the agent picks from the overview, the deterministic expansion was right: lifecycle, plan and report for the size flag; the hook, metrics, agent hooks and build for the meter. `impact` therefore takes `--seeds <ids>`; the agent reads the overview first and passes the module or file ids it judges relevant.
-2. **Placement is a reviewed file, not code.** Views, modules and module purposes came from 38 path rules and 38 one-line purposes. The product keeps these in `.hve/map/placement.json` (committed with the snapshot): `views.py` proposes rules from folder names, a sub-agent writes the purposes, the user or a reviewer accepts them, and later builds reuse the file and flag unplaced files.
+2. **Placement is a reviewed file, not code.** Views, modules and module purposes came from 38 path rules and 38 one-line purposes. The product keeps these in `.aria/map/placement.json` (committed with the snapshot): `views.py` proposes rules from folder names, a sub-agent writes the purposes, the user or a reviewer accepts them, and later builds reuse the file and flag unplaced files.
 3. **State direction is not extractable by text.** Path markers found 58 code places that touch a store, but read against write could not be told apart (paths are built in one function and written in another). The map records `uses` edges from code with file and line, and `writes` edges only from the placement file, marked curated.
 4. **Harness assets are first-class nodes.** Agents (with `guarded-by`, `invokes` and `delegates-to` edges from frontmatter and lifecycle stages), decisions (`D-nnn` with `decided-in` edges from the code they name), tests (`tested-by`), wiki pages (`documented-in`) and the build (`packages`) gave most of the useful impact context: which agents to re-check, which tests to run, which decisions to read.
 5. **Conventions belong in the overview.** The most important fact for a newcomer, that `extension/runtime/` is a build copy and must not be edited, is not in any edge. The overview carries a short Conventions section drawn from `AGENTS.md`, `.github/copilot-instructions.md` and the build file list.
 6. **Budgets.** The overview default budget becomes 4,000 tokens; a large repository with 13 views needs about 3,500. Impact stays at 2,000.
 7. **Explorer.** `docs/architecture/solution-map.html` (about 450 KB, 798 nodes, 1,452 edges embedded) opens with 62 nodes (system, views, modules). Edges between hidden nodes are rolled up to their visible ancestors, so a collapsed view still shows its imports, invocations and store use with counts. Nine example queries, a compound `WHERE`, the `-->` shorthand and a parse error were checked in the browser with no page errors.
-8. **Generalized and concept-first (2026-10-23).** The prototype's repository knowledge moved into `docs/architecture/solution-map.config.json`; `tools/map/` holds no repository-specific code. Without a config, the unrelated Next.js benchmark app (`.hve/outputs/harness/current`) mapped into 6 folder views, 61 symbols, 21 resolved imports (including `@/` aliases) and 11 test links, classed small. With its config, this repository maps 250 files, 839 symbols and 16 concepts with no unplaced module and no missing purpose. `explain` routed "help me understand telemetry implementation", "how do I create a new agent", "plugin architecture" and "skill onboarding" to the right concepts, and answered "kubernetes deployment" with no concept and the closest files. Tests: `tests/test_map.py` (generic map, concepts and explain, impact, status, offline explorer with the Cypher engine run in Node, this repository's config).
+8. **Generalized and concept-first (2026-10-23).** The prototype's repository knowledge moved into `docs/architecture/solution-map.config.json`; `tools/map/` holds no repository-specific code. Without a config, the unrelated Next.js benchmark app (`.aria/outputs/harness/current`) mapped into 6 folder views, 61 symbols, 21 resolved imports (including `@/` aliases) and 11 test links, classed small. With its config, this repository maps 250 files, 839 symbols and 16 concepts with no unplaced module and no missing purpose. `explain` routed "help me understand telemetry implementation", "how do I create a new agent", "plugin architecture" and "skill onboarding" to the right concepts, and answered "kubernetes deployment" with no concept and the closest files. Tests: `tests/test_map.py` (generic map, concepts and explain, impact, status, offline explorer with the Cypher engine run in Node, this repository's config).
 
 <!-- hve-section: traceability -->
 ## Verification and Traceability

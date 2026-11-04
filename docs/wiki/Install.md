@@ -18,9 +18,9 @@ Frontier HVE ships as one VS Code extension (VSIX). Installing it is the only re
 4. Open your project folder, open the Chat view, start a **new chat with Session Target: Local**, and pick an **HVE** or **Frontier** agent ([Agents](Agents.md)). How a piece of work then runs: [Ways of working](Ways-of-Working.md). The **HVE icon in the Activity Bar** opens [Mission Control](Mission-Control.md).
 5. For other harnesses (Session Target **Copilot**, Copilot CLI, the Copilot cloud agent, Claude Code, Codex, Cursor), run **ARIA: Install for other harnesses** ([Adapters](Adapters.md)).
 
-On activation the extension finds Python, renders the agents and skills into its storage with that Python launcher and the runtime path, and registers them in `chat.pluginLocations`. It does this again after an update or when Python appears. The hooks create `<workspace>/.hve/` the first time they run.
+On activation the extension finds Python, renders the agents and skills into its storage with that Python launcher and the runtime path, and registers them in `chat.pluginLocations`. It does this again after an update or when Python appears. The hooks create `<workspace>/.aria/` the first time they run.
 
-Optional: **ARIA: Set up** (Command Palette) asks how you prefer to build (assisted or pro mode), offers to add `.hve/` to `.gitignore`, and reports how many tokens load into every request.
+Optional: **ARIA: Set up** (Command Palette) asks how you prefer to build (assisted or pro mode), offers to add `.aria/` to `.gitignore`, and reports how many tokens load into every request.
 
 ## Without Python
 
@@ -34,11 +34,13 @@ After a chat, run from the workspace root:
 python <extension>/runtime/tools/observe/provenance.py <agent file> latest --require skills templates
 ```
 
-`<extension>` is the installed extension folder (`~/.vscode/extensions/<publisher>.frontier-hve-<version>`); the rendered agent files are in the extension's storage under `plugin/com.github.copilot/agents/`. It lists each harness component the agent declares as `verified`, `not-exercised` or `failed`, saves `.hve/runs/<session>.provenance.json` and exits 1 when a component failed or a required one did not run. Example: after asking `ARIA product-manager` for a PRD, `templates` shows which template the PRD came from.
+`<extension>` is the installed extension folder (`~/.vscode/extensions/<publisher>.frontier-hve-<version>`); the rendered agent files are in the extension's storage under `plugin/com.github.copilot/agents/`. It lists each harness component the agent declares as `verified`, `not-exercised` or `failed`, saves `.aria/runs/<session>.provenance.json` and exits 1 when a component failed or a required one did not run. Example: after asking `ARIA product-manager` for a PRD, `templates` shows which template the PRD came from.
 
 ## Update
 
 Install the newer VSIX and reload. The agents are re-rendered automatically.
+
+Upgrading from a version that kept its state in `.hve/`: on start the extension moves `.hve/` into `.aria/`, rewrites the ask paths stored in `contract.json`, `project/` and `plan.md`, adds the matching `.aria` lines to `.gitignore` and repoints the research telemetry file. A file that exists in both folders is left in `.hve/` and named in an error; compare the two copies, keep one in `.aria/` and delete `.hve/`. Reviews pending at the time of the move show as changed and need a fresh look.
 
 ## Build the VSIX (maintainers)
 

@@ -72,7 +72,7 @@ oracle-offering/
 | **Routing** | `domains`, `keywords`, a `task_pattern` regex, and `workspace_signals` (globs such as `**/tnsnames.ora`, or `file:text` such as `pom.xml:ojdbc`) | Matched against the request; workspace signals order several matching packs |
 | **Lifecycle (overlay)** | A process in the same format as the built-in lifecycles: stages with goal, agent, skills, plugin skills, templates, exit gate and when to skip, plus optional `evidence` and `rework` | Offered in the lifecycle choice as `<pack>:<name>` |
 | **Agents** | Personas with their own instructions and allowed tools (within the tools the manifest declares) | Rendered as `<pack>:<agent>` with the core guard hooks; a stage delegates to them |
-| **Skills** | Vetted instructions (`SKILL.md`) | Ranked with the library as `<pack>:<skill>`, copied into `.hve/skills/<pack>__<skill>/` |
+| **Skills** | Vetted instructions (`SKILL.md`) | Ranked with the library as `<pack>:<skill>`, copied into `.aria/skills/<pack>__<skill>/` |
 | **Templates** | Deliverables with `hve-template` and `hve-section` markers | New kinds as `<pack>:<kind>`; a core kind can be replaced |
 | **Knowledge** | Process maps, runbooks, common solutions, references | Indexed in the manifest with `use_when` and `stages`; listed in the stage brief; opened on demand |
 | **Rubrics** | An evaluation contract in the core format with a `coreShare` | Combined with the core rubrics in the output evaluation |
@@ -158,7 +158,7 @@ Names inside a pack overlay follow one rule: **pack assets carry the `<pack>:` p
 | `feature-checks` | none | Every feature of the project's feature loop passes |
 | `artifacts` | `paths` | Each glob matches at least one file |
 
-Paths are workspace-relative; `{ask}` stands for the ask folder (`.hve/asks/<id>`). `rework` is `{"to": "<an earlier stage>", "cap": 1-3}`: the number of times the stage may send the work back before the user decides.
+Paths are workspace-relative; `{ask}` stands for the ask folder (`.aria/asks/<id>`). `rework` is `{"to": "<an earlier stage>", "cap": 1-3}`: the number of times the stage may send the work back before the user decides.
 
 ## How it works: the flows
 
@@ -172,9 +172,9 @@ sequenceDiagram
     participant S as Pack store and workspace plugins/
     participant P as Pack agent
     U->>A: "Assess our Oracle estate and plan the migration..."
-    A->>L: where .hve/asks/request.md
+    A->>L: where .aria/asks/request.md
     L-->>A: no open ask: new project
-    A->>L: route .hve/asks/request.md
+    A->>L: route .aria/asks/request.md
     L->>S: read manifests (routing, index) of available packs
     S-->>L: oracle-offering matches (pattern, keywords, signals)
     L-->>A: packs {explicit, missing, matched + why}, lifecycles (pack overlays first)
@@ -281,7 +281,7 @@ The workspace has the sample committed as `plugins/oracle-offering/`. The reques
 
 ### 1. Route
 
-Collab writes the request to `.hve/asks/request.md` and runs `lifecycle.py route .hve/asks/request.md`:
+Collab writes the request to `.aria/asks/request.md` and runs `lifecycle.py route .aria/asks/request.md`:
 
 ```json
 {
@@ -323,7 +323,7 @@ ValueError: packs ['oracle-offering'] match this ask: ask the user and pass @<pa
 With the user's choice recorded:
 
 ```text
-lifecycle.py contract oracle-offering:oracle-migration ora "ARIA Collab" .hve/asks/request.md @oracle-offering
+lifecycle.py contract oracle-offering:oracle-migration ora "ARIA Collab" .aria/asks/request.md @oracle-offering
 ```
 
 `contract.json` now holds the pack record:
@@ -345,7 +345,7 @@ lifecycle.py contract oracle-offering:oracle-migration ora "ARIA Collab" .hve/as
 }]
 ```
 
-The pack skills are in the ask's skills as `oracle-offering:oracle-schema-design` and `oracle-offering:oracle-performance-tuning`, copied to `.hve/skills/oracle-offering__oracle-schema-design/` and `.hve/skills/oracle-offering__oracle-performance-tuning/`, and the decisions log `packs: oracle-offering (offered ['oracle-offering'])`.
+The pack skills are in the ask's skills as `oracle-offering:oracle-schema-design` and `oracle-offering:oracle-performance-tuning`, copied to `.aria/skills/oracle-offering__oracle-schema-design/` and `.aria/skills/oracle-offering__oracle-performance-tuning/`, and the decisions log `packs: oracle-offering (offered ['oracle-offering'])`.
 
 ### 4. The plan
 
@@ -369,8 +369,8 @@ For the assess stage Collab runs `lifecycle.py brief "oracle-offering:oracle-db-
 
 ```text
 Frontier HVE brief: ask 20261023-0302-ora, stage assess
-- Ask folder: .hve/asks/20261023-0302-ora/ (prototypes and drafts go there, never in the workspace root)
-- Read and follow before you start: .hve/skills/oracle-offering__oracle-schema-design/SKILL.md, .hve/skills/oracle-offering__oracle-performance-tuning/SKILL.md, ...
+- Ask folder: .aria/asks/20261023-0302-ora/ (prototypes and drafts go there, never in the workspace root)
+- Read and follow before you start: .aria/skills/oracle-offering__oracle-schema-design/SKILL.md, .aria/skills/oracle-offering__oracle-performance-tuning/SKILL.md, ...
 - Plugin skills you may use: feature-checklist, explain-walkthrough
 - Pack agent for this stage: oracle-offering:oracle-db-architect (its instructions: <pack folder>/agents/oracle-db-architect.agent.md)
 - Pack knowledge (open a document only when its use-when applies): Oracle migration process map (process-map, 293 tokens) at
@@ -408,7 +408,7 @@ RuntimeError: stage validate reached its rework cap of 2: ask the user how to pr
 
 ### 8. Provenance
 
-`lifecycle.py report <session>` writes `provenance.md` with an **Expertise packs** section, and the same facts go to `.hve/runs/<session>.provenance.json` (`contract.packs`, `contract.pack_load`):
+`lifecycle.py report <session>` writes `provenance.md` with an **Expertise packs** section, and the same facts go to `.aria/runs/<session>.provenance.json` (`contract.packs`, `contract.pack_load`):
 
 | Pack | Always loaded (index, knowledge index, lifecycle, skills) | On demand (knowledge, agents, templates) | Share of ask context | Share of window | Share of first / peak prompt |
 |---|---|---|---|---|---|
@@ -624,10 +624,10 @@ The organization index (setting `frontierHve.pluginIndex`, a path or https URL):
 | `~/.frontier-hve/plugins/<id>/<version>/` | Installed pack content |
 | `~/.frontier-hve/rendered/<id>/` | Rendered pack agents (registered in `chat.pluginLocations`) |
 | `frontier-hve.plugins.json` | Packs a repository requires |
-| `.hve/asks/<id>/contract.json` | `packs`, `pack_load`, the pack decision |
-| `.hve/asks/<id>/plan.md` | The Expertise packs table in the generated skills block |
-| `.hve/asks/<id>/provenance.md`, `.hve/runs/<session>.provenance.json` | Packs and their measured load |
-| `.hve/skills/<pack>__<skill>/` | Pack skills loaded for the ask |
+| `.aria/asks/<id>/contract.json` | `packs`, `pack_load`, the pack decision |
+| `.aria/asks/<id>/plan.md` | The Expertise packs table in the generated skills block |
+| `.aria/asks/<id>/provenance.md`, `.aria/runs/<session>.provenance.json` | Packs and their measured load |
+| `.aria/skills/<pack>__<skill>/` | Pack skills loaded for the ask |
 
 ### Code
 

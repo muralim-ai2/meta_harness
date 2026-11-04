@@ -10,7 +10,7 @@ Use the Frontier HVE agents, skills and guard hooks outside VS Code's Local harn
 - Agent-scoped `hooks:` and `handoffs:` in an agent file are Local-only features (VS Code docs).
 - Cursor is a separate editor that does not run VS Code chat.
 
-**Fix:** run **ARIA: Install for other harnesses** (or `export.py <client> --user`). It installs every HVE agent, the harness skills and the guard hooks in each harness's own user-level folders, from the same agent templates, and copies the runtime to `~/.hve/runtime/`. The agents' ask contract (`lifecycle.py contract`, `brief`, `report`) is a terminal command, so skills, briefs and provenance work even where a hook channel is missing.
+**Fix:** run **ARIA: Install for other harnesses** (or `export.py <client> --user`). It installs every HVE agent, the harness skills and the guard hooks in each harness's own user-level folders, from the same agent templates, and copies the runtime to `~/.aria/runtime/`. The agents' ask contract (`lifecycle.py contract`, `brief`, `report`) is a terminal command, so skills, briefs and provenance work even where a hook channel is missing.
 
 ## At a glance
 
@@ -63,8 +63,8 @@ python $hve vscode . --ado contoso     # Azure DevOps for VS Code only
 - `guide`: this page inside the copied runtime.
 
 What it writes:
-- **`.hve/runtime/`:** a copy of the harness (hooks, loop tools, skill library, licenses). Every client's hooks run from here.
-- **`.hve/runs/` and `.hve/user_profile.json`:** the state the hooks read. An existing profile is kept.
+- **`.aria/runtime/`:** a copy of the harness (hooks, loop tools, skill library, licenses). Every client's hooks run from here.
+- **`.aria/runs/` and `.aria/user_profile.json`:** the state the hooks read. An existing profile is kept.
 - **The client's agent, skill, hook and MCP files**, as listed in the table above.
 
 Safety rules:
@@ -96,7 +96,7 @@ Safety rules:
 3. If you also exported for Claude Code, Cursor loads `.claude/skills/` as well and lists each skill twice. Keep one export per project, or turn off **Settings → Agents → Third-Party Imports**.
 
 ### Codex CLI
-1. Start `codex` from the project root. Project hooks run in the session directory and use `.hve/runtime/...` relative paths.
+1. Start `codex` from the project root. Project hooks run in the session directory and use `.aria/runtime/...` relative paths.
 2. Trust the project. Then open `/hooks`, then review and trust the Frontier HVE hooks. Codex skips untrusted hooks.
 3. Type `$hve-creator`, `$hve-single` or `$hve-azure-devops`, or pick them from `/skills`. These skills are never invoked automatically.
 
@@ -121,7 +121,7 @@ The adapter uses Microsoft's official server, [`@azure-devops/mcp`](https://gith
 Microsoft also offers a hosted remote server (`https://mcp.dev.azure.com/<organization>`, type `http`). The exporter does not configure it, because the remote server cannot be limited to tool groups.
 
 **The ARIA azure-devops agent:**
-- **Feature list to work items:** one work item per feature in the project's `.hve/project/feature_list.json` (or `feature_list.json` when no ask is open). The check command becomes the acceptance criterion.
+- **Feature list to work items:** one work item per feature in the project's `.aria/project/feature_list.json` (or `feature_list.json` when no ask is open). The check command becomes the acceptance criterion.
 - **Status sync:** state updates from `tracker.json`, with the check command and its exit code as a comment.
 - **Pull requests:** for feature branches you ticked, linked to their work items. It never pushes.
 - **Builds:** latest pipeline result, failing stage and first error line.
@@ -152,9 +152,9 @@ Example prompts:
 
 ## Update, re-export, remove
 
-- **After updating the extension:** run the install or export again. `~/.hve/runtime/`, `.hve/runtime/` and `.github/hve/runtime/` are copies and do not update themselves.
-- **Share with your team:** commit the agent, skill and hook files if you like. They point to `.hve/runtime/`, which is git-ignored, so each clone runs the export once.
-- **Remove:** delete `.hve/runtime/`, the paths listed in `written`, and the `ado` entry in the MCP file.
+- **After updating the extension:** run the install or export again. `~/.aria/runtime/`, `.aria/runtime/` and `.github/hve/runtime/` are copies and do not update themselves.
+- **Share with your team:** commit the agent, skill and hook files if you like. They point to `.aria/runtime/`, which is git-ignored, so each clone runs the export once.
+- **Remove:** delete `.aria/runtime/`, the paths listed in `written`, and the `ado` entry in the MCP file.
 
 ## Troubleshooting
 
@@ -166,7 +166,7 @@ Example prompts:
 | Cursor blocks every tool call | Cursor may treat an empty `preToolUse` response as invalid (unverified) | Report under `N27`; meanwhile remove the `preToolUse` entries from `.cursor/hooks.json` |
 | Codex runs no hooks | Hooks not trusted, or Codex was started in a subfolder | `/hooks` → trust; start Codex in the project root |
 | Export stops: `... was not written by Frontier HVE` | You already have your own hooks file | Merge the entries from a scratch export by hand |
-| Export stops: `... is not a Frontier HVE extension folder` | It was run from `.hve/runtime/` | Run the copy in the installed extension, or `extension/runtime/` after `python extension/build.py` |
+| Export stops: `... is not a Frontier HVE extension folder` | It was run from `.aria/runtime/` | Run the copy in the installed extension, or `extension/runtime/` after `python extension/build.py` |
 | No `ado` tools | Server not started, sign-in not completed, or npm cannot reach the registry | Start the server; sign in; check `npm config get registry` |
 | `npm error ... ECONNRESET` | Network or proxy | Fix the registry or network, then start the server again |
 | Every skill listed twice in Cursor | Both the Claude Code and Cursor exports are in one project | Keep one export, or turn off Cursor's third-party imports |
@@ -174,7 +174,7 @@ Example prompts:
 ## How it works (maintainers)
 
 - **`tools/adapters/export.py`** reads the VS Code agent templates in `extension/agents/`, including their hooks, so all clients share one definition. It then writes each client's native files.
-- **`hooks/agent_compat.py [--ask-only] <client> <script> [KEY=VALUE ...] [-- args]`** runs any harness hook unchanged in another client (`--ask-only`: do nothing unless the project has `.hve/asks/active.json`, used by hook files every session runs):
+- **`hooks/agent_compat.py [--ask-only] <client> <script> [KEY=VALUE ...] [-- args]`** runs any harness hook unchanged in another client (`--ask-only`: do nothing unless the project has `.aria/asks/active.json`, used by hook files every session runs):
   - **Copilot:** PascalCase events give VS Code-compatible payloads; `tool_result.text_result_for_llm` becomes `tool_response`, the timestamp stands in for the missing tool call id, and outputs are flattened (`permissionDecision`, `additionalContext`, `decision`). Copilot drops prompt-submit output and has no context before a tool, so the skill loader derives the loadout from the open ask on the first tool call.
   - **Tool names:** `Bash`/`PowerShell`/`Shell` → `run_in_terminal`, `Write` → `create_file`, `Edit` → `replace_string_in_file`, `Read` → `read_file`, `AskUserQuestion` → `vscode_askQuestions`.
   - **Fields:** `file_path` → `filePath`.

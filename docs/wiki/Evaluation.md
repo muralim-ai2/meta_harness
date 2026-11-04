@@ -1,6 +1,6 @@
 # Evaluation
 
-After the feature loop, `ARIA Lite` (and the repository's `creator` mode) runs an output reflection loop on what it built. It runs again whenever the user asks to evaluate or improve the build; `prepare` refuses when no delivered file changed since the last evaluation. It has five layers. Each layer writes JSON to `.hve/evaluations/<run>/`, and the script enforces their order.
+After the feature loop, `ARIA Lite` (and the repository's `creator` mode) runs an output reflection loop on what it built. It runs again whenever the user asks to evaluate or improve the build; `prepare` refuses when no delivered file changed since the last evaluation. It has five layers. Each layer writes JSON to `.aria/evaluations/<run>/`, and the script enforces their order.
 
 | Layer | What happens | Command (`reflection.py` = `python <tools>/evaluation/reflection.py`) | Output |
 |---|---|---|---|
@@ -38,4 +38,4 @@ These follow the same rules as the [Product Manager](Product-Manager.md) council
 
 ## Files
 
-`tools/evaluation/contract.py` (JSON contract validation), `tools/evaluation/workflow.py` (stages and decision), `tools/evaluation/reflection.py` (CLI), `extension/agents/hve-evaluation-reviewer.agent.md` and `.github/agents/evaluation-reviewer.agent.md` (read-only council member), `tests/test_evaluation.py`. `hooks/loop_guard.py` lets the agent write files to `.hve/evaluations/input/` that cite `.harness/` evidence; loop state stays locked.
+`tools/evaluation/contract.py` (JSON contract validation), `tools/evaluation/workflow.py` (stages and decision), `tools/evaluation/reflection.py` (CLI), `extension/agents/hve-evaluation-reviewer.agent.md` and `.github/agents/evaluation-reviewer.agent.md` (read-only council member), `tests/test_evaluation.py`. `hooks/loop_guard.py` lets the agent write files to `.aria/evaluations/input/` that cite `.harness/` evidence; loop state stays locked.
