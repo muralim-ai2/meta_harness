@@ -14,7 +14,7 @@ skills/eval_override.json
 .aria/runs/bench.lock
 
 # Extension build output (assembled by extension/build.py)
-
+*.vsix
 
 # Python and tool caches
 __pycache__/
