@@ -32,7 +32,7 @@ async function activated(extension) {
 async function run() {
   const folder = vscode.workspace.workspaceFolders?.[0];
   assert.ok(folder, 'Expected the isolated Pawstagram workspace.');
-  const extension = vscode.extensions.getExtension('muralim-ai2.frontier-hve');
+  const extension = vscode.extensions.getExtension('pwc.frontier-hve');
   assert.ok(extension, 'ARIA must be installed in the isolated host.');
   assert.ok(extension.extensionPath.startsWith(setting('HVE_HOST_EXTENSIONS')), 'ARIA must load from its installed VSIX, not a development path.');
   assert.equal(vscode.extensions.getExtension('GitHub.copilot-chat'), undefined, 'Copilot Chat must be disabled for this check.');
@@ -42,7 +42,7 @@ async function run() {
   const available = await vscode.commands.getCommands(true);
   for (const id of JSON.parse(setting('HVE_HOST_COMMANDS'))) assert.ok(available.includes(id), `Missing registered command ${id}`);
   const locations = Object.keys(vscode.workspace.getConfiguration('chat').get('pluginLocations') || {});
-  const plugin = locations.find(dir => dir.endsWith(path.join('muralim-ai2.frontier-hve', 'plugin')));
+  const plugin = locations.find(dir => dir.endsWith(path.join('pwc.frontier-hve', 'plugin')));
   assert.ok(plugin, 'Activation must still render and register the HVE agent plugin.');
   assert.equal(fs.readdirSync(path.join(plugin, 'com.github.copilot', 'agents')).filter(name => name.endsWith('.agent.md')).length, 41);
   assert.equal(fs.readFileSync(path.join(plugin, 'skills', 'wow-uplift', 'SKILL.md'), 'utf8'), fs.readFileSync(setting('HVE_HOST_UPLIFT'), 'utf8'),

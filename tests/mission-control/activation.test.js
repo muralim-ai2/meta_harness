@@ -154,6 +154,35 @@ test('activation leaves a file that exists in both .hve and .aria in .hve and na
   assert.ok(fs.existsSync(path.join(root, '.aria', 'context_load.json')));
 });
 
+test('with the old muralim-ai2 ARIA still installed, activation registers nothing and offers to uninstall it', async t => {
+  const root = workspace();
+  const storage = workspace();
+  const fixture = host([root], storage);
+  t.after(() => [root, storage].forEach(removeWorkspace));
+  fixture.controls.extensions.push('muralim-ai2.frontier-hve');
+  fixture.controls.confirmations.push('Uninstall old ARIA');
+  await fixture.load('extension.js').activate(fixture.context);
+  assert.equal(fixture.controls.commands.size, 0);
+  assert.ok(fixture.controls.calls.some(call => call[0] === 'workbench.extensions.uninstallExtension' && call[1] === 'muralim-ai2.frontier-hve'));
+});
+
+test('registering the agents drops the old muralim-ai2 plugin folder and keeps other plugin locations', async t => {
+  const root = workspace();
+  const storage = workspace();
+  const fixture = host([root], storage);
+  const searchPath = process.env.PATH;
+  process.env.PATH = '';
+  t.after(() => {
+    process.env.PATH = searchPath;
+    fixture.context.subscriptions.forEach(resource => resource.dispose());
+    [root, storage].forEach(removeWorkspace);
+  });
+  const legacy = path.join(path.dirname(storage), 'muralim-ai2.frontier-hve', 'plugin');
+  fixture.controls.settings.set('chat.pluginLocations', { [legacy]: true, '/other/plugin': true });
+  await fixture.load('extension.js').activate(fixture.context);
+  assert.deepEqual(fixture.controls.settings.get('chat.pluginLocations'), { '/other/plugin': true, [path.join(storage, 'plugin')]: true });
+});
+
 test('registration is passive, watches harness state and chat transcripts, and posts the model without creating project files', async t => {
   const fixture = mission(t);
   assert.ok(!fixture.controls.calls.some(call => call[0] !== 'provider'));

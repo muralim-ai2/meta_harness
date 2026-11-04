@@ -29,7 +29,7 @@ Every client gets every HVE agent (hidden helpers included), and the harness ski
 
 ## Before you start
 
-- **Frontier HVE extension 0.4.0 or later:** installed in VS Code. Cursor can install the same VSIX. The exporter and the harness runtime ship inside it, at `<extension folder>/runtime/` (for example `~/.vscode/extensions/muralim-ai2.frontier-hve-<version>/runtime/`). In this repository, run `python extension/build.py` first and use `extension/runtime/`.
+- **Frontier HVE extension 0.4.0 or later:** installed in VS Code. Cursor can install the same VSIX. The exporter and the harness runtime ship inside it, at `<extension folder>/runtime/` (for example `~/.vscode/extensions/pwc.frontier-hve-<version>/runtime/`). In this repository, run `python extension/build.py` first and use `extension/runtime/`.
 - **Python:** 3.11 or newer on `PATH` as `python`. Every hook runs `python`.
 - **For Azure DevOps:**
   - Node.js 20 or newer.
@@ -45,7 +45,7 @@ Every client gets every HVE agent (hidden helpers included), and the harness ski
 **From a terminal**, in the project root:
 
 ```powershell
-$ext = Get-ChildItem "$HOME/.vscode/extensions/muralim-ai2.frontier-hve-*" | Sort-Object LastWriteTime | Select-Object -Last 1
+$ext = Get-ChildItem "$HOME/.vscode/extensions/pwc.frontier-hve-*" | Sort-Object LastWriteTime | Select-Object -Last 1
 $hve = "$($ext.FullName)/runtime/tools/adapters/export.py"
 python $hve copilot --user             # Copilot CLI and VS Code Copilot harness, every workspace
 python $hve claude --user              # Claude Code, every workspace

@@ -96,8 +96,8 @@ async function hostCheck(root, release) {
   const quote = /** @param {string} value */ value => shell ? `"${value}"` : value;
   run(quote(cli), [...isolated, '--install-extension', release.vsix].map(quote), { shell });
   const installed = run(quote(cli), [...isolated, '--list-extensions', '--show-versions'].map(quote), { shell });
-  if (!installed.includes(`muralim-ai2.frontier-hve@${release.version}`)) throw new Error(`The VSIX did not install:\n${installed}`);
-  const runtime = path.join(extensions, `muralim-ai2.frontier-hve-${release.version}`, 'runtime', 'tools', 'loop', 'lifecycle.py');
+  if (!installed.includes(`pwc.frontier-hve@${release.version}`)) throw new Error(`The VSIX did not install:\n${installed}`);
+  const runtime = path.join(extensions, `pwc.frontier-hve-${release.version}`, 'runtime', 'tools', 'loop', 'lifecycle.py');
   fs.writeFileSync(path.join(root, 'request.txt'), 'Build Pawstagram, a photo sharing app for pets.');
   run('python', ['-B', runtime, 'contract', 'direct', 'pawstagram', 'ARIA Lite', path.join(root, 'request.txt')],
     { cwd: project, env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1', HVE_PLUGIN_HOME: path.join(root, 'packs') } });

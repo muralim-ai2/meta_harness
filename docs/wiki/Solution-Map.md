@@ -29,7 +29,7 @@ python tools\map\solution_map.py build --snapshot   # publish docs\architecture\
 For another repository, add `--root <folder>`. With the installed extension, the script is at `<extension folder>\runtime\tools\map\solution_map.py`:
 
 ```powershell
-$ext = Get-ChildItem "$HOME/.vscode/extensions/muralim-ai2.frontier-hve-*" | Sort-Object LastWriteTime | Select-Object -Last 1
+$ext = Get-ChildItem "$HOME/.vscode/extensions/pwc.frontier-hve-*" | Sort-Object LastWriteTime | Select-Object -Last 1
 python "$($ext.FullName)/runtime/tools/map/solution_map.py" build --root .
 ```
 

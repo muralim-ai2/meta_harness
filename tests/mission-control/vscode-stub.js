@@ -39,7 +39,7 @@ function host(roots, storage, globalState = null) {
   const commands = new Map();
   const settings = new Map();
   const controls = { commands, settings, provider: null, inputs: [], confirmations: [], picks: [], dialogs: [], notices: [], models: [], calls: [], watchers: [], errors: [], statusItems: [],
-    panels: [], trees: [],
+    panels: [], trees: [], extensions: [],
     /** Return a Primary Side Bar view double. @param {boolean} [visible] @returns {object} */
     view: (visible = false) => ({ visible, webview: webview(controls.calls), onDidDispose: () => new Disposable() }) };
   const folders = roots.map((root, index) => ({ name: path.basename(root), uri: uri(root), index }));
@@ -67,6 +67,7 @@ function host(roots, storage, globalState = null) {
     StatusBarAlignment: { Left: 1, Right: 2 },
     ConfigurationTarget: { Global: 1 },
     env: { openExternal: async target => { controls.calls.push(['external', target.toString()]); return true; } },
+    extensions: { getExtension: id => controls.extensions.includes(id) ? { id } : undefined },
     workspace: {
       isTrusted: true, workspaceFolders: folders,
       getConfiguration: section => ({
@@ -139,7 +140,7 @@ function host(roots, storage, globalState = null) {
   };
   const context = {
     subscriptions: [], extensionPath: EXTENSION, extensionUri: uri(EXTENSION), globalStorageUri: uri(storage),
-    storageUri: uri(path.join(storage, 'window', 'muralim-ai2.frontier-hve')),
+    storageUri: uri(path.join(storage, 'window', 'pwc.frontier-hve')),
     extension: { packageJSON: JSON.parse(fs.readFileSync(path.join(EXTENSION, 'package.json'), 'utf8')) },
     workspaceState: memento(), globalState: globalState || memento(),
   };

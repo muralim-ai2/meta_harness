@@ -40,6 +40,8 @@ python <extension>/runtime/tools/observe/provenance.py <agent file> latest --req
 
 Install the newer VSIX and reload. The agents are re-rendered automatically.
 
+Upgrading from 0.24 or older: ARIA is now published by `pwc` (extension ID `pwc.frontier-hve`, previously `muralim-ai2.frontier-hve`), so VS Code installs it next to the old one. On first start the new ARIA stays off and offers **Uninstall old ARIA**; accept, then reload. Your build preference is asked again on the next **ARIA: Set up**; workspace `.aria/` folders and installed packs are kept.
+
 Upgrading from a version that kept its state in `.hve/`: on start the extension moves `.hve/` into `.aria/`, rewrites the ask paths stored in `contract.json`, `project/` and `plan.md`, adds the matching `.aria` lines to `.gitignore` and repoints the research telemetry file. A file that exists in both folders is left in `.hve/` and named in an error; compare the two copies, keep one in `.aria/` and delete `.hve/`. Reviews pending at the time of the move show as changed and need a fresh look.
 
 ## Build the VSIX (maintainers)

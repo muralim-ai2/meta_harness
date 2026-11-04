@@ -29,6 +29,7 @@ const HARNESSES = [
   { label: 'Copilot cloud agent', description: 'this repository\'s .github folder; you commit it', client: 'cloud' },
 ];
 const COPILOT_HOOK_FILE = '~/.copilot/hooks/hve.json';
+const LEGACY_EXTENSION = 'muralim-ai2.frontier-hve';
 
 /**
  * Return the Python version a launcher runs as [major, minor], or null when it cannot be run.
@@ -68,7 +69,9 @@ async function registerPlugin(context, python) {
   const pluginDir = path.join(context.globalStorageUri.fsPath, 'plugin');
   renderPlugin(context.extensionPath, pluginDir, context.extension.packageJSON.version, python);
   const chat = vscode.workspace.getConfiguration('chat');
-  const locations = { ...(chat.get('pluginLocations') || {}), [pluginDir]: true };
+  const legacyPlugin = path.join(path.dirname(context.globalStorageUri.fsPath), LEGACY_EXTENSION, 'plugin');
+  const kept = Object.entries(chat.get('pluginLocations') || {}).filter(([dir]) => dir !== legacyPlugin);
+  const locations = { ...Object.fromEntries(kept), [pluginDir]: true };
   await chat.update('pluginLocations', locations, vscode.ConfigurationTarget.Global);
   await chat.update('plugins.enabled', true, vscode.ConfigurationTarget.Global);
   await context.globalState.update('renderedVersion', context.extension.packageJSON.version);
@@ -416,6 +419,16 @@ function migrateWorkspaces() {
  * @param {vscode.ExtensionContext} context
  */
 async function activate(context) {
+  if (vscode.extensions.getExtension(LEGACY_EXTENSION)) {
+    // Both copies register the same commands, so this one stays inactive until the old publisher's copy is gone.
+    const choice = await vscode.window.showWarningMessage('ARIA is now published by pwc. Uninstall the old ARIA (muralim-ai2) and reload '
+      + 'to finish the update; until then the new ARIA stays off.', 'Uninstall old ARIA');
+    if (choice) {
+      await vscode.commands.executeCommand('workbench.extensions.uninstallExtension', LEGACY_EXTENSION);
+      await offerReload('The old ARIA is uninstalled.');
+    }
+    return;
+  }
   migrateWorkspaces();
   const host = { run: runPythonJson, offerReload };
   context.subscriptions.push(
