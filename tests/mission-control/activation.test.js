@@ -64,6 +64,25 @@ test('full activation registers Mission Control before setup work, keeps every o
   assert.deepEqual(fs.readdirSync(root), []);
 });
 
+test('ARIA: Set up writes the workspace state to .aria and never creates .hve', async t => {
+  const root = workspace();
+  const storage = workspace();
+  const fixture = host([root], storage);
+  const searchPath = process.env.PATH;
+  process.env.PATH = '';
+  t.after(() => {
+    process.env.PATH = searchPath;
+    fixture.context.subscriptions.forEach(resource => resource.dispose());
+    [root, storage].forEach(removeWorkspace);
+  });
+  await fixture.load('extension.js').activate(fixture.context);
+  process.env.PATH = searchPath;
+  await fixture.controls.commands.get('frontierHve.setup')();
+  assert.deepEqual(fs.readdirSync(root).sort(), ['.aria', '.gitignore']);
+  for (const entry of ['runs', 'user_profile.json', 'context_load.json']) assert.ok(fs.existsSync(path.join(root, '.aria', entry)), entry);
+  assert.match(fs.readFileSync(path.join(root, '.gitignore'), 'utf8'), /^\.aria\/$/m);
+});
+
 test('registration is passive, watches harness state and chat transcripts, and posts the model without creating project files', async t => {
   const fixture = mission(t);
   assert.ok(!fixture.controls.calls.some(call => call[0] !== 'provider'));
