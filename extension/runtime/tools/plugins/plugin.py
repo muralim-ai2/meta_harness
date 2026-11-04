@@ -3,6 +3,7 @@ reconcile."""
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -13,6 +14,11 @@ import zipfile
 from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterator
+
+if os.name == "nt":
+    import msvcrt
+else:
+    import fcntl
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import author  # noqa: E402
@@ -30,18 +36,26 @@ Json = dict[str, Any]
 
 @contextmanager
 def store_lock() -> Iterator[None]:
-    """Hold the store lock so two windows never change plugins at once."""
+    """Hold an OS lock on the store so two windows never change plugins at once; the OS releases it if the process dies."""
     path = store.home() / "plugins.lock"
     path.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        path.open("x").close()
-    except FileExistsError as error:
-        raise RuntimeError(f"another Frontier HVE window is changing plugins ({path}); retry when it finishes, "
-                           "or delete the lock file if no install is running") from error
-    try:
-        yield
-    finally:
-        path.unlink()
+    with path.open("a+b") as handle:
+        handle.seek(0)
+        try:
+            if os.name == "nt":
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as error:
+            raise RuntimeError(f"another Frontier HVE window is changing plugins ({path}); retry when it finishes") from error
+        try:
+            yield
+        finally:
+            handle.seek(0)
+            if os.name == "nt":
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 def write_registry(data: Json) -> None:

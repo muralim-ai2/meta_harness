@@ -147,8 +147,9 @@ def test_install_lifecycle() -> None:
         raises(ValueError, plugin.install, str(broken), None, None, "user")
         assert store.registry_file().read_text(encoding="utf-8") == before and not list((home / "staging").glob("*"))
         (home / "plugins.lock").write_text("", encoding="utf-8")
-        assert "another Frontier HVE window" in raises(RuntimeError, install, SAMPLE)
-        (home / "plugins.lock").unlink()
+        assert plugin.install(str(SAMPLE), None, None, "user")["unchanged"] is True
+        with plugin.store_lock():
+            assert "another Frontier HVE window" in raises(RuntimeError, install, SAMPLE)
         upgrade = copy_sample(tmp, "upgrade", lambda f: edit_json(f / "hve-plugin.json", lambda d: d.update(version="1.0.1")))
         assert install(upgrade)["previous"] == "1.0.0"
         assert plugin.reconcile(None)["removed"] == ["contoso-oracle-practice.oracle-offering/1.0.0"]
