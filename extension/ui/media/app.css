@@ -311,6 +311,7 @@ body.vscode-high-contrast .early, body.vscode-high-contrast-light .early { backg
 .tele-tile:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--tone) 60%, var(--border)); }
 .tele-tile.tone-violet { --tone: var(--violet); } .tele-tile.tone-blue { --tone: var(--blue); } .tele-tile.tone-teal { --tone: var(--teal); }
 .tele-tile.tone-amber { --tone: var(--amber); } .tele-tile.tone-pink { --tone: var(--pink); } .tele-tile.tone-indigo { --tone: var(--indigo); }
+.tele-tile.tone-good { --tone: var(--good); }
 .tele-tile-icon { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; color: var(--tone); background: color-mix(in srgb, var(--tone) 18%, transparent); }
 .tele-value { font-size: 26px; font-weight: 700; line-height: 1.15; color: var(--text); }
 .tele-label { font-size: 12px; font-weight: 600; }

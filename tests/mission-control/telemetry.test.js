@@ -47,6 +47,7 @@ test('without telemetry the summary estimates tokens and AI units, counts calls,
   assert.equal(data.failures, 1);
   assert.deepEqual(data.skills, { count: 1, names: ['ux-flows'], tokens: 1000, measured: false });
   assert.equal(data.thinkingTokens, null);
+  assert.deepEqual([data.cachedTokens, data.cachePercent], [null, null]);
   assert.ok(data.total > 12000 && data.aiu > 1);
   assert.match(data.method, /^Estimated \(research telemetry is off\)/);
   assert.deepEqual(data.signals.map(signal => signal.title), ['Repeated 3 times: Searched for “feedCard”', '1 failed tool call', 'Longest pause: 4 min']);
@@ -65,6 +66,7 @@ test('with research telemetry the totals, AI units and thinking tokens are measu
   const data = insights(run);
   assert.equal(data.measured, true);
   assert.deepEqual([data.input, data.output, data.total, data.aiu, data.thinkingTokens], [50000, 2000, 52000, 2.5, 1500]);
+  assert.deepEqual([data.cachedTokens, data.cachePercent], [30000, 60]);
   assert.deepEqual(data.skills, { count: 4, names: [], tokens: 9000, measured: true });
   assert.equal(data.method, 'Measured by research telemetry for this chat.');
   assert.deepEqual([data.agent, data.model, data.mode], ['ARIA Collab', 'claude-haiku-5.5', 'Local']);
@@ -82,7 +84,7 @@ test('the Telemetry tab shows the chat\'s agent, mode and model, the tiles, the 
   const page = dashboard(model, UI, Date.now());
   const shown = text(page);
   for (const part of ['Telemetry · one chat', 'agent not recorded', 'execution mode not recorded', 'Total tokens and AI units appear for chats recorded with research telemetry on',
-    'Turns', 'Tool calls', 'Skills used', 'Skill tokens', 'Prompt and chat tokens', 'Thinking tokens', 'Ask a model about this chat', 'Experimental',
+    'Turns', 'Tool calls', 'Skills used', 'Skill tokens', 'Prompt and chat tokens', 'Thinking tokens', 'Cache tokens', 'Ask a model about this chat', 'Experimental',
     'Did the agent start sub-agents to explore different paths', 'My own question…', 'What fills the context window', 'Skills loaded', 'Searches', 'Commands']) {
     assert.ok(shown.includes(part), part);
   }

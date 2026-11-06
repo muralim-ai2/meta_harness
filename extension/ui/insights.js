@@ -33,6 +33,7 @@ function insights(run) {
   const input = measured ? measured.models.reduce((sum, use) => sum + use.input, 0) : estimatedInput;
   const output = measured ? measured.models.reduce((sum, use) => sum + use.output, 0) : estimatedOutput;
   const reasoning = measured ? measured.models.reduce((sum, use) => sum + use.reasoning, 0) : 0;
+  const cached = measured ? measured.models.reduce((sum, use) => sum + use.cached, 0) : null;
   const stopped = s.events.filter(event => event.state === 'stopped').length;
   const asked = s.events.filter(event => event.kind === 'ask').length;
   const pause = gap ? Math.round((Date.parse(gap.to) - Date.parse(gap.from)) / 1000) : 0;
@@ -52,6 +53,7 @@ function insights(run) {
     chat: s.title || 'Untitled chat', measured: !!measured, agent: run.meta?.agent || null, model: run.meta?.model || null, mode: run.meta?.mode || null, context: groups, turns: s.turns, toolCalls: s.tools, commands: s.commands, failures: s.failures,
     skills: { count: Math.max(skills.length, run.loadout?.skills || 0), names: skills.map(skill => skill.name), tokens: skillTokens.value, measured: skillTokens.measured },
     chatTokens: tokens(chars.user + chars.agent), argTokens: tokens(chars.args), thinkingTokens: reasoning || null,
+    cachedTokens: cached, cachePercent: cached === null || !input ? null : Math.round(cached / input * 100),
     input, output, total: input + output, aiu: measured ? measured.aiu : estimatedInput / 1000 * AIU_PER_1K_INPUT, signals,
     method: measured ? 'Measured by research telemetry for this chat.'
       : `Estimated (research telemetry is off): ${BASE_CONTEXT_TOKENS.toLocaleString('en-US')} tokens of instructions and tool definitions plus the skill load per turn, `

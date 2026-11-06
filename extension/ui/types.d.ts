@@ -116,6 +116,8 @@ export interface Insights {
   chatTokens: number;
   argTokens: number;
   thinkingTokens: number | null;
+  cachedTokens: number | null;
+  cachePercent: number | null;
   input: number;
   output: number;
   total: number;

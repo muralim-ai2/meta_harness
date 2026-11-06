@@ -140,7 +140,10 @@
         tile('list', 'Skill tokens', count(data.skills.tokens), data.skills.measured ? 'loaded into every request' : 'estimated from the skill files read', 'amber'),
         tile('chat', 'Prompt and chat tokens', count(data.chatTokens), 'your messages and the agent\'s replies (estimated)', 'pink'),
         tile('spark', 'Thinking tokens', data.thinkingTokens === null ? '—' : count(data.thinkingTokens),
-          data.thinkingTokens === null ? 'recorded only with research telemetry on' : 'reasoning the model reported', 'indigo')),
+          data.thinkingTokens === null ? 'recorded only with research telemetry on' : 'reasoning the model reported', 'indigo'),
+        tile('refresh', 'Cache tokens', data.cachePercent === null ? '—' : `${data.cachePercent}%`,
+          data.cachePercent === null ? 'recorded only with research telemetry on'
+            : `${count(data.cachedTokens || 0)} of ${count(data.input)} input tokens read from the prompt cache`, 'good')),
       review(model, ui, now),
       context(data),
     ];
