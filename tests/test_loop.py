@@ -276,6 +276,10 @@ def test_ask_mode_keeps_loop_files_in_the_ask_folder() -> None:
             out = fire(root, "loop_guard.py", {"hook_event_name": "PreToolUse", "tool_name": "create_file", "tool_input": {"filePath": str(path)},
                                                "tool_use_id": "t1"}, **env)
             assert (out is not None) is denied, (path, out)
+        (project / "b.txt").write_text("b\n", encoding="utf-8")
+        assert loop.next_feature(project)["escalated"] is True
+        journal = [json.loads(line) for line in (shared / "journal.jsonl").read_text(encoding="utf-8").splitlines()]
+        assert [(row["ask"], row["kind"]) for row in journal] == [("20261019-1200-x", "issue")] and "Feature b escalated" in journal[0]["text"], journal
 
 
 def test_no_fallback_patterns() -> None:

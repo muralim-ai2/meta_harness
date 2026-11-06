@@ -158,8 +158,11 @@
         h('div', { class: 'review-actions' }, h('span', { class: `pill ${settled ? 'good' : review.decision === 'changes' ? 'warn' : ''}`.trim() },
           { open: 'Open', accepted: 'Accepted', changes: 'Changes requested', skipped: 'Continued without review' }[review.decision] || review.decision),
         button('Accept', 'review', { kind: 'primary', icon: 'check', data: { item: review.item, revision: snap.revision, value: 'accepted' },
-          disabled: blocked || settled || !review.ready || snap.planState !== 'synced',
-          title: !snap.ask?.active ? 'Make this ask active to sign off' : snap.planState !== 'synced' ? 'Agree the plan first' : undefined }),
+          disabled: blocked || settled || !review.ready || snap.planState === 'unsynced',
+          title: !snap.ask?.active ? 'Make this ask active to sign off' : snap.planState === 'unsynced' ? 'The plan was edited: the agent reconciles it first'
+            : !review.ready ? 'Accept once the work is done' : undefined }),
+        review.item.startsWith('stage:') && !review.ready && !settled ? button('Mark done', 'markDone', { icon: 'flag', data: { item: review.item, revision: snap.revision },
+          disabled: blocked, title: !snap.ask?.active ? 'Make this ask active to change its status' : 'Set this stage to done when the chat shows it is finished' }) : null,
         button('Request changes', 'review', { data: { item: review.item, revision: snap.revision, value: 'changes' }, disabled: blocked,
           title: !snap.ask?.active ? 'Make this ask active to sign off' : undefined })));
     }), snap.reviews.length ? null : h('li', { class: 'muted' }, 'No milestones yet.'));
@@ -211,6 +214,7 @@
       h('span', { class: 'muted' }, snap.features.length ? `${passing} of ${snap.features.length} passing` : '')),
       card('Evidence files', snap.files.length ? h('div', { class: 'files' }, ...snap.files.map(file => h('button', { class: 'file', type: 'button', 'data-action': 'openFile', 'data-path': file },
         icon('file'), h('span', null, file.split('\\').join('/'))))) : h('p', { class: 'muted' }, 'No evidence recorded yet.')),
+      journal(snap, now),
       card('Decisions', snap.decisions.length ? h('ol', { class: 'timeline' }, ...snap.decisions.slice().reverse().map(decision => h('li', { class: 'event' },
         h('span', { class: 'event-icon' }, icon('flag')), h('div', { class: 'event-body' }, h('div', { class: 'event-title' }, `${decision.stage}: ${decision.choice}`),
           decision.why ? h('div', { class: 'event-detail' }, decision.why) : null), h('time', null, ago(decision.ts, now)))))
@@ -221,6 +225,23 @@
         `.aria/asks/${snap.ask.id}/request.md`].filter(file => model.files?.entries.some(node => node.path === file))), h('span', { class: 'muted' }, 'provenance.md appears when the agent writes the ask report')),
       summary(model, ui, now),
     ];
+  }
+
+  /** Render the project's journal of decisions, issues and pitfalls, newest first, marking entries from other asks.
+   * @param {import('../types').Snapshot} snap
+   * @param {number} now
+   * @returns {VNode}
+   */
+  function journal(snap, now) {
+    const counts = ['decision', 'issue', 'pitfall'].map(kind => plural(snap.journal.filter(row => row.kind === kind).length, kind)).join(' · ');
+    return card('Decisions, issues and pitfalls (whole project)', snap.journal.length ? [h('span', { class: 'muted' }, counts),
+      h('ol', { class: 'timeline' }, ...snap.journal.slice().reverse().map(row => h('li', { class: `event journal-${row.kind}` },
+        h('span', { class: 'event-icon' }, icon({ decision: 'flag', issue: 'alert', pitfall: 'shield' }[row.kind])),
+        h('div', { class: 'event-body' }, h('div', { class: 'event-title' }, h('span', { class: `pill ${row.kind === 'decision' ? '' : 'warn'}`.trim() }, row.kind), ' ', row.text),
+          row.why ? h('div', { class: 'event-detail' }, row.why) : null,
+          h('span', { class: 'meta' }, [row.stage ? `Stage ${row.stage}` : null, row.ask !== snap.ask?.id ? `From ask ${row.ask}` : null].filter(Boolean).join(' · '))),
+        h('time', null, ago(row.ts, now)))))]
+      : h('p', { class: 'muted' }, 'Nothing recorded yet. Every ARIA agent logs its decisions, the issues it hits and the pitfalls to avoid here as it works.'));
   }
 
   /** Return file buttons that open beside Mission Control.

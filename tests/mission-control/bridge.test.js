@@ -29,10 +29,12 @@ test('an unusable Python launcher surfaces the failing operation', async t => {
 });
 
 test('only allowlisted lifecycle operations can execute', () => {
-  for (const args of [['stage', 'deliver', 'done', 'skip'], ['checklist'], ['tick', 'opt:evaluation', 'on', 'yes'],
+  for (const args of [['stage', 'deliver', 'skipped', 'skip'], ['stage', 'deliver', 'planned', 'redo'], ['stage', 'deliver', 'done', ' '],
+    ['stage', '../x', 'done', 'note'], ['checklist'], ['tick', 'opt:evaluation', 'on', 'yes'],
     ['tick', 'task:x', 'accepted', ''], ['contract', 'direct', '../../escape', 'ARIA Lite', __filename]]) {
     assert.throws(() => validateOperation(args), /Unsupported/);
   }
+  validateOperation(['stage', 'deliver', 'done', 'Verified in the chat']);
   validateOperation(['tick-for', '20261028-1200-policy', 'a'.repeat(64), 'task:policy', 'accepted', 'Reviewed by user']);
   validateOperation(['contract', 'direct', 'policy', 'ARIA Lite', __filename]);
   assert.equal(BASE_COMMANDS.setup, 'frontierHve.setup');

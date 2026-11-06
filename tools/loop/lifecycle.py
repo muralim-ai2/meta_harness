@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT / "tools" / "skills"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from recommend import rank, skill_dir  # noqa: E402
 from environment import environment  # noqa: E402
-from loop_paths import ASK_ID, loop_dir, project_folder, state_file  # noqa: E402
+from loop_paths import ASK_ID, append_journal, loop_dir, project_folder, state_file  # noqa: E402
 from ask_plan import CHECKLIST_BLOCK, SKILLS_BLOCK, items, plugin_skills, record, refresh, ticked, unfinished  # noqa: E402
 from lifecycle_catalog import catalog, pick, route  # noqa: E402
 from ask_project import (CREATE, SCOPE_NOTE, SHIFT_OVERLAP, deliverable, ledger, overlap, project_status, project_text,  # noqa: E402,F401
@@ -437,6 +437,7 @@ def main() -> None:
     """CLI: list | pick <request> | route <request-file> | show <name>
     | contract <name> <slug> <agent> <request-file> [stage=why ...] [+skill ...] [@pack ... | @core] [only=<s,s>] [for=<lc>:<s>] [gates=ticked]
     | stage <name> <status> <note> | rework <stage> <why> | tick <item> <value> [note] | checklist | ledger [lifecycle]
+    | log decision|issue|pitfall <text> [why]
     | review-status <expected-ask> | tick-for <expected-ask> <revision> <item> <accepted|changes> <note>
     | skills suggested|all|<skill,...> | skills score <scores.json> | shift <prompt>
     | where [request-file]
@@ -465,6 +466,9 @@ def main() -> None:
         out = set_stage(args[1], args[2], args[3])  # type: ignore[arg-type]
     elif args[:1] == ["rework"] and len(args) == 3:
         out = rework(args[1], args[2])
+    elif args[:1] == ["log"] and len(args) in (3, 4):
+        data = active()[1]
+        out = append_journal(WORKSPACE, data["ask"], data["current"], args[1], args[2], args[3] if len(args) == 4 else "")
     elif args[:1] == ["tick"] and len(args) in (3, 4):
         out = tick(args[1], args[2], args[3] if len(args) == 4 else "")
     elif args[:1] == ["review-status"] and len(args) == 2:

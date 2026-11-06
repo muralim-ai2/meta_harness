@@ -169,6 +169,14 @@ def test_contract_plan_check_and_provenance() -> None:
         lifecycle("plan-sync", "first plan")
         assert hook(nxt) == ""
         lifecycle("stage", "backlog", "active", "PM writes the PRD")
+        logged = json.loads(lifecycle("log", "decision", "Use the HR system's API for balances", "no second source of truth"))
+        assert logged | {"ts": ""} == {"ts": "", "ask": ask.split("/")[-1], "stage": "backlog", "kind": "decision",
+                                       "text": "Use the HR system's API for balances", "why": "no second source of truth"}, logged
+        lifecycle("log", "pitfall", "The sandbox tenant has no leave types")
+        journal = [json.loads(line) for line in (ws / ".aria" / "project" / "journal.jsonl").read_text(encoding="utf-8").splitlines()]
+        assert [(row["kind"], row["why"]) for row in journal] == [("decision", "no second source of truth"), ("pitfall", "")], journal
+        failed = subprocess.run([sys.executable, str(REPO / "tools" / "loop" / "lifecycle.py"), "log", "idea", "x"], cwd=ws, capture_output=True, text=True)
+        assert failed.returncode != 0 and "a journal entry needs a kind" in failed.stderr, failed.stderr
         lifecycle("tick", "stage:backlog", "accepted", "PRD reviewed")
         assert "- [x] stage:backlog" in plan.read_text(encoding="utf-8") and "persona ARIA product-manager" in plan.read_text(encoding="utf-8")
         lifecycle("stage", "backlog", "planned", "sprint 2: redo")

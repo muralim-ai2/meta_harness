@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "git"))
 from branch_workflow import git, open_pr, read_json, start, write_json  # noqa: E402
 from diagnose import QUESTIONS, append, decide, entry, read_jsonl, ledger_file  # noqa: E402
-from loop_paths import ask_evidence, ask_folder, evidence_dir, loop_dir, state_dir, state_file  # noqa: E402
+from loop_paths import append_journal, ask_evidence, ask_folder, evidence_dir, loop_dir, state_dir, state_file  # noqa: E402
 
 NO_FALLBACK = ROOT / "hooks" / "no_fallback.py"
 NAME = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
@@ -111,10 +111,14 @@ def run_check(command: str, cwd: Path) -> tuple[int, str]:
 
 
 def escalate(project: Path, state: Json, name: str, rule: str, question: str, evidence: Json) -> None:
-    """Hand the feature to the human with one question and the evidence behind it."""
+    """Hand the feature to the human with one question and the evidence behind it, and log it as an issue in the project journal."""
     state["escalated"] = name
     state["help"] = {"feature": name, "rule": rule, "question": question, "evidence": evidence}
     write_json(state_file(project), state)
+    ask = ask_folder(project)
+    if ask is not None:
+        append_journal(project, ask.name, None, "issue", f"Feature {name} escalated to the user ({rule}): {question}",
+                       f"after {state['attempts'][name]} attempt(s)")
 
 
 def next_feature(project: Path) -> Json:

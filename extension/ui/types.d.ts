@@ -38,6 +38,7 @@ export interface Snapshot {
   options: { item: string; value: string }[];
   stages: { name: string; goal: string; status: string; persona: string }[];
   decisions: { ts: string; stage: string; choice: string; why: string }[];
+  journal: { ts: string; ask: string; stage: string | null; kind: 'decision' | 'issue' | 'pitfall'; text: string; why: string }[];
 }
 export interface Pack {
   id: string;

@@ -19,12 +19,12 @@ const AGENT = 'ARIA Collab';
  */
 async function askBrief(preset = {}) {
   const title = await vscode.window.showInputBox({ title: 'New ask (1 of 2): title', value: preset.title, placeHolder: 'Title', ignoreFocusOut: true,
-    prompt: 'A short name for this piece of work, for example “Dog profile badges” or “Investor pitch deck”. You describe it in the next step.',
+    prompt: 'A short name for this piece of work, for example “Client onboarding portal” or “Q3 board report”. You describe it in the next step.',
     validateInput: value => value.trim().length < 3 || value.trim().length > 80 ? 'Use 3-80 characters.'
       : /[\p{L}\p{N}]/u.test(value) ? null : 'Use at least one letter or digit.' });
   if (title === undefined) return null;
   const description = await vscode.window.showInputBox({ title: `New ask (2 of 2): what should “${title.trim()}” deliver?`, value: preset.description,
-    placeHolder: 'For example: come up with 3 creative ideas for the feed and build them', ignoreFocusOut: true,
+    placeHolder: 'For example: a self-service portal where new clients upload documents and track approval status', ignoreFocusOut: true,
     prompt: 'Optional. One or two sentences about the outcome; they help the harness tell a follow-up from new work or a different project. You add detail, files and screenshots in the chat next.',
     validateInput: value => value.length > 4000 ? 'Use at most 4,000 characters.' : null });
   if (description === undefined) return null;

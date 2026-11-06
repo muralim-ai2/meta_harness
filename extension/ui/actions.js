@@ -116,6 +116,30 @@ async function review(mc, data) {
   void vscode.window.showInformationMessage(`${label === 'Accept' ? 'Accepted' : 'Changes requested for'} ${data.item}.`);
 }
 
+/** Confirm and set a stage of the active ask to done, so the plan matches what the chat shows; the harness still checks its evidence.
+ * @param {MissionControl} mc
+ * @param {Record<string, string>} data
+ * @returns {Promise<void>}
+ */
+async function markDone(mc, data) {
+  const target = mc.target();
+  const state = snapshot(target.uri.fsPath, mc.selected);
+  const stage = state.reviews.find(row => row.item === data.item);
+  if (!state.ask?.active || !stage || !data.item.startsWith('stage:') || stage.ready) {
+    throw new Error('Only a planned or active stage of the active ask can be marked done.');
+  }
+  const flow = await mc.connect();
+  const note = await vscode.window.showInputBox({ title: `Mark ${data.item} done: what was delivered?`, ignoreFocusOut: true,
+    validateInput: value => !value.trim() ? 'A note is required.' : value.length > 4000 ? 'Use at most 4,000 characters.' : null });
+  if (note === undefined) return;
+  const confirm = await vscode.window.showWarningMessage(`Mark ${data.item} done?`, { modal: true,
+    detail: `${target.uri.fsPath}\n\n“${note}”\n\nThis sets the stage status to done, as the agent does when it finishes; the harness refuses it while the stage's `
+      + 'required evidence is missing. You can then accept it.' }, 'Mark done');
+  if (confirm !== 'Mark done') return;
+  await flow.markStageDone(target.uri.fsPath, data.revision, data.item, note);
+  void vscode.window.showInformationMessage(`${data.item} is done; you can accept it now.`);
+}
+
 /** Run one of the extension's own commands; it asks its own questions.
  * @param {MissionControl} mc
  * @param {string} name
@@ -166,4 +190,4 @@ async function openFile(mc, relative) {
   else await vscode.window.showTextDocument(uri, { viewColumn: vscode.ViewColumn.Beside, preview: true });
 }
 
-module.exports = { selectAsk, activateAsk, selectChat, linkChat, editPlan, revealAsk, review, command, telemetrySwitch, openFile };
+module.exports = { selectAsk, activateAsk, selectChat, linkChat, editPlan, revealAsk, review, markDone, command, telemetrySwitch, openFile };

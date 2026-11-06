@@ -368,7 +368,7 @@ class MissionControl {
   async execute(raw) {
     if (this.disposed) throw new Error('Mission Control has been disposed.');
     const data = message(raw);
-    const mutating = ['newAsk', 'newChat', 'startHandoff', 'dismissHandoff', 'activateAsk', 'review', 'command', 'telemetry', 'selectWorkspace'].includes(data.action);
+    const mutating = ['newAsk', 'newChat', 'startHandoff', 'dismissHandoff', 'activateAsk', 'review', 'markDone', 'command', 'telemetry', 'selectWorkspace'].includes(data.action);
     if (mutating && this.state.busy) throw new Error('Another Mission Control action is still running.');
     if (mutating) { this.state.busy = true; this.paint(); }
     try {
@@ -395,6 +395,7 @@ class MissionControl {
         case 'editPlan': await actions.editPlan(this); break;
         case 'revealAsk': await actions.revealAsk(this); break;
         case 'review': await actions.review(this, data); break;
+        case 'markDone': await actions.markDone(this, data); break;
         case 'command': await actions.command(this, data.name); break;
         case 'telemetry': await actions.telemetrySwitch(data.value); break;
         case 'loadPacks': await this.loadPacks(); break;

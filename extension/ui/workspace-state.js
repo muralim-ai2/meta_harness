@@ -91,7 +91,7 @@ function snapshot(workspace, selected = null) {
   const reader = new Reader(workspace);
   /** @type {import('./types').Snapshot} */
   const state = { workspace: reader.root, revision: '', project: null, ask: null, features: [], reviews: [], files: [],
-    planState: 'missing', plan: null, pendingPlanTicks: false, decisions: [], skills: [], skillLoad: null, pluginSkills: [], options: [], stages: [] };
+    planState: 'missing', plan: null, pendingPlanTicks: false, decisions: [], journal: [], skills: [], skillLoad: null, pluginSkills: [], options: [], stages: [] };
   const projectPath = path.join('.aria', 'project', 'project.json');
   const projectValue = reader.json(projectPath, true);
   /** @type {string[]} */
@@ -100,6 +100,15 @@ function snapshot(workspace, selected = null) {
     const project = record(projectValue, projectPath);
     state.project = { name: text(project.name, 'Project name'), goal: text(project.goal, 'Project goal') };
     projectAsks = list(project.asks, 'Project asks').map(askId);
+    const journalPath = path.join('.aria', 'project', 'journal.jsonl');
+    const journal = reader.text(journalPath, true);
+    state.journal = (journal || '').split(/\r?\n/).filter(line => line.trim()).map(line => {
+      const row = record(JSON.parse(line), 'Journal entry');
+      const kind = text(row.kind, 'Journal kind');
+      if (!['decision', 'issue', 'pitfall'].includes(kind)) throw new Error(`${journalPath}: unknown journal kind ${kind}.`);
+      return { ts: text(row.ts, 'Journal timestamp'), ask: askId(row.ask), stage: row.stage === null ? null : text(row.stage, 'Journal stage'),
+        kind: /** @type {'decision' | 'issue' | 'pitfall'} */ (kind), text: text(row.text, 'Journal text'), why: text(row.why, 'Journal reason', true) };
+    });
   }
   const activeValue = reader.json(path.join('.aria', 'asks', 'active.json'), true);
   const activeId = activeValue === undefined ? null : askId(record(activeValue, 'Active ask pointer').active);

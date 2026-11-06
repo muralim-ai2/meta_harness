@@ -62,6 +62,28 @@ test('accepting unfinished work is refused before any confirmation or write', as
   assert.ok(!fixture.controls.calls.slice(seen).some(call => call[0] === 'confirmation'));
 });
 
+test('without a written plan the user can mark the stage done to match the chat, then accept it; the journal shows on the snapshot', async t => {
+  const fixture = mission(t);
+  const state = await create(fixture, 'markdone');
+  assert.equal(state.planState, 'missing');
+  assert.equal(state.reviews[0].status, 'planned');
+  fixture.controls.inputs.push('Checker built and verified in the chat.');
+  fixture.controls.confirmations.push('Mark done');
+  await fixture.controls.provider.execute({ action: 'markDone', item: 'stage:deliver', revision: state.revision });
+  const done = snapshot(fixture.root);
+  assert.equal(done.reviews[0].status, 'done');
+  assert.equal(done.decisions.at(-1).why, 'Checker built and verified in the chat.');
+  fixture.controls.inputs.push('Ran the checker on two policies.');
+  fixture.controls.confirmations.push('Accept');
+  await fixture.controls.provider.execute({ action: 'review', item: 'stage:deliver', value: 'accepted', revision: done.revision });
+  assert.equal(snapshot(fixture.root).reviews[0].decision, 'accepted');
+  await assert.rejects(fixture.controls.provider.execute({ action: 'markDone', item: 'stage:deliver', revision: snapshot(fixture.root).revision }),
+    /Only a planned or active stage/);
+  fs.appendFileSync(path.join(fixture.root, '.aria', 'project', 'journal.jsonl'), JSON.stringify({ ts: '2026-11-06T10:00:00+00:00', ask: state.ask.id,
+    stage: 'deliver', kind: 'pitfall', text: 'The policy files use Windows line endings', why: 'the parser split on \\n only' }) + '\n');
+  assert.deepEqual(snapshot(fixture.root).journal.map(row => [row.kind, row.text]), [['pitfall', 'The policy files use Windows line endings']]);
+});
+
 test('a stale view cannot record a review after the project changes', async t => {
   const fixture = mission(t);
   const state = await create(fixture, 'stale');

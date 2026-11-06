@@ -132,8 +132,8 @@ class Workflow {
     const review = state.reviews.find(row => row.item === item);
     if (!review) throw new Error('The review item is not in the active ask.');
     if (!['accepted', 'changes'].includes(value)) throw new Error('Unknown human review decision.');
-    if (value === 'accepted' && (!review.ready || state.planState !== 'synced')) {
-      throw new Error('Acceptance requires completed work, its required evidence, and a synchronized plan.');
+    if (value === 'accepted' && (!review.ready || state.planState === 'unsynced')) {
+      throw new Error('Acceptance requires completed work, its required evidence, and no unreconciled plan edits.');
     }
     const ticket = record(await lifecycle(this.connection, workspace, ['review-status', state.ask.id]), 'Review ticket');
     current(workspace, revision);
@@ -160,6 +160,27 @@ class Workflow {
       const saved = record(reader.json(path.join('.aria', 'asks', ticket.ask, 'contract.json')), 'Saved contract');
       const entry = record(record(saved.checklist, 'Saved checklist')[ticket.item], 'Saved review');
       if (entry.value !== ticket.value || entry.note !== note) throw new Error('Review response did not match the saved human decision.');
+      return snapshot(workspace);
+    });
+  }
+
+  /** Set a planned or active stage of the active ask to done for the user, after checking the displayed state is current.
+   * @param {string} workspace
+   * @param {string} revision
+   * @param {string} item
+   * @param {string} note
+   * @returns {Promise<import('./types').Snapshot>}
+   */
+  async markStageDone(workspace, revision, item, note) {
+    return this.mutate(async () => {
+      text(note, 'Stage note');
+      const state = current(workspace, revision);
+      if (!state.ask?.active) throw new Error('Make this ask active before changing its stages.');
+      const review = state.reviews.find(row => row.item === item);
+      if (!review || !item.startsWith('stage:') || review.ready) throw new Error('Only a planned or active stage of the active ask can be marked done.');
+      const stage = item.slice('stage:'.length);
+      const result = record(await lifecycle(this.connection, workspace, ['stage', stage, 'done', note]), 'Stage update');
+      if (result.name !== stage || result.status !== 'done') throw new Error('Harness returned a different stage update.');
       return snapshot(workspace);
     });
   }
