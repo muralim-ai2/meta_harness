@@ -122,6 +122,9 @@ test('a command the agent requested but Copilot has not started waits for your A
   write([...asked, tool(70, 'c9', 'run_in_terminal', { command: 'python loop.py verify .', explanation: 'Verify theme-modes' })]);
   ({ session } = activity(root, chat, null, START + 75_000));
   assert.deepEqual([session.status, session.current.title], ['working', 'Verify theme-modes'], 'once allowed, the step runs and is the current one');
+  write(asked);
+  ({ session } = activity(root, chat, null, START + 3 * 60 * 60_000));
+  assert.deepEqual([session.status, session.current], ['idle', null], 'a request left for hours is not a wait: the chat was left or the step skipped');
 });
 
 test('ten quiet minutes make a session idle and unfinished calls show as stopped', t => {

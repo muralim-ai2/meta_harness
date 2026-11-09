@@ -9,7 +9,7 @@
   /** @typedef {import('../types').VNode} VNode */
   /** @typedef {import('../types').Child} Child */
   /** @typedef {import('../types').ActivityEvent} ActivityEvent */
-  /** @typedef {{tone: 'error' | 'warn' | 'info', icon: string, title: string, detail: string, page?: string, files?: string[]}} Need */
+  /** @typedef {{tone: 'error' | 'warn' | 'info', icon: string, title: string, detail: string, page?: string, files?: string[], chat?: string}} Need */
 
   /** @type {Record<string, (string | {cx: number, cy: number, r: number})[]>} */
   const ICONS = {
@@ -201,13 +201,7 @@
     if (model.snapshotError) items.push({ tone: 'error', icon: 'alert', title: 'Mission Control cannot read the ask files', detail: model.snapshotError });
     if (model.activityError) items.push({ tone: 'error', icon: 'alert', title: 'Mission Control cannot read the live activity', detail: model.activityError });
     if (session?.status === 'waiting') items.push({ tone: 'warn', icon: 'question', title: session.current?.state === 'pending' ? 'A step waits for your Allow in Chat'
-      : 'The agent is waiting for your answer in Chat', detail: session.current?.detail || '',
-      files: session.current?.files || [] });
-    for (const chat of (run?.chats || []).filter(row => row.status !== 'idle' && row.id !== session?.id)) {
-      items.push({ tone: chat.status === 'waiting' ? 'warn' : 'info', icon: chat.status === 'waiting' ? 'question' : 'spark',
-        title: chat.status === 'waiting' ? 'Another chat is waiting for your answer' : 'Another chat is working',
-        detail: `${chat.title || 'Untitled chat'} \u00b7 ${chat.asks.length ? `linked to ${chat.asks.map(link => link.ask).join(', ')}` : 'not linked to any ask'}`, page: 'live' });
-    }
+      : 'The agent is waiting for your answer in Chat', detail: session.current?.detail || '', files: session.current?.files || [], chat: session.id });
     if (run?.errors?.paused) {
       items.push({ tone: 'error', icon: 'alert', title: `Paused after ${plural(run.errors.failures.length, 'failed command')} in a row`,
         detail: 'Answer the agent in Chat: fix the environment, change the approach or skip the step.', page: 'live' });
@@ -238,7 +232,8 @@
     return h('section', { class: 'needs', 'aria-label': 'Needs you' }, h('div', { class: 'section-label' }, 'Needs you', h('span', { class: 'count' }, items.length)),
       ...items.map(item => h('div', { class: `need tone-${item.tone}` }, icon(item.icon),
         h('div', { class: 'need-text' }, h('strong', null, item.title), item.detail ? h('span', { class: compact ? 'clamp' : '' }, item.detail) : null, fileLinks(item.files || [])),
-        item.page ? button('', 'go', { kind: 'icon', icon: 'chevron', data: { page: item.page }, title: `Open ${item.page}` }) : null)));
+        item.chat ? button('Open chat', 'openChat', { kind: 'link', icon: 'chat', data: { chat: item.chat }, title: 'Open this chat to answer or allow the step' })
+          : item.page ? button('', 'go', { kind: 'icon', icon: 'chevron', data: { page: item.page }, title: `Open ${item.page}` }) : null)));
   }
 
   /** Return one timeline row.

@@ -206,6 +206,7 @@ export interface Need {
   detail: string;
   page?: string;
   files?: string[];
+  chat?: string;
 }
 export interface Views {
   ICONS: Record<string, (string | { cx: number; cy: number; r: number })[]>;

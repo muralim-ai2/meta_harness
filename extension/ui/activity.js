@@ -9,6 +9,7 @@ const TELEMETRY_TAIL_BYTES = 4 * 1024 * 1024;
 const IDLE_AFTER_MS = 5 * 60 * 1000;
 const QUICK_TOOL_MS = 60 * 1000;
 const APPROVAL_MS = 3000;
+const APPROVAL_LAPSE_MS = 60 * 60 * 1000;
 const IMAGE_BYTES = 6000;
 /** @type {Record<string, string>} */
 const CONTEXT_GROUP = { read: 'reads', edit: 'edits', run: 'commands', search: 'searches', delegate: 'subagents', ask: 'questions', todo: 'other', tool: 'other' };
@@ -232,13 +233,14 @@ function requested(data, workspace, at) {
   }));
 }
 
-/** Return the newest requested call that has not started for a few seconds: it waits for your approval in Chat.
+/** Return the newest requested call that has not started for a few seconds: it waits for your approval in Chat. After an hour it is no longer
+ * a wait: the chat was left or the step was skipped.
  * @param {Map<string, ActivityEvent>} calls
  * @param {number} now
  * @returns {ActivityEvent | null}
  */
 function awaiting(calls, now) {
-  return [...calls.values()].filter(event => now - Date.parse(event.at) >= APPROVAL_MS).at(-1) || null;
+  return [...calls.values()].filter(event => now - Date.parse(event.at) >= APPROVAL_MS && now - Date.parse(event.at) < APPROVAL_LAPSE_MS).at(-1) || null;
 }
 
 /** Parse one transcript into its session facts.

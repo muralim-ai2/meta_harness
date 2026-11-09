@@ -80,10 +80,12 @@ test('a chat is linked to the ask its contract created, the asks it reopened and
     'late-contract': [], plain: [] });
   assert.deepEqual(chats.map(chat => chat.id), ['plain', 'edited', 'follow-up', 'created', 'late-contract']);
   assert.equal(chats.find(chat => chat.id === 'created').title, 'Build: Pawstagram, a social photo app for dogs');
-  assert.equal(shownChat(chats, PAWS, null, false).id, 'follow-up');
-  assert.equal(shownChat(chats, PAWS, 'created', false).id, 'created');
-  assert.equal(shownChat(chats, PAWS, 'plain', false).id, 'plain');
-  assert.equal(shownChat(chats, PAWS, 'missing', false).id, 'follow-up');
+  const pick = (/** @type {string} */ id, /** @type {string} */ at) => ({ id, at });
+  assert.equal(shownChat(chats, PAWS, null, false).id, 'follow-up', 'the ask\'s most recently active chat');
+  assert.equal(shownChat(chats, PAWS, pick('created', '2026-10-29T12:00:00.000Z'), false).id, 'created', 'a pick shows while no other chat of the ask is newer');
+  assert.equal(shownChat(chats, PAWS, pick('created', '2026-10-29T08:00:00.000Z'), false).id, 'follow-up', 'newer activity of the ask replaces an older pick');
+  assert.equal(shownChat(chats, PAWS, pick('plain', '2026-10-29T12:00:00.000Z'), false).id, 'plain');
+  assert.equal(shownChat(chats, PAWS, pick('missing', '2026-10-29T12:00:00.000Z'), false).id, 'follow-up');
   assert.equal(shownChat(chats, REPORTING, null, false), null);
   assert.equal(shownChat(chats, null, null, false).id, 'plain');
   assert.equal(shownChat(chats, PAWS, null, true).id, 'follow-up', 'an idle chat no ask claims is not followed');
@@ -223,7 +225,7 @@ test('chats can be chosen and an unlinked chat linked by hand; a new chat needs 
   assert.equal(find(dashboard(model, UI, Date.now()), node => node.attrs['data-action'] === 'newChat').length, 1);
 });
 
-test('the active ask follows a working chat no ask claims while its own chat is idle; a chosen chat wins and the other working chat needs you', async t => {
+test('the active ask follows a working chat no ask claims while its own chat is idle; a picked chat shows, without other-chat clutter', async t => {
   const fixture = mission(t);
   const [ask] = await realAsks(fixture.root, fixture.storage, [['onboarding', 'Build an onboarding policy checker']]);
   const quiet = new Date(Date.now() - 20 * 60_000).toISOString();
@@ -245,7 +247,7 @@ test('the active ask follows a working chat no ask claims while its own chat is 
   model = fixture.controls.commands.get('frontierHve.missionControlModel')();
   assert.equal(model.activity.session.id, 'linked');
   live = text(dashboard(model, UI, Date.now()));
-  assert.match(live, /Another chat is workingAnalyse the onboarding policies · not linked to any ask/);
+  assert.doesNotMatch(live, /Another chat is working/);
   assert.doesNotMatch(live, /Showing “/);
 });
 

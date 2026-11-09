@@ -156,18 +156,21 @@ function chatList(transcripts, workspace, asks, claims, pending, now) {
   return { chats: chats.sort((a, b) => b.lastAt.localeCompare(a.lastAt)), claimed };
 }
 
-/** Return the chat to show: the one the user chose, else the ask's latest chat; with no ask, the latest chat. With follow set and that chat
- * idle, a working chat no ask claims is shown instead, so a chat that only reads and analyses is not hidden behind an idle one.
+/** Return the chat to show: the ask's most recently active chat (with no ask, the latest chat). A chat the user picked shows until another
+ * chat of the ask is active after the pick. With follow set and the ask's chat idle, a working chat no ask claims is shown instead, so a
+ * chat that only reads and analyses is not hidden behind an idle one.
  * @param {import('./types').Chat[]} chats
  * @param {string | null} ask
- * @param {string | null} chosen
+ * @param {{id: string, at: string} | null} chosen
  * @param {boolean} follow
  * @returns {import('./types').Chat | null}
  */
 function shownChat(chats, ask, chosen, follow) {
   const mine = ask === null ? chats : chats.filter(chat => chat.asks.some(link => link.ask === ask));
+  const picked = chosen && chats.find(chat => chat.id === chosen.id);
+  if (picked && !mine.some(chat => chat.id !== picked.id && chat.lastAt > chosen.at)) return picked;
   const loose = follow && (!mine[0] || mine[0].status === 'idle') ? chats.find(chat => !chat.asks.length && chat.status !== 'idle') : undefined;
-  return chats.find(chat => chat.id === chosen) || loose || mine[0] || null;
+  return loose || mine[0] || null;
 }
 
 /** Validate the saved chat-to-ask links.

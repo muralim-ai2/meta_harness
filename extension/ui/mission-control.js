@@ -68,7 +68,7 @@ class MissionControl {
     this.navigate = { page: 'live', seq: 0 };
     /** @type {string | null} The ask on screen when it is not the active ask. */
     this.selected = null;
-    /** @type {string | null} The chat on screen when it is not the ask's latest. */
+    /** @type {{id: string, at: string} | null} The chat the user picked and when; it shows until another chat of the ask is active after it. */
     this.chat = null;
     this.disposed = false;
     /** @type {vscode.WebviewPanel | null} */
@@ -392,6 +392,7 @@ class MissionControl {
         case 'selectAsk': await actions.selectAsk(this, data.ask); break;
         case 'activateAsk': await actions.activateAsk(this, data.ask); break;
         case 'selectChat': actions.selectChat(this, data.chat); break;
+        case 'openChat': await actions.openChat(this, data.chat); break;
         case 'linkChat': await actions.linkChat(this, data.chat); break;
         case 'editPlan': await actions.editPlan(this); break;
         case 'revealAsk': await actions.revealAsk(this); break;

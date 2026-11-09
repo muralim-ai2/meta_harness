@@ -9,7 +9,7 @@ const { BASE_COMMANDS } = require('./lifecycle-cli');
 const { snapshot } = require('./workspace-state');
 const { sameAsk } = require('./workflow');
 const { listAsks, askTree, projectTree, evaluationFiles } = require('./asks');
-const { claimsFrom } = require('./chats');
+const { claimsFrom, chatSessionUri } = require('./chats');
 const { containedPath } = require('./file-access');
 const askFlow = require('./ask-flow');
 const IMAGES = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
@@ -63,7 +63,17 @@ async function activateAsk(mc, ask) {
  */
 function selectChat(mc, chat) {
   if (!mc.state.activity?.chats.some(row => row.id === chat)) throw new Error('That chat is not listed in Mission Control.');
-  mc.chat = chat;
+  mc.chat = { id: chat, at: new Date().toISOString() };
+}
+
+/** Open one of the listed chats in Copilot Chat, for example to answer it or allow a step.
+ * @param {MissionControl} mc
+ * @param {string} chat
+ * @returns {Promise<void>}
+ */
+async function openChat(mc, chat) {
+  if (!mc.state.activity?.chats.some(row => row.id === chat)) throw new Error('That chat is not listed in Mission Control.');
+  await vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(chatSessionUri(chat)));
 }
 
 /** Link a listed chat to the ask on screen; the link lives in this window's Mission Control state only.
@@ -282,4 +292,4 @@ async function openFile(mc, relative) {
   else await vscode.window.showTextDocument(uri, { viewColumn: vscode.ViewColumn.Beside, preview: true });
 }
 
-module.exports = { selectAsk, activateAsk, selectChat, linkChat, editPlan, revealAsk, review, markDone, addSkill, showChanges, command, telemetrySwitch, openFile };
+module.exports = { selectAsk, activateAsk, selectChat, openChat, linkChat, editPlan, revealAsk, review, markDone, addSkill, showChanges, command, telemetrySwitch, openFile };

@@ -81,6 +81,11 @@ test('the sidebar shows live status, the ask, what needs you, the current step a
   assert.equal(find(tree, node => node.attrs.role === 'switch')[0].attrs['aria-checked'], 'false');
   assert.deepEqual(actions(tree, 'go').map(node => node.attrs['data-page']).filter((page, index, all) => all.indexOf(page) === index), ['live', 'plan', 'progress', 'files', 'others', 'telemetry', 'visuals', 'skills', 'settings']);
   assert.doesNotMatch(shown, /Continue in Chat/);
+  const waiting = model(t);
+  Object.assign(waiting.activity.session, { status: 'waiting', current: { ...waiting.activity.session.events[0], kind: 'ask', state: 'pending', title: 'Waiting', detail: 'npm test', files: [] } });
+  const allow = sidebar(waiting, UI, NOW);
+  assert.match(text(allow), /A step waits for your Allow in Chat/);
+  assert.deepEqual(actions(allow, 'openChat').map(node => node.attrs['data-chat']), ['session-1'], 'the item opens the waiting chat, not a page you are on');
 });
 
 test('text from the project and the chat never becomes markup', t => {
