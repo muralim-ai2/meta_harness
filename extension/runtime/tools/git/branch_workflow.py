@@ -1,4 +1,4 @@
-"""Git workflow for loop features: stacked feature branches, PR records, and a push queue that only human-ticked PRs leave."""
+"""Git workflow for loop features: stacked feature branches, PR records, and a push queue the human ticks from."""
 
 import json
 import subprocess
@@ -63,10 +63,11 @@ def open_pr(project: Path, feature: str, base: str, verify: Json, base_branch: s
 
 
 def queue(project: Path) -> list[Json]:
-    """Return the queued PRs (verified, not pushed) with what the human needs to tick them."""
-    records = [read_json(p) for p in sorted((state_dir(project) / "prs").glob("*.json"))]
-    return [{"branch": r["branch"], "base_branch": r["base_branch"], "lines_added": r["lines_added"], "scope_creep": r["scope_creep"],
-             "verify": r["verify"]["command"]} for r in records if r["status"] == "queued"]
+    """Return the verified, unpushed PRs (queued under GitHub review, recorded under local review) with what the human needs to tick them."""
+    paths = sorted((state_dir(project) / "prs").glob("*.json"))
+    return [{"branch": r["branch"], "base_branch": r["base_branch"], "status": r["status"], "lines_added": r["lines_added"],
+             "scope_creep": r["scope_creep"], "verify": r["verify"]["command"], "record": p.relative_to(project).as_posix()}
+            for p, r in ((p, read_json(p)) for p in paths) if r["status"] in ("queued", "recorded")]
 
 
 def approved(project: Path) -> list[str]:
@@ -76,12 +77,11 @@ def approved(project: Path) -> list[str]:
 
 
 def pushed(project: Path, feature: str, url: str) -> Json:
-    """Mark a ticked, queued PR as pushed with its URL."""
+    """Mark a verified PR as pushed with its URL, noting whether the human ticked it or confirmed the push when asked."""
     record = read_json(pr_file(project, feature))
-    if record["status"] != "queued" or record["branch"] not in approved(project):
-        raise ValueError(f"{record['branch']} is {record['status']} and {'ticked' if record['branch'] in approved(project) else 'not ticked'}"
-                         " for pushing")
-    record |= {"status": "pushed", "url": url}
+    if record["status"] not in ("queued", "recorded"):
+        raise ValueError(f"{record['branch']} is {record['status']}, not a verified PR waiting to be pushed")
+    record |= {"status": "pushed", "url": url, "ticked": record["branch"] in approved(project)}
     write_json(pr_file(project, feature), record)
     return record
 

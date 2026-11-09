@@ -80,6 +80,9 @@ def to_cursor(output: Json, event: str) -> Json:
     """Return Cursor's native response for a hook output already in Claude Code form; Cursor has no context channel on prompt submit."""
     specific = output.get("hookSpecificOutput", {})
     if event == "PreToolUse":
+        if specific.get("permissionDecision") == "ask":
+            reason = specific["permissionDecisionReason"]
+            return {"permission": "ask", "user_message": reason, "agent_message": reason}
         if specific.get("permissionDecision") != "deny":
             return {}
         reason = specific["permissionDecisionReason"]
@@ -97,8 +100,8 @@ def to_copilot(output: Json, event: str) -> Json:
     """Return Copilot's flat hook output: deny with a reason, context where Copilot reads it, or a Stop block."""
     specific = output.get("hookSpecificOutput", {})
     if event == "PreToolUse":
-        if specific.get("permissionDecision") == "deny":
-            return {"permissionDecision": "deny", "permissionDecisionReason": specific["permissionDecisionReason"]}
+        if specific.get("permissionDecision") in ("deny", "ask"):
+            return {"permissionDecision": specific["permissionDecision"], "permissionDecisionReason": specific["permissionDecisionReason"]}
         # Copilot cannot stop the agent from PreToolUse: an escalation stop becomes a deny.
         return {"permissionDecision": "deny", "permissionDecisionReason": output["stopReason"]} if output.get("continue") is False else {}
     if event == "Stop":
@@ -117,6 +120,10 @@ def from_vscode(output: Json, event: str, client: Client) -> Json:
         output = {k: v for k, v in output.items() if k != "hookSpecificOutput"} | {"decision": specific["decision"], "reason": specific["reason"]}
     if client == "codex" and event == "PreToolUse":
         output = {k: v for k, v in output.items() if k not in ("continue", "stopReason")}
+        if specific.get("permissionDecision") == "ask":
+            # Codex reports "ask" as a failed hook run: surface the confirmation as a warning and model context instead.
+            output = {"systemMessage": specific["permissionDecisionReason"],
+                      "hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": specific["additionalContext"]}}
     if client == "copilot":
         return to_copilot(output, event)
     return to_cursor(output, event) if client == "cursor" else output

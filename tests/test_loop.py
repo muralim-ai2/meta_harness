@@ -211,6 +211,7 @@ def test_parallel_options_auto_and_human_choice() -> None:
         result = compare(project, "a")
         assert result["winner"] == "small" and result["chosen_by"] == "auto", result
         assert not any(Path(t).exists() for t in trees.values()) and loop.verify(project)["passes"] is True
+        assert [(q["branch"], q["status"], q["record"]) for q in queue(project)] == [("feature/a", "recorded", ".harness/prs/a.json")]
         approaches = [json.loads(line)["approach"] for line in (project / ".harness" / "attempts" / "a.jsonl").read_text().splitlines()]
         assert {"big", "small", "broken"} <= set(approaches), approaches
     with tempfile.TemporaryDirectory() as tmp:
@@ -227,7 +228,8 @@ def test_parallel_options_auto_and_human_choice() -> None:
         assert choose(project, "a", "two")["chosen_by"] == "human"
         assert loop.verify(project)["pr_status"] == "queued"
         assert [q["branch"] for q in queue(project)] == ["feature/a"]
-        assert "not ticked" in raises(ValueError, pushed, project, "a", "https://x/pr/1")
+        assert pushed(project, "a", "https://x/pr/1")["ticked"] is False
+        assert "not a verified PR waiting" in raises(ValueError, pushed, project, "a", "https://x/pr/1")
 
 
 def test_parallel_options_same_failure_escalates() -> None:
@@ -318,7 +320,7 @@ def fire(root: Path, hook: str, payload: dict[str, Any], **env: str) -> dict[str
 
 
 def test_loop_guard() -> None:
-    """Locked state, hook bypass, resume and unticked pushes are denied; tool calls are logged; Stop blocks per policy."""
+    """Locked state, hook bypass and resume are denied; uncleared pushes ask to confirm; tool calls are logged; Stop blocks per policy."""
     with tempfile.TemporaryDirectory() as tmp:
         root = make_root(tmp)
         proj = root / "proj"
@@ -349,6 +351,8 @@ def test_loop_guard() -> None:
         for bad in ("echo x > feature_list.json", "git commit --no-verify -m x", "python ../../../../tools/loop/loop.py resume . ok",
                     "git push -u origin feature/b", "git push --force origin feature/a", "git push"):
             assert pre("run_in_terminal", {"command": bad}) is not None, bad
+        for push in ("git push -u origin feature/b", "git push --force origin feature/a", "git push"):
+            assert pre("run_in_terminal", {"command": push})["hookSpecificOutput"]["permissionDecision"] == "ask", push  # type: ignore[index]
         (proj / ".harness" / "push_approved.json").write_text(json.dumps({"branches": ["feature/a"]}), encoding="utf-8")
         assert pre("run_in_terminal", {"command": "git push -u origin feature/a"}) is None
         assert pre("github-pull-request_create_pull_request", {"head": "feature/b", "base": "feature/a"}) is not None
@@ -370,7 +374,7 @@ def test_loop_guard() -> None:
         stopped = pre("read_file", edit)
         assert stopped["continue"] is False and "Which check?" in stopped["stopReason"], stopped  # type: ignore[index]
         kinds = [json.loads(line)["kind"] for line in (root / ".aria" / "runs" / "s1.interventions.jsonl").read_text().splitlines()]
-        assert {"loop_files", "hook_bypass", "human_only", "push_blocked", "victory_check", "escalated"} <= set(kinds), kinds
+        assert {"loop_files", "hook_bypass", "human_only", "push_confirm", "victory_check", "escalated"} <= set(kinds), kinds
         state |= {"escalated": None, "help": None, "current": None}
         (proj / ".harness" / "state.json").write_text(json.dumps(state), encoding="utf-8")
         (proj / "feature_list.json").write_text(json.dumps([{"name": "a", "passes": True}]), encoding="utf-8")
@@ -378,6 +382,36 @@ def test_loop_guard() -> None:
         assert pre("run_in_terminal", {"command": "echo x > progress.txt"}) is None
         assert pre("create_file", {"filePath": str(proj / ".harness" / "state.json")}) is not None
         assert pre("run_in_terminal", {"command": "rm .harness/state.json"}) is not None
+
+
+def test_push_check_asks_with_linked_files_and_never_denies() -> None:
+    """A push from a local-review loop or of an unticked branch asks the user to confirm, naming why and linking the loop state, tick and
+    PR record files; scope creep is a warning; a ticked push in a GitHub review loop passes."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = make_root(tmp)
+        proj = root / "proj"
+        (proj / ".harness" / "prs").mkdir()
+        (proj / ".harness" / "prs" / "pr-integration.json").write_text(json.dumps(
+            {"verify": {"exit_code": 0}, "lines_added": 1800, "scope_creep": True}), encoding="utf-8")
+        (proj / ".harness" / "state.json").write_text(json.dumps({"review": "local", "current": None, "escalated": None}), encoding="utf-8")
+
+        def push(command: str) -> dict[str, Any] | None:
+            """Fire PreToolUse for a terminal push."""
+            return fire(root, "loop_guard.py", {"hook_event_name": "PreToolUse", "tool_name": "run_in_terminal", "tool_input": {"command": command},
+                                                "tool_use_id": "t1"}, HARNESS_PROJECT="proj", HARNESS_STOP_POLICY="once")
+
+        out = push("git push -u origin feature/pr-integration")
+        assert out and out["hookSpecificOutput"]["permissionDecision"] == "ask", out
+        message = out["hookSpecificOutput"]["permissionDecisionReason"]
+        assert "'local' review" in message and "[state.json](proj/.harness/state.json)" in message, message
+        assert "feature/pr-integration is not ticked" in message and "[push_approved.json](proj/.harness/push_approved.json)" in message, message
+        assert "[pr-integration.json](proj/.harness/prs/pr-integration.json), check exit 0, +1800 lines, scope creep" in message, message
+        assert message == out["systemMessage"] and "markdown link" in out["hookSpecificOutput"]["additionalContext"], out
+        (proj / ".harness" / "state.json").write_text(json.dumps({"review": "github", "current": None, "escalated": None}), encoding="utf-8")
+        (proj / ".harness" / "push_approved.json").write_text(json.dumps({"branches": ["feature/pr-integration"]}), encoding="utf-8")
+        assert push("git push -u origin feature/pr-integration") is None
+        forced = push("git push --force origin feature/pr-integration")
+        assert forced and "force push" in forced["systemMessage"] and forced["hookSpecificOutput"]["permissionDecision"] == "ask", forced
 
 
 def test_loop_guard_reads_apply_patch_text() -> None:
@@ -436,7 +470,7 @@ def test_guard_waiver() -> None:
 
 
 def test_loop_guard_awareness_mode() -> None:
-    """In advise mode a loop-file edit and an early stop are surfaced to the user with what changed, not blocked; pushes stay blocked."""
+    """In advise mode a loop-file edit and an early stop are surfaced to the user with what changed, not blocked; pushes ask to confirm."""
     with tempfile.TemporaryDirectory() as tmp:
         root = make_root(tmp, "advise")
         proj = root / "proj"
@@ -455,7 +489,7 @@ def test_loop_guard_awareness_mode() -> None:
         assert stop == {"systemMessage": stop["systemMessage"]} and "stopped while features still fail" in stop["systemMessage"], stop
         push = fire(root, "loop_guard.py", {"hook_event_name": "PreToolUse", "tool_name": "run_in_terminal", "tool_use_id": "t2",
                                             "tool_input": {"command": "git push --force origin main"}}, **env)
-        assert push["hookSpecificOutput"]["permissionDecision"] == "deny", push  # type: ignore[index]
+        assert push["hookSpecificOutput"]["permissionDecision"] == "ask", push  # type: ignore[index]
 
 
 def test_error_guard_pauses_after_three_failures_in_a_row() -> None:

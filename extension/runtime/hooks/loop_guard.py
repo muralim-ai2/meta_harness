@@ -1,4 +1,5 @@
-"""Loop guards: protect loop state (anti-gaming), log tool calls for diagnosis, gate pushes to ticked PRs, stop on escalation, victory check."""
+"""Loop guards: protect loop state (anti-gaming), log tool calls for diagnosis, ask the user to confirm uncleared pushes, stop on escalation,
+victory check."""
 
 import json
 import os
@@ -152,20 +153,46 @@ def log_tool(proj: Path, entry: Json) -> None:
             f.write(json.dumps(entry | {"ts_ms": time.time() * 1000, "feature": state["current"]}) + "\n")
 
 
-def push_gate(session_id: str, proj: Path, branches: list[str], what: str) -> Json | None:
-    """Deny a push or PR unless the loop uses GitHub review and the human ticked every branch it names."""
+def link(path: Path) -> str:
+    """Return a markdown link to a file, relative to the workspace root."""
+    return f"[{path.name}]({Path(os.path.relpath(path, Path.cwd())).as_posix()})"
+
+
+def push_gate(session_id: str, proj: Path, branches: list[str], what: str, force: bool = False) -> Json | None:
+    """Return a confirmation, never a deny, for a push or PR the loop has not cleared (a force push, no GitHub review loop, an unticked
+    branch), naming why and linking the files behind it; None when it is cleared."""
     state = read(state_file(proj))
-    approved = (read(state_dir(proj) / "push_approved.json") or {"branches": []})["branches"]
-    if not state or state["review"] != "github":
-        return deny(session_id, "push_blocked", f"{what} is only allowed for GitHub review loops.")
-    unticked = sorted(set(branches) - set(approved)) if branches else ["(no feature branch named)"]
-    if unticked:
-        return deny(session_id, "push_blocked", f"{what} needs the human's tick first for {unticked}. Show the queue with the pr-push skill.")
-    return None
+    ticks = state_dir(proj) / "push_approved.json"
+    approved = (read(ticks) or {"branches": []})["branches"]
+    problems = ["it is a force push, which rewrites the branch's history on the remote"] if force else []
+    if not state:
+        problems.append(f"no harness loop is recorded for this project ({link(state_file(proj))} does not exist)")
+    elif state["review"] != "github":
+        problems.append(f"the loop uses {state['review']!r} review, not GitHub review (see {link(state_file(proj))}); open the PR as a draft")
+    unticked = sorted(set(branches) - set(approved))
+    if not branches:
+        problems.append("it names no feature branch, so no tick covers it")
+    elif unticked:
+        problems.append(f"{', '.join(unticked)} {'is' if len(unticked) == 1 else 'are'} not ticked for pushing (see {link(ticks)})")
+    if not problems:
+        return None
+    files = []
+    for branch in branches:
+        pr_path = state_dir(proj) / "prs" / f"{branch.removeprefix('feature/')}.json"
+        pr = read(pr_path)
+        if pr:
+            files.append(f"{branch}: {link(pr_path)}, check exit {pr['verify']['exit_code']}, +{pr['lines_added']} lines"
+                         + (", scope creep (a warning for the reviewer)" if pr["scope_creep"] else ""))
+    message = (f"Push check: {what} needs your confirmation because {'; '.join(problems)}." + (f" PR records: {'; '.join(files)}." if files else "")
+               + " Nothing is blocked: confirm to go ahead, or cancel and tick the branch with the pr-push skill first.")
+    record(session_id, "loop_guard", "push_confirm", message)
+    return {"systemMessage": message, "hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "ask",
+                                                             "permissionDecisionReason": message, "additionalContext": (
+        f"{message} Show this to the user in your next reply with each file as a markdown link, and go ahead only once they confirm.")}}
 
 
 def pre_tool(session_id: str, tool_name: str, tool_input: Json, tool_use_id: str) -> Json | None:
-    """Return a deny for escalated work, hook bypasses, human-only commands, unticked pushes, and edits to loop state."""
+    """Return a deny for escalated work, hook bypasses, human-only commands and edits to loop state; a confirmation for uncleared pushes."""
     proj = project()
     question = escalation(proj)
     if question:
@@ -183,9 +210,7 @@ def pre_tool(session_id: str, tool_name: str, tool_input: Json, tool_use_id: str
         if HUMAN_ONLY.search(command):
             return deny(session_id, "human_only", "Resuming an escalation is for the human; ask them and stop.")
         if GIT_PUSH.search(command):
-            if FORCE.search(command):
-                return deny(session_id, "push_blocked", "Force pushes are not allowed.")
-            return push_gate(session_id, proj, BRANCH.findall(command), "git push")
+            return push_gate(session_id, proj, BRANCH.findall(command), "git push", bool(FORCE.search(command)))
         if LOOP_SCRIPT.match(command) or not SHELL_WRITE.search(command):
             return None
         hits = {"state"} if LOOP_STATE.search(command) else {"files"} if LOOP_FILE_NAMES.search(command) and loop_running(proj) else set()

@@ -158,7 +158,8 @@ def test_claude_code_hooks() -> None:
         assert not any(o.get("hookSpecificOutput", {}).get("permissionDecision") == "deny" for o in advised), advised
         guard_mode(ws / ".aria" / "runtime", "enforce")
         push = {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_use_id": "t3", "tool_input": {"command": "git push -f origin main"}}
-        assert "Force pushes" in fire(ws, "claude", base | push)[0]["hookSpecificOutput"]["permissionDecisionReason"]
+        confirm = fire(ws, "claude", base | push)[0]["hookSpecificOutput"]
+        assert confirm["permissionDecision"] == "ask" and "force push" in confirm["permissionDecisionReason"], confirm
         (ws / "big.py").write_text("x = 1\n" * 600)
         post = {"hook_event_name": "PostToolUse", "tool_name": "Write", "tool_use_id": "t4", "tool_input": {"file_path": str(ws / "big.py")},
                 "tool_response": {"filePath": str(ws / "big.py"), "type": "create"}}
@@ -192,6 +193,8 @@ def test_cursor_hooks() -> None:
         assert denied[0]["permission"] == "deny" and "loop scripts" in denied[0]["agent_message"], denied
         harmless = fire(ws, "cursor", base | write | {"tool_name": "Read", "tool_input": {"file_path": str(ws / "app.py")}})
         assert all(o.get("permission") != "deny" for o in harmless), harmless
+        push = fire(ws, "cursor", base | write | {"tool_name": "Shell", "tool_input": {"command": "git push origin feature/login"}})
+        assert any(o.get("permission") == "ask" and "Push check" in o["user_message"] for o in push), push
         (ws / "big.py").write_text("x = 1\n" * 600)
         post = {"hook_event_name": "postToolUse", "tool_name": "Write", "tool_use_id": "t2", "cwd": str(ws), "duration": 5,
                 "tool_input": {"file_path": str(ws / "big.py")}, "tool_output": "{}"}
@@ -233,6 +236,10 @@ def test_codex_hooks() -> None:
         guard = next(o for o in denied if o.get("hookSpecificOutput", {}).get("permissionDecision") == "deny")
         assert "Which database?" in guard["hookSpecificOutput"]["permissionDecisionReason"] and "continue" not in guard, denied
         start_loop(ws)
+        pushed = fire(ws, "codex", base | {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_use_id": "t2",
+                                           "tool_input": {"command": "git push origin feature/login"}})
+        warning = next(o for o in pushed if "Push check" in o.get("systemMessage", ""))
+        assert "permissionDecision" not in warning["hookSpecificOutput"] and "Push check" in warning["hookSpecificOutput"]["additionalContext"], pushed
         stop = fire(ws, "codex", base | {"hook_event_name": "Stop", "stop_hook_active": False, "last_assistant_message": "done"})
         blocking = next(output for output in stop if output.get("decision") == "block")
         assert "login" in blocking["reason"], stop

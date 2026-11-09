@@ -139,7 +139,8 @@ Example prompts:
 | Harness behaviour | VS Code | Claude Code | Cursor | Codex |
 |---|---|---|---|---|
 | Block edits of the loop files (`feature_list.json`, `progress.txt`, `tracker.json`) and loop state (`.harness/` or the ask's `loop/`) | yes | yes | yes | yes (also `apply_patch`) |
-| Block force pushes, unticked pushes and git-hook bypass | yes | yes | yes | yes |
+| Block git-hook bypass | yes | yes | yes | yes |
+| Ask you to confirm a force push, an unticked branch or a push outside a GitHub review loop, naming why with links to the loop state, tick and PR record files (never a block) | yes, confirmation prompt | yes, confirmation prompt | no prompt: Cursor accepts "ask" but does not enforce it yet | no prompt: a warning and agent context |
 | Module-size feedback (files over 500 lines) | yes | yes | yes, as context | yes |
 | Victory check when the agent stops with failing features | yes | yes | yes, as a follow-up message | yes |
 | Escalation stops the agent | yes | yes | denies tools only | denies tools only |
