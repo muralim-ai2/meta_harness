@@ -3,6 +3,8 @@
 const vscode = require('vscode');
 const fs = require('node:fs');
 const path = require('node:path');
+const { promisify } = require('node:util');
+const { execFile } = require('node:child_process');
 const { BASE_COMMANDS } = require('./lifecycle-cli');
 const { snapshot } = require('./workspace-state');
 const { current } = require('./workflow');
@@ -169,6 +171,37 @@ async function addSkill(mc, revision) {
   void vscode.window.showInformationMessage(`${picked.label} added; agents load it from your next message.`);
 }
 
+/** Open what a feature task's recorded commits changed, base to head, in VS Code's multi-file diff editor.
+ * @param {MissionControl} mc
+ * @param {string} item
+ * @returns {Promise<void>}
+ */
+async function showChanges(mc, item) {
+  const root = mc.target().uri.fsPath;
+  const review = snapshot(root, mc.selected).reviews.find(row => row.item === item);
+  if (!review?.commit) throw new Error(`${item} has no recorded commits to show.`);
+  const { base, head } = review.commit;
+  const git = vscode.extensions.getExtension('vscode.git');
+  if (!git) throw new Error('VS Code\'s built-in Git extension is disabled; enable it to see what a task changed.');
+  const api = (await git.activate()).getAPI(1);
+  const run = promisify(execFile);
+  const { stdout } = await run('git', ['diff', '--name-status', '-z', '-M', '--relative', base, head, '--'], { cwd: root, windowsHide: true })
+    .catch(error => { throw new Error(`git diff ${base.slice(0, 7)}..${head.slice(0, 7)} failed in ${root}: ${error.message}`, { cause: error }); });
+  const parts = stdout.split('\0').filter(Boolean);
+  /** @type {[unknown, unknown, unknown][]} */
+  const rows = [];
+  for (let index = 0; index < parts.length;) {
+    const status = parts[index];
+    const old = parts[index + 1];
+    const now = /^[RC]/.test(status) ? parts[index + 2] : old;
+    index += /^[RC]/.test(status) ? 3 : 2;
+    const file = (/** @type {string} */ relative) => vscode.Uri.file(containedPath(root, relative));
+    rows.push([file(now), status.startsWith('A') ? undefined : api.toGitUri(file(old), base), status.startsWith('D') ? undefined : api.toGitUri(file(now), head)]);
+  }
+  if (!rows.length) throw new Error(`${item}: commits ${base.slice(0, 7)}..${head.slice(0, 7)} change no files in this folder.`);
+  await vscode.commands.executeCommand('vscode.changes', `${item}: ${base.slice(0, 7)}..${head.slice(0, 7)}`, rows);
+}
+
 /** Run one of the extension's own commands; it asks its own questions.
  * @param {MissionControl} mc
  * @param {string} name
@@ -222,4 +255,4 @@ async function openFile(mc, relative) {
   else await vscode.window.showTextDocument(uri, { viewColumn: vscode.ViewColumn.Beside, preview: true });
 }
 
-module.exports = { selectAsk, activateAsk, selectChat, linkChat, editPlan, revealAsk, review, markDone, addSkill, command, telemetrySwitch, openFile };
+module.exports = { selectAsk, activateAsk, selectChat, linkChat, editPlan, revealAsk, review, markDone, addSkill, showChanges, command, telemetrySwitch, openFile };

@@ -4,6 +4,8 @@ export interface Check {
   command: string;
   output: string;
   source: string;
+  commit: { base: string; head: string } | null;
+  changed: string[];
 }
 export interface Feature {
   name: string;
@@ -21,6 +23,7 @@ export interface Review {
   note: string;
   ready: boolean;
   files: string[];
+  commit: { base: string; head: string } | null;
 }
 export interface Snapshot {
   workspace: string;

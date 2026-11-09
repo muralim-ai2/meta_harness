@@ -7,6 +7,7 @@ const { record, text, list, flag, integer } = require('./validate');
 const { headline } = require('./activity');
 const ASK = /^\d{8}-\d{4}-[a-z0-9][a-z0-9-]{0,40}$/;
 const FEATURE = /^[a-z0-9][a-z0-9_-]{0,40}$/;
+const COMMIT = /^[0-9a-f]{7,64}$/;
 const SKILLS_BLOCK = /<!-- hve:skills -->\n?([\s\S]*?)<!-- \/hve:skills -->\n?/;
 const CHECKLIST_BLOCK = /<!-- hve:checklist -->[\s\S]*?<!-- \/hve:checklist -->\n?/;
 
@@ -48,7 +49,13 @@ function evidence(reader, owner, name, command, passes) {
     const verification = record(result.verify, `${prPath}: verify`);
     const recordedCommand = text(verification.command, 'Recorded check command');
     if (recordedCommand !== command) throw new Error(`${prPath}: recorded command differs from the feature check.`);
-    return { exitCode: integer(verification.exit_code, 'Recorded exit code'), command, output: text(verification.output_tail, 'Check output', true), source: prPath };
+    const commit = result.head === undefined ? null : { base: text(result.base, `${prPath}: base`), head: text(result.head, `${prPath}: head`) };
+    if (commit && (!COMMIT.test(commit.base) || !COMMIT.test(commit.head))) throw new Error(`${prPath}: base and head must be commit hashes.`);
+    const changed = result.files === undefined ? [] : list(result.files, `${prPath}: files`)
+      .map(row => path.normalize(text(record(row, `${prPath}: file`).path, `${prPath}: file path`)))
+      .filter(file => fs.existsSync(containedPath(reader.root, file)) && fs.statSync(containedPath(reader.root, file)).isFile());
+    return { exitCode: integer(verification.exit_code, 'Recorded exit code'), command, output: text(verification.output_tail, 'Check output', true), source: prPath,
+      commit, changed };
   }
   const attemptsPath = path.join(folder, 'attempts', `${name}.jsonl`);
   const attempts = reader.text(attemptsPath, true);
@@ -56,7 +63,8 @@ function evidence(reader, owner, name, command, passes) {
   const rows = attempts.trim().split(/\r?\n/).map(line => record(JSON.parse(line), attemptsPath));
   const last = rows.filter(row => row.exit_code !== undefined).at(-1);
   if (!last) return null;
-  return { exitCode: integer(last.exit_code, 'Attempt exit code'), command, output: text(last.output_tail, 'Attempt output', true), source: attemptsPath };
+  return { exitCode: integer(last.exit_code, 'Attempt exit code'), command, output: text(last.output_tail, 'Attempt output', true), source: attemptsPath,
+    commit: null, changed: [] };
 }
 
 /** Read a stored human decision without treating missing decisions as acceptance.
@@ -215,7 +223,7 @@ function snapshot(workspace, selected = null) {
       const status = text(stage.status, 'Stage status');
       if (!/^[\w.-]+$/.test(name) || !['planned', 'active', 'done', 'skipped'].includes(status)) throw new Error('Invalid stage identity or status.');
       const item = `stage:${name}`;
-      return { item, title: text(stage.goal, 'Stage goal'), status, ready: status === 'done', files: stageFiles(reader.root, askFolder, stage),
+      return { item, title: text(stage.goal, 'Stage goal'), status, ready: status === 'done', files: stageFiles(reader.root, askFolder, stage), commit: null,
         ...decision(checklist, item) };
     }).filter(stage => stage.status !== 'skipped');
     for (const value of list(contract.tasks, 'Ask tasks')) {
@@ -227,7 +235,8 @@ function snapshot(workspace, selected = null) {
       const evidenceFolder = path.join(askFolder, 'loop', 'evidence', name) + path.sep;
       state.reviews.push({ item, title: feature ? feature.description : name, status: passes ? 'marked passing' : 'pending',
         ready: passes && !!feature?.passes && feature.check?.exitCode === 0,
-        files: [...(feature?.check ? [feature.check.source] : []), ...state.files.filter(file => file.startsWith(evidenceFolder))], ...decision(checklist, item) });
+        files: [...(feature?.check ? [feature.check.source, ...feature.check.changed] : []), ...state.files.filter(file => file.startsWith(evidenceFolder))],
+        commit: feature?.check?.commit ?? null, ...decision(checklist, item) });
     }
     state.decisions = list(contract.decisions, 'Ask decisions').map(value => {
       const row = record(value, 'Decision');

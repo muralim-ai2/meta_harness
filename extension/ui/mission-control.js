@@ -397,6 +397,7 @@ class MissionControl {
         case 'review': await actions.review(this, data); break;
         case 'markDone': await actions.markDone(this, data); break;
         case 'addSkill': await actions.addSkill(this, data.revision); break;
+        case 'showChanges': await actions.showChanges(this, data.item); break;
         case 'command': await actions.command(this, data.name); break;
         case 'telemetry': await actions.telemetrySwitch(data.value); break;
         case 'loadPacks': await this.loadPacks(); break;

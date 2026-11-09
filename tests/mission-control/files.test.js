@@ -4,6 +4,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const { workspace, removeWorkspace } = require('./helpers');
 const { mission } = require('./vscode-stub');
 const { project, realAsks, ASK } = require('./fixtures');
@@ -154,6 +155,47 @@ test('files a waiting question or a guard alert names, and the evidence of each 
   for (const file of ['docs/prd.md', 'notes/push.md']) await fixture.controls.provider.execute({ action: 'openFile', path: file });
   assert.equal(fixture.controls.calls.filter(call => call[0] === 'document').length, 2);
   await assert.rejects(fixture.controls.provider.execute({ action: 'openFile', path: 'secret.txt' }), /not listed/);
+});
+
+test('a task links the files its commits changed and Show changes opens base..head in the multi-file diff editor', async t => {
+  const fixture = mission(t);
+  const folder = project(fixture.root);
+  const root = fixture.root;
+  const git = (/** @type {string[]} */ ...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.com', ...args], { cwd: root, encoding: 'utf8' }).trim();
+  fs.writeFileSync(path.join(root, '.gitignore'), '.aria/\n');
+  fs.writeFileSync(path.join(root, 'policy.js'), 'module.exports = 1;\n');
+  fs.writeFileSync(path.join(root, 'old.js'), 'gone\n');
+  git('init', '-q');
+  git('add', '.');
+  git('commit', '-q', '-m', 'base');
+  const base = git('rev-parse', 'HEAD');
+  fs.writeFileSync(path.join(root, 'policy.js'), 'module.exports = 2;\n');
+  fs.writeFileSync(path.join(root, 'policy.test.js'), 'test\n');
+  fs.rmSync(path.join(root, 'old.js'));
+  git('add', '-A');
+  git('commit', '-q', '-m', 'policy');
+  const head = git('rev-parse', 'HEAD');
+  const record = path.join(root, folder, 'loop', 'prs', 'policy.json');
+  fs.writeFileSync(record, JSON.stringify({ ...JSON.parse(fs.readFileSync(record, 'utf8')), base, head,
+    files: [{ path: 'policy.js' }, { path: 'policy.test.js' }, { path: 'old.js' }] }));
+  fixture.controls.extensions.push('vscode.git');
+  fixture.controls.exports['vscode.git'] = { getAPI: () => ({ toGitUri: (/** @type {{fsPath: string}} */ file, /** @type {string} */ ref) => `${path.basename(file.fsPath)}@${ref.slice(0, 7)}` }) };
+  await fixture.controls.commands.get('frontierHve.refreshMissionControl')();
+  const model = fixture.controls.commands.get('frontierHve.missionControlModel')();
+  const plan = dashboard(model, { ...UI, page: 'plan' }, Date.now());
+  const links = find(plan, node => node.attrs.class === 'file-link').map(node => node.attrs['data-path']);
+  assert.ok(links.includes('policy.js') && links.includes('policy.test.js') && !links.includes('old.js'), links.join(', '));
+  const show = find(plan, node => node.attrs['data-action'] === 'showChanges');
+  assert.deepEqual(show.map(node => node.attrs['data-item']), ['task:policy']);
+  assert.match(text(show[0]), new RegExp(`Show changes \\(${base.slice(0, 7)}\\.\\.${head.slice(0, 7)}\\)`));
+  await fixture.controls.provider.execute({ action: 'showChanges', item: 'task:policy' });
+  const call = fixture.controls.calls.find(row => row[0] === 'vscode.changes');
+  assert.equal(call[1], `task:policy: ${base.slice(0, 7)}..${head.slice(0, 7)}`);
+  assert.deepEqual(call[2].map((/** @type {any[]} */ row) => [path.basename(row[0].fsPath), row[1], row[2]]).sort(),
+    [['old.js', `old.js@${base.slice(0, 7)}`, undefined], ['policy.js', `policy.js@${base.slice(0, 7)}`, `policy.js@${head.slice(0, 7)}`],
+      ['policy.test.js', undefined, `policy.test.js@${head.slice(0, 7)}`]]);
+  await fixture.controls.provider.execute({ action: 'openFile', path: 'policy.test.js' });
+  await assert.rejects(fixture.controls.provider.execute({ action: 'showChanges', item: 'stage:deliver' }), /no recorded commits/);
 });
 
 test('the Files page follows the ask chosen in the dropdown', async t => {

@@ -39,7 +39,7 @@ function host(roots, storage, globalState = null) {
   const commands = new Map();
   const settings = new Map();
   const controls = { commands, settings, provider: null, inputs: [], confirmations: [], picks: [], dialogs: [], notices: [], models: [], calls: [], watchers: [], errors: [], statusItems: [],
-    panels: [], trees: [], extensions: [],
+    panels: [], trees: [], extensions: [], exports: {},
     /** Return a Primary Side Bar view double. @param {boolean} [visible] @returns {object} */
     view: (visible = false) => ({ visible, webview: webview(controls.calls), onDidDispose: () => new Disposable() }) };
   const folders = roots.map((root, index) => ({ name: path.basename(root), uri: uri(root), index }));
@@ -67,7 +67,7 @@ function host(roots, storage, globalState = null) {
     StatusBarAlignment: { Left: 1, Right: 2 },
     ConfigurationTarget: { Global: 1 },
     env: { openExternal: async target => { controls.calls.push(['external', target.toString()]); return true; } },
-    extensions: { getExtension: id => controls.extensions.includes(id) ? { id } : undefined },
+    extensions: { getExtension: id => controls.extensions.includes(id) ? { id, activate: async () => controls.exports[id] } : undefined },
     workspace: {
       isTrusted: true, workspaceFolders: folders,
       getConfiguration: section => ({
