@@ -43,7 +43,9 @@ function validateOperation(args) {
   if (args.length === 5 && args[0] === 'contract' && args[1] === 'direct' && /^[a-z0-9][a-z0-9-]{0,40}$/.test(args[2])
       && args[3] === 'ARIA Lite' && path.isAbsolute(args[4])) return;
   if (args.length === 4 && args[0] === 'stage' && /^[\w.-]+$/.test(args[1]) && args[2] === 'done' && args[3].trim()) return;
-  throw new Error(`Unsupported lifecycle operation: ${args[0]}. Mission Control cannot run arbitrary commands; it changes a stage only to done.`);
+  if (args.length === 2 && args[0] === 'skills' && args[1] === 'available') return;
+  if (args.length === 3 && args[0] === 'skills' && args[1] === 'add' && /^[a-z0-9][\w.-]*(:[a-z0-9][\w.-]*)?$/.test(args[2])) return;
+  throw new Error(`Unsupported lifecycle operation: ${args[0]}. Mission Control cannot run arbitrary commands; it changes a stage only to done and only adds skills.`);
 }
 
 /** Run a bundled Python tool in the workspace and return its JSON output.

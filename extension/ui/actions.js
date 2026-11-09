@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { BASE_COMMANDS } = require('./lifecycle-cli');
 const { snapshot } = require('./workspace-state');
+const { current } = require('./workflow');
 const { listAsks, askTree, evaluationFiles } = require('./asks');
 const { claimsFrom } = require('./chats');
 const { containedPath } = require('./file-access');
@@ -140,6 +141,34 @@ async function markDone(mc, data) {
   void vscode.window.showInformationMessage(`${data.item} is done; you can accept it now.`);
 }
 
+/** Pick a library skill the active ask does not have, confirm, and add it to the ask; agents load it from the next prompt.
+ * @param {MissionControl} mc
+ * @param {string} revision
+ * @returns {Promise<void>}
+ */
+async function addSkill(mc, revision) {
+  const target = mc.target();
+  const state = current(target.uri.fsPath, revision);
+  if (!state.ask?.active) throw new Error('Make this ask active before adding skills to it.');
+  const flow = await mc.connect();
+  const offered = await flow.availableSkills(target.uri.fsPath);
+  if (!offered.length) {
+    void vscode.window.showInformationMessage('The ask already has every library skill.');
+    return;
+  }
+  const picked = await vscode.window.showQuickPick(offered.map(skill => ({ label: skill.name, description: `${skill.tokens.toLocaleString('en-US')} tokens · ${skill.status}`,
+    detail: skill.description })), { title: `Add a skill to ${state.ask.title}`, placeHolder: 'Search the skill library', matchOnDetail: true, ignoreFocusOut: true });
+  if (!picked) return;
+  const load = state.skillLoad;
+  const tokens = (load ? load.tokens : 0) + (offered.find(skill => skill.name === picked.label)?.tokens || 0);
+  const confirm = await vscode.window.showWarningMessage(`Add ${picked.label} to this ask?`, { modal: true,
+    detail: `${state.ask.id}\n\nThe skill is installed into .aria/skills/ and listed in the ask's plan. Agents load it from the next message you send; `
+      + `the ask's skills then come to ${tokens.toLocaleString('en-US')} tokens${load ? ` against a ${load.maxTokens.toLocaleString('en-US')}-token guideline` : ''}.` }, 'Add skill');
+  if (confirm !== 'Add skill') return;
+  await flow.addSkill(target.uri.fsPath, revision, picked.label);
+  void vscode.window.showInformationMessage(`${picked.label} added; agents load it from your next message.`);
+}
+
 /** Run one of the extension's own commands; it asks its own questions.
  * @param {MissionControl} mc
  * @param {string} name
@@ -193,4 +222,4 @@ async function openFile(mc, relative) {
   else await vscode.window.showTextDocument(uri, { viewColumn: vscode.ViewColumn.Beside, preview: true });
 }
 
-module.exports = { selectAsk, activateAsk, selectChat, linkChat, editPlan, revealAsk, review, markDone, command, telemetrySwitch, openFile };
+module.exports = { selectAsk, activateAsk, selectChat, linkChat, editPlan, revealAsk, review, markDone, addSkill, command, telemetrySwitch, openFile };

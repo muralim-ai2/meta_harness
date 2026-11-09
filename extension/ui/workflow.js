@@ -5,7 +5,7 @@ const path = require('node:path');
 const { lifecycle } = require('./lifecycle-cli');
 const { snapshot, askId } = require('./workspace-state');
 const { Reader } = require('./file-access');
-const { record, text } = require('./validate');
+const { record, text, list, integer } = require('./validate');
 
 /** @typedef {{ask: string, revision: string, workspaceRevision: string, item: string, value: 'accepted' | 'changes'}} ReviewTicket */
 
@@ -182,6 +182,35 @@ class Workflow {
       const result = record(await lifecycle(this.connection, workspace, ['stage', stage, 'done', note]), 'Stage update');
       if (result.name !== stage || result.status !== 'done') throw new Error('Harness returned a different stage update.');
       return snapshot(workspace);
+    });
+  }
+
+  /** Return the library skills the active ask does not have yet.
+   * @param {string} workspace
+   * @returns {Promise<{name: string, description: string, status: string, tokens: number}[]>}
+   */
+  async availableSkills(workspace) {
+    return list(await lifecycle(this.connection, workspace, ['skills', 'available']), 'Available skills').map(value => {
+      const row = record(value, 'Available skill');
+      return { name: text(row.name, 'Skill name'), description: text(row.description, 'Skill description', true), status: text(row.status, 'Skill status'),
+        tokens: integer(row.skill_tokens, 'Skill tokens') };
+    });
+  }
+
+  /** Add a library skill to the active ask, after checking the displayed state is current, and verify the contract lists it.
+   * @param {string} workspace
+   * @param {string} revision
+   * @param {string} name
+   * @returns {Promise<import('./types').Snapshot>}
+   */
+  async addSkill(workspace, revision, name) {
+    return this.mutate(async () => {
+      const state = current(workspace, revision);
+      if (!state.ask?.active) throw new Error('Make this ask active before adding skills to it.');
+      const result = record(await lifecycle(this.connection, workspace, ['skills', 'add', name]), 'Added skill');
+      const after = snapshot(workspace);
+      if (result.added !== name || !after.skills.some(skill => skill.name === name)) throw new Error(`The harness did not add ${name} to the ask.`);
+      return after;
     });
   }
 }

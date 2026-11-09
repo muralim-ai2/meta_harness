@@ -84,6 +84,25 @@ test('without a written plan the user can mark the stage done to match the chat,
   assert.deepEqual(snapshot(fixture.root).journal.map(row => [row.kind, row.text]), [['pitfall', 'The policy files use Windows line endings']]);
 });
 
+test('Add a skill lists only library skills the ask lacks, adds the picked one after a confirmation, and a cancel changes nothing', async t => {
+  const fixture = mission(t);
+  const state = await create(fixture, 'skills');
+  const before = state.skills.map(skill => skill.name);
+  fixture.controls.picks.push(null);
+  await fixture.controls.provider.execute({ action: 'addSkill', revision: state.revision });
+  assert.equal(snapshot(fixture.root).revision, state.revision, 'cancelling the pick writes nothing');
+  const offered = fixture.controls.calls.filter(call => call[0] === 'pick').at(-1)[1];
+  assert.ok(offered.length && !offered.some(row => before.includes(row.label)), 'only skills the ask does not have are offered');
+  fixture.controls.picks.push(0);
+  fixture.controls.confirmations.push('Add skill');
+  await fixture.controls.provider.execute({ action: 'addSkill', revision: state.revision });
+  const added = snapshot(fixture.root);
+  assert.deepEqual(added.skills.map(skill => skill.name), [...before, offered[0].label]);
+  assert.equal(added.skills.at(-1).reason, 'added');
+  assert.match(fixture.controls.calls.filter(call => call[0] === 'confirmation').at(-1)[2].detail, /Agents load it from the next message you send/);
+  await assert.rejects(fixture.controls.provider.execute({ action: 'addSkill', revision: state.revision }), /Workspace state changed/);
+});
+
 test('a stale view cannot record a review after the project changes', async t => {
   const fixture = mission(t);
   const state = await create(fixture, 'stale');

@@ -3,7 +3,6 @@
 import hashlib
 import json
 import re
-import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -20,6 +19,8 @@ from lifecycle_catalog import catalog, pick, route  # noqa: E402
 from ask_project import (CREATE, SCOPE_NOTE, SHIFT_OVERLAP, deliverable, ledger, overlap, project_status, project_text,  # noqa: E402,F401
                          record_project, shift_message, topic_shift)
 import ask_packs  # noqa: E402
+import ask_skills  # noqa: E402
+from ask_skills import install  # noqa: E402,F401  (skill_loader imports install from here)
 import personas  # noqa: E402
 import stage_evidence  # noqa: E402
 
@@ -71,13 +72,6 @@ def where(prompt: str | None) -> Json:
     verdict, why = (("new-workspace", shift["reason"]) if shift else ("continue", f"a follow-up to ask {data['ask']}") if follow_up
                     else ("new-ask", "new work in this workspace's project") if project else ("new-project", "no project here yet"))
     return out | {"verdict": verdict, "why": why}
-
-
-def install(rows: list[Json]) -> None:
-    """Copy skills into <workspace>/.aria/skills/<name>/ ('<pack>:<skill>' into '<pack>__<skill>') so every harness reads them in the
-    workspace."""
-    for row in rows:
-        shutil.copytree(ROOT / row["path"], WORKSPACE / ".aria" / "skills" / skill_dir(row["name"]), dirs_exist_ok=True)
 
 
 def contract(name: str, slug: str, agent: str, request: str, skips: dict[str, str], required: tuple[str, ...] = (),
@@ -156,48 +150,6 @@ def contract(name: str, slug: str, agent: str, request: str, skips: dict[str, st
     (ASKS / "active.json").write_text(json.dumps({"active": ask}), encoding="utf-8")
     record_project(slug, request, ask, now, WORKSPACE)
     return data | {"project": project_status()}
-
-
-def choose_skills(choice: str) -> Json:
-    """Keep the suggested skill set, all skills, or the named ones (comma-separated), and record the choice and its token cost."""
-    path, data = active()
-    s = data["skills"]
-    names = s["suggested"] if choice == "suggested" else [r["name"] for r in s["selected"]] if choice == "all" else \
-        [n.strip() for n in choice.split(",")]
-    unknown = sorted(set(names) - {r["name"] for r in s["selected"]})
-    if unknown:
-        raise ValueError(f"skills {unknown} are not in the ask's skills; choose from {[r['name'] for r in s['selected']]}")
-    s["selected"] = [r for r in s["selected"] if r["name"] in names]
-    s["tokens"] = sum(r["skill_tokens"] for r in s["selected"])
-    s["over_budget"] = len(s["selected"]) > s["budget"]["max_skills"] or s["tokens"] > s["budget"]["max_tokens"]
-    s["choice"] = {"choice": choice, "tokens": s["tokens"], "over_guideline_tokens": max(0, s["tokens"] - s["budget"]["max_tokens"])}
-    data["decisions"].append({"ts": datetime.now(timezone.utc).isoformat(timespec="seconds"), "stage": "skills", "choice": choice,
-                              "why": f"{len(s['selected'])} skills, {s['tokens']:,} tokens"})
-    refresh(path.parent, data)
-    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    return s["choice"] | {"skills": [r["name"] for r in s["selected"]]}
-
-
-def score_skills(scores: dict[str, Json]) -> Json:
-    """Record the agent's 0-10 relevance score for this ask ({name: {score, why}}) on every shortlisted skill, rank the shortlist by it, and
-    suggest the required skills plus the top-scored up to the loadout's skill count for the user to confirm."""
-    path, data = active()
-    s = data["skills"]
-    names = {r["name"] for r in s["selected"]}
-    if set(scores) != names:
-        raise ValueError(f"score every shortlisted skill once: missing {sorted(names - set(scores))}, unknown {sorted(set(scores) - names)}")
-    bad = [n for n, v in scores.items() if not isinstance(v["score"], int) or not 0 <= v["score"] <= 10 or not v["why"].strip()]
-    if bad:
-        raise ValueError(f"skills {bad} need an integer score from 0 to 10 and a one-line why")
-    s["selected"] = sorted((r | scores[r["name"]] for r in s["selected"]),
-                           key=lambda r: (r["reason"] != "required", -r["score"], -r["relevance"]))
-    room = s["budget"]["max_skills"]
-    top = [r for i, r in enumerate(s["selected"]) if r["reason"] == "required" or (r["score"] > 0 and i < room)]
-    s["suggested"], s["suggested_tokens"] = [r["name"] for r in top], sum(r["skill_tokens"] for r in top)
-    refresh(path.parent, data)
-    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    return {"shortlist": len(s["selected"]), "tokens": s["tokens"], "suggested_tokens": s["suggested_tokens"],
-            "suggested": [{k: r[k] for k in ("name", "score", "why", "skill_tokens")} for r in top]}
 
 
 def set_stage(stage: str, status: Status, note: str) -> Json:
@@ -439,7 +391,7 @@ def main() -> None:
     | stage <name> <status> <note> | rework <stage> <why> | tick <item> <value> [note] | checklist | ledger [lifecycle]
     | log decision|issue|pitfall <text> [why]
     | review-status <expected-ask> | tick-for <expected-ask> <revision> <item> <accepted|changes> <note>
-    | skills suggested|all|<skill,...> | skills score <scores.json> | shift <prompt>
+    | skills suggested|all|<skill,...> | skills score <scores.json> | skills available | skills add <skill> | shift <prompt>
     | where [request-file]
     | plan-sync <note> | plan-status | tasks-sync [project] | brief <persona> [stage=<s>] [task=<t>] | used <persona> <task|-> <skill,...|none>
     | report <session> | close | open <ask-id> | forget <ask-id>."""
@@ -478,9 +430,13 @@ def main() -> None:
     elif args[:1] == ["checklist"] and len(args) == 1:
         out = checklist()
     elif args[:1] == ["skills"] and len(args) == 3 and args[1] == "score":
-        out = score_skills(json.loads(Path(args[2]).read_text(encoding="utf-8")))
+        out = ask_skills.score(*active(), json.loads(Path(args[2]).read_text(encoding="utf-8")))
+    elif args[:2] == ["skills", "available"] and len(args) == 2:
+        out = ask_skills.available(active()[1])
+    elif args[:1] == ["skills"] and len(args) == 3 and args[1] == "add":
+        out = ask_skills.add(*active(), args[2])
     elif args[:1] == ["skills"] and len(args) == 2:
-        out = choose_skills(args[1])
+        out = ask_skills.choose(*active(), args[1])
     elif args[:1] == ["shift"] and len(args) == 2:
         out = topic_shift(project_text(), args[1])
     elif args[:1] == ["where"] and len(args) <= 2:

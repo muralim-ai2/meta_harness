@@ -366,14 +366,17 @@
     const snap = model.snapshot;
     const load = snap?.skillLoad;
     const session = model.activity?.loadout;
+    const add = snap?.ask ? h('div', { class: 'actions-row' }, button('Add a skill…', 'addSkill', { icon: 'plus', data: { revision: snap.revision },
+      disabled: model.busy || !snap.ask.active,
+      title: snap.ask.active ? 'Pick a library skill to add to this ask; agents load it from your next message' : 'Make this ask active to add skills to it' })) : null;
     return [
       card('Skills for this ask', snap?.skills.length && load ? [
         h('div', { class: 'load' }, bar(load.tokens, Math.max(load.maxTokens, load.tokens), 'Skill tokens against the guideline'),
           h('span', { class: load.overBudget ? 'warn-text' : 'muted' }, `${plural(snap.skills.length, 'skill')}, ${count(load.tokens)} tokens of a ${count(load.maxTokens)}-token guideline${load.choice ? ` (you chose: ${load.choice})` : ''}`)),
         h('ul', { class: 'skills' }, ...snap.skills.map(skill => h('li', null, h('button', { class: 'skill', type: 'button', 'data-action': 'openFile', 'data-path': `.aria/skills/${skill.name}/SKILL.md`, title: 'Open SKILL.md' },
           h('strong', null, skill.name), h('span', { class: `pill ${skill.status === 'admitted' ? 'good' : ''}`.trim() }, skill.status),
-          h('span', { class: 'muted' }, skill.why || skill.reason), h('span', { class: 'muted num' }, `${count(skill.tokens)} tokens`)))))]
-        : h('p', { class: 'muted' }, 'Skills are chosen when an ask starts.'),
+          h('span', { class: 'muted' }, skill.why || skill.reason), h('span', { class: 'muted num' }, `${count(skill.tokens)} tokens`))))), add]
+        : [h('p', { class: 'muted' }, 'Skills are chosen when an ask starts.'), add],
       session ? h('span', { class: 'muted' }, `Loaded in the chat shown on Live: ${plural(session.skills, 'skill')}, ${count(session.tokens)} tokens.`) : null),
       card('Always-on harness skills', snap?.pluginSkills.length ? h('div', { class: 'chips' }, ...snap.pluginSkills.map(name => h('span', { class: 'pill' }, name)))
         : h('p', { class: 'muted' }, 'Listed once an ask starts.'), h('span', { class: 'muted' }, 'Shipped with ARIA and available to every agent.')),

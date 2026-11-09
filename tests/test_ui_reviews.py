@@ -98,3 +98,24 @@ def test_new_recorded_evidence_invalidates_ticket(tmp_path: Path) -> None:
     result = invoke(tmp_path, "tick-for", ask, str(ticket["revision"]), "stage:deliver", "accepted", "Old review")
     assert result.returncode != 0 and "changed" in result.stderr
     assert read_contract(tmp_path, ask)["checklist"] == {}
+
+
+def test_a_library_skill_is_added_to_the_ask_installed_and_recorded(tmp_path: Path) -> None:
+    """`skills available` lists library skills the ask lacks; `skills add` installs one, adds it to the ask's skills, plan and decisions,
+    and refuses a skill the ask already has or one that does not exist."""
+    ask = create(tmp_path, "first")
+    have = {row["name"] for row in read_contract(tmp_path, ask)["skills"]["selected"]}  # type: ignore[index]
+    offered = run(tmp_path, "skills", "available")
+    assert isinstance(offered, list) and offered and not {row["name"] for row in offered} & have, offered
+    name = offered[0]["name"]
+    added = run(tmp_path, "skills", "add", name)
+    assert added["added"] == name and name in added["skills"], added  # type: ignore[operator]
+    contract = read_contract(tmp_path, ask)
+    row = next(r for r in contract["skills"]["selected"] if r["name"] == name)  # type: ignore[index]
+    assert row["reason"] == "added" and contract["decisions"][-1]["choice"] == f"added {name}", contract  # type: ignore[index]
+    assert (tmp_path / ".aria" / "skills" / name / "SKILL.md").is_file()
+    assert name in (tmp_path / ".aria" / "asks" / ask / "plan.md").read_text(encoding="utf-8")
+    again = invoke(tmp_path, "skills", "add", name)
+    assert again.returncode != 0 and "already one of the ask's skills" in again.stderr
+    unknown = invoke(tmp_path, "skills", "add", "no-such-skill")
+    assert unknown.returncode != 0 and "no-such-skill" in unknown.stderr
