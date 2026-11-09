@@ -123,7 +123,7 @@ export interface Insights {
   toolCalls: number;
   commands: number;
   failures: number;
-  skills: { count: number; names: string[]; tokens: number; measured: boolean };
+  skills: { count: number; names: string[]; tokens: number; allowed: number | null };
   chatTokens: number;
   argTokens: number;
   thinkingTokens: number | null;

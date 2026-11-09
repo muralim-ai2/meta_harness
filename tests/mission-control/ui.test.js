@@ -133,7 +133,13 @@ test('the Progress, Skills and packs, and Settings pages explain what each actio
   data.packs = [{ id: 'oracle', name: 'oracle-offering', version: '1.2.0', enabled: true, disabledReason: null, source: 'index:oracle-offering@1.2.0',
     agents: ['Oracle architect'], lifecycles: ['oracle-delivery'], knowledge: [], templates: ['prd'] }];
   const skills = dashboard(data, { ...UI, page: 'skills' }, NOW);
-  assert.match(text(skills), /ux-flows.*382 tokens/);
+  assert.match(text(skills), /ux-flowsadmittedrequired by the lifecycle stage · 382 tokens/);
+  data.activity.loadout = { skills: 18, tokens: 21675, overBudget: true, maxSkills: 10, maxTokens: 32000 };
+  data.insights = { skills: { count: 1, names: ['ux-flows'], tokens: 95, allowed: 18 } };
+  const reading = dashboard(data, { ...UI, page: 'skills' }, NOW);
+  assert.match(text(reading), /Chat on Live: 1 skill read of 18 allowed/);
+  assert.match(text(reading), /ux-flowsread in this chatadmitted/);
+  assert.doesNotMatch(text(reading), /Loaded in the chat/);
   assert.match(text(skills), /wow-uplift/);
   assert.match(text(skills), /oracle-offering 1\.2\.01 agent · 1 lifecycle · 1 template · 0 knowledge documents/);
   assert.deepEqual(actions(skills, 'command').map(node => node.attrs['data-name']), ['installPack', 'managePacks']);

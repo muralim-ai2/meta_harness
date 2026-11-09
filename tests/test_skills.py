@@ -307,15 +307,17 @@ def open_ask(root: Path, request: str, choice: str | None = None, ask: str = "20
 
 
 def test_lifecycle_stage_skills_load_and_are_allowed() -> None:
-    """The active ask's current stage skills load as required, may be read from the library, and count as used."""
+    """With an ask open the loadout is the current stage's and the ask's skills only: a message whose words match other library skills
+    adds none. Stage skills may be read from the library, and a skill counts as used only once it is read."""
     with tempfile.TemporaryDirectory() as tmp:
         root = library_root(tmp)
         open_ask(root, "Write sourced research.")
         base = {"session_id": "l1"}
-        fire(root, base | {"hook_event_name": "UserPromptSubmit", "prompt": "Write sourced research."},
+        fire(root, base | {"hook_event_name": "UserPromptSubmit", "prompt": "Write sourced research on colour palette pages."},
              HARNESS_SKILLS_MIN_STATUS="provisional")
         path = root / ".aria" / "runs" / "l1.skills.json"
-        assert json.loads(path.read_text(encoding="utf-8"))["skills"][:2] == ["skills/admitted/layout", "skills/admitted/forms"]
+        built = json.loads(path.read_text(encoding="utf-8"))
+        assert built["skills"] == ["skills/admitted/layout", "skills/admitted/forms"] and built["used"] == [], built
         loadout = json.loads(path.read_text(encoding="utf-8")) | {"skills": [], "used": []}
         path.write_text(json.dumps(loadout), encoding="utf-8")
         read = fire(root, base | {"hook_event_name": "PreToolUse", "tool_input": {"filePath": "runtime/skills/admitted/layout/SKILL.md"}})

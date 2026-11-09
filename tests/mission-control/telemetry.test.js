@@ -45,7 +45,7 @@ test('without telemetry the summary estimates tokens and AI units, counts calls,
   assert.equal(data.turns, 1);
   assert.equal(data.toolCalls, 5);
   assert.equal(data.failures, 1);
-  assert.deepEqual(data.skills, { count: 1, names: ['ux-flows'], tokens: 1000, measured: false });
+  assert.deepEqual(data.skills, { count: 1, names: ['ux-flows'], tokens: 1000, allowed: null });
   assert.equal(data.thinkingTokens, null);
   assert.deepEqual([data.cachedTokens, data.cachePercent], [null, null]);
   assert.ok(data.total > 12000 && data.aiu > 1);
@@ -67,7 +67,7 @@ test('with research telemetry the totals, AI units and thinking tokens are measu
   assert.equal(data.measured, true);
   assert.deepEqual([data.input, data.output, data.total, data.aiu, data.thinkingTokens], [50000, 2000, 52000, 2.5, 1500]);
   assert.deepEqual([data.cachedTokens, data.cachePercent], [30000, 60]);
-  assert.deepEqual(data.skills, { count: 4, names: [], tokens: 9000, measured: true });
+  assert.deepEqual(data.skills, { count: 0, names: [], tokens: 0, allowed: 4 }, 'four skills allowed, none read: the chat used none');
   assert.equal(data.method, 'Measured by research telemetry for this chat.');
   assert.deepEqual([data.agent, data.model, data.mode], ['ARIA Collab', 'claude-haiku-5.5', 'Local']);
   assert.deepEqual(data.context.map(row => row.group), ['thinking', 'messages']);

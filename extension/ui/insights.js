@@ -26,9 +26,9 @@ function insights(run) {
   if (!s) return null;
   const { chars, skills, repeats, gap, context } = s.stats;
   const measured = run.tokens;
-  const skillTokens = run.loadout ? { value: run.loadout.tokens, measured: true } : { value: tokens(skills.reduce((sum, skill) => sum + skill.bytes, 0)), measured: false };
+  const skillTokens = tokens(skills.reduce((sum, skill) => sum + skill.bytes, 0));
   const conversation = tokens(chars.user + chars.agent + chars.args);
-  const estimatedInput = s.turns * (BASE_CONTEXT_TOKENS + skillTokens.value) + Math.round(s.turns * conversation / 2);
+  const estimatedInput = s.turns * (BASE_CONTEXT_TOKENS + skillTokens) + Math.round(s.turns * conversation / 2);
   const estimatedOutput = tokens(chars.agent + chars.args);
   const input = measured ? measured.models.reduce((sum, use) => sum + use.input, 0) : estimatedInput;
   const output = measured ? measured.models.reduce((sum, use) => sum + use.output, 0) : estimatedOutput;
@@ -51,12 +51,12 @@ function insights(run) {
     ...(reasoning ? [{ group: 'thinking', count: 0, tokens: reasoning, items: [] }] : [])].filter(row => row.tokens > 0).sort((a, b) => b.tokens - a.tokens);
   return {
     chat: s.title || 'Untitled chat', measured: !!measured, agent: run.meta?.agent || null, model: run.meta?.model || null, mode: run.meta?.mode || null, context: groups, turns: s.turns, toolCalls: s.tools, commands: s.commands, failures: s.failures,
-    skills: { count: Math.max(skills.length, run.loadout?.skills || 0), names: skills.map(skill => skill.name), tokens: skillTokens.value, measured: skillTokens.measured },
+    skills: { count: skills.length, names: skills.map(skill => skill.name), tokens: skillTokens, allowed: run.loadout ? run.loadout.skills : null },
     chatTokens: tokens(chars.user + chars.agent), argTokens: tokens(chars.args), thinkingTokens: reasoning || null,
     cachedTokens: cached, cachePercent: cached === null || !input ? null : Math.round(cached / input * 100),
     input, output, total: input + output, aiu: measured ? measured.aiu : estimatedInput / 1000 * AIU_PER_1K_INPUT, signals,
     method: measured ? 'Measured by research telemetry for this chat.'
-      : `Estimated (research telemetry is off): ${BASE_CONTEXT_TOKENS.toLocaleString('en-US')} tokens of instructions and tool definitions plus the skill load per turn, `
+      : `Estimated (research telemetry is off): ${BASE_CONTEXT_TOKENS.toLocaleString('en-US')} tokens of instructions and tool definitions plus the skills read, per turn, `
         + `the conversation growing over ${s.turns} turns, 4 characters per token, and ${AIU_PER_1K_INPUT} AI units per 1,000 input tokens `
         + '(measured on a Claude Opus 5.5 session). Tool results are not in the transcript, so the real figure is higher.',
   };

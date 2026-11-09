@@ -68,8 +68,9 @@ def library() -> set[str]:
 
 
 def choose(prompt: str) -> tuple[Loadout, list[Json]]:
-    """Return the eval override's skills if present, else the required and active ask's skills (with its packs' skills) plus every skill
-    ranked for the prompt (none once the user has chosen the ask's skills), and the skills to install."""
+    """Return the eval override's skills if present; with an ask open, the required, current-stage and ask skills only (chat messages are
+    not ranked, so wording cannot pull in unrelated skills); without an ask, the required skills plus every skill ranked for the prompt;
+    and the skills to install."""
     if OVERRIDE_FILE.exists():
         skills = json.loads(OVERRIDE_FILE.read_text(encoding="utf-8"))["skills"]
         return (Loadout(categories=[], skills=skills, tokens=0, over_budget=False, budget={}, announced=False, used=list(skills),
@@ -77,11 +78,11 @@ def choose(prompt: str) -> tuple[Loadout, list[Json]]:
     value = os.environ.get("HARNESS_REQUIRED_SKILLS")
     required = tuple(name.strip() for name in value.split(",")) if value is not None else ()
     required += tuple(s for s in current_skills() if s not in required)
-    chosen = (STATE_DIR / "asks" / "active.json").is_file() and active()[1]["skills"]["choice"] is not None
-    ranked = rank("" if chosen else prompt, os.environ["HARNESS_SKILLS_MIN_STATUS"], required, ask_packs())  # type: ignore[arg-type]
+    ask_open = (STATE_DIR / "asks" / "active.json").is_file()
+    ranked = rank("" if ask_open else prompt, os.environ["HARNESS_SKILLS_MIN_STATUS"], required, ask_packs())  # type: ignore[arg-type]
     skills = [f".aria/skills/{skill_dir(r['name'])}" if ":" in r["name"] else r["path"] for r in ranked["load"]]
     return (Loadout(categories=ranked["categories"], skills=skills, tokens=ranked["load_tokens"], over_budget=ranked["over_budget"],
-                    budget=ranked["budget"], announced=False, used=list(skills), shift_noted=None, ask=None, displaced_noted=None),
+                    budget=ranked["budget"], announced=False, used=[], shift_noted=None, ask=None, displaced_noted=None),
             ranked["load"])
 
 
@@ -138,7 +139,7 @@ def pre_tool_output(session_id: str, loadout: Loadout, tool_input: Json) -> Json
     stage = {skill_dir(s) for s in current_skills()}
     allowed = {Path(s).name for s in loadout["skills"]} | stage
     reads = set(SKILL_REF.findall(json.dumps(tool_input)))
-    loadout["used"] = sorted({*loadout["used"], *(f"skills/admitted/{m}" for m in reads & stage)})
+    loadout["used"] = sorted({*loadout["used"], *(f"skills/admitted/{m}" for m in reads & allowed)})
     blocked = sorted({m for m in reads if m in library() and m not in allowed})
     if blocked:
         reason = check(session_id, "skill_loader", "skill_denied",
