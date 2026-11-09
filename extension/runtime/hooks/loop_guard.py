@@ -63,9 +63,10 @@ def read(path: Path) -> Any:
 
 
 def tool_input_of(raw: Any) -> Json:
-    """Return a tool input as a dict: freeform text (Copilot CLI's apply_patch) becomes {'input': text}, the shape VS Code's apply_patch sends."""
+    """Return a tool input as a dict: JSON text becomes its object, other text (Copilot CLI's apply_patch) becomes {'input': text}, the shape
+    VS Code's apply_patch sends."""
     if isinstance(raw, str):
-        return {"input": raw}
+        return json.loads(raw) if raw.lstrip().startswith("{") else {"input": raw}
     if not isinstance(raw, dict):
         raise ValueError(f"loop_guard.py expects tool_input as an object or patch text, got {type(raw).__name__}")
     return raw

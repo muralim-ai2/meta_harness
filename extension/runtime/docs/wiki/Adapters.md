@@ -151,6 +151,8 @@ Example prompts:
 | Ticks in ask-questions recorded (manual checks, choices) | yes | yes (assumed answer format) | no | no |
 | Prototype guardrail after edits | yes | yes | yes | yes |
 
+A guard that fails (a crash, a missing script, an unexpected payload) never blocks. It is skipped, and the tool call goes ahead. The error is written to `.aria/runs/hook-errors.log` (`~/.aria/runs/` outside a project). It is also shown in Mission Control as a guard event, and as a warning or agent context where the client has one.
+
 ## Update, re-export, remove
 
 - **After updating the extension:** run the install or export again. `~/.aria/runtime/`, `.aria/runtime/` and `.github/hve/runtime/` are copies and do not update themselves.
@@ -164,6 +166,7 @@ Example prompts:
 | Claude Code ignores the hooks | Folder not trusted, or Claude was not started with `--agent` | Accept the trust prompt; start `claude --agent hve-creator` |
 | `python` not found in hook errors | Python is not on `PATH` for the client | Install Python 3.11+ and restart the client |
 | Hook error `...skills.json missing: the UserPromptSubmit skill_loader hook did not run` | The hooks were added mid-session | Send a new prompt, or start a new session |
+| Copilot CLI: `Denied by preToolUse hook: hook errored` or `git push is only allowed for GitHub review loops` | An older runtime from before 0.27.5: those versions turned a guard crash into a deny | Update the extension and run the Copilot export again. Guard failures are then logged to `.aria/runs/hook-errors.log` and never block; send that file if errors repeat |
 | Cursor blocks every tool call | Cursor may treat an empty `preToolUse` response as invalid (unverified) | Report under `N27`; meanwhile remove the `preToolUse` entries from `.cursor/hooks.json` |
 | Codex runs no hooks | Hooks not trusted, or Codex was started in a subfolder | `/hooks` → trust; start Codex in the project root |
 | Export stops: `... was not written by Frontier HVE` | You already have your own hooks file | Merge the entries from a scratch export by hand |

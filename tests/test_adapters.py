@@ -303,6 +303,16 @@ def test_copilot_user_scope_and_cloud_exports() -> None:
         sub = fire_copilot(hooks, ws, {"hook_event_name": "SubagentStart", "session_id": "p1", "cwd": str(ws), "agent_id": "a",
                                        "agent_type": "task"}, env)
         assert any("SKILLS-USED" in o.get("additionalContext", "") for o in sub), sub
+        read_only = {"hook_event_name": "PreToolUse", "session_id": "p1", "timestamp": "2026-10-19T08:02:00Z", "cwd": str(ws), "tool_name": "bash",
+                     "tool_input": json.dumps({"command": "gh pr view 54 --json state,url && git status --short --branch"})}
+        assert fire_copilot(hooks, ws, read_only, env) == [], "arguments sent as JSON text are read as the object they encode"
+        errors = ws / ".aria" / "runs" / "hook-errors.log"
+        assert not errors.exists(), errors.read_text(encoding="utf-8")
+        (home / ".aria" / "runtime" / "hooks" / "loop_guard.py").write_text("raise RuntimeError('guard broke')\n", encoding="utf-8")
+        assert fire_copilot(hooks, ws, write, env) == [{}], "a crashing guard is skipped (an empty answer allows), never turned into a deny"
+        assert "RuntimeError: guard broke" in errors.read_text(encoding="utf-8")
+        alert = json.loads((ws / ".aria" / "runs" / "p1.interventions.jsonl").read_text(encoding="utf-8").splitlines()[-1])
+        assert (alert["hook"], alert["kind"]) == ("loop_guard", "hook_error") and "Nothing was blocked" in alert["detail"], alert
         cloud = Path(tmp) / "repo"
         cloud.mkdir()
         report = export(cloud, "cloud")
