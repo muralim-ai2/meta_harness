@@ -325,6 +325,24 @@ def test_wiki_is_shipped_and_linked() -> None:
         assert Path(export(ws, "vscode", "--ado", "contoso")["guide"]).is_file()
 
 
+def test_copilot_post_tool_use_payload_shapes() -> None:
+    """A Copilot PostToolUse maps Copilot CLI's tool_result and the VS Code harness's tool_response (the same hook file runs in both),
+    and any other shape fails naming its fields instead of a bare KeyError."""
+    sys.path.insert(0, str(REPO / "hooks"))
+    import agent_compat
+    base = {"hook_event_name": "PostToolUse", "session_id": "s1", "timestamp": "2026-11-09T10:00:00Z", "cwd": ".", "tool_name": "bash",
+            "tool_input": {"command": "ls"}}
+    cli = agent_compat.to_vscode(base | {"tool_result": {"result_type": "success", "text_result_for_llm": "a.txt"}}, "copilot")
+    assert (cli["tool_response"], cli["tool_name"], cli["tool_use_id"]) == ("a.txt", "bash", "copilot-2026-11-09T10:00:00Z"), cli
+    assert agent_compat.to_vscode(base | {"tool_response": "b.txt"}, "copilot")["tool_response"] == "b.txt"
+    try:
+        agent_compat.to_vscode(base, "copilot")
+    except ValueError as error:
+        assert "neither tool_result nor tool_response" in str(error) and "tool_input" in str(error), error
+    else:
+        raise AssertionError("a PostToolUse without a result must fail with a clear message")
+
+
 if __name__ == "__main__":
     test_export_structure()
     test_export_refuses_foreign_files_and_bad_organizations()

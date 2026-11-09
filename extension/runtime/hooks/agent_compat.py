@@ -31,6 +31,16 @@ def ask_answers(tool_input: Json, response: Any) -> Json:
                         if q["question"] in answers else {"skipped": True} for q in tool_input["questions"]}}
 
 
+def copilot_response(payload: Json) -> Any:
+    """Return a Copilot PostToolUse result: Copilot CLI sends tool_result, VS Code's Copilot harness running the same hook file sends
+    tool_response."""
+    if "tool_result" in payload:
+        return payload["tool_result"]["text_result_for_llm"]
+    if "tool_response" in payload:
+        return payload["tool_response"]
+    raise ValueError(f"Copilot PostToolUse payload has neither tool_result nor tool_response; its fields are {sorted(payload)}")
+
+
 def to_vscode(payload: Json, client: Client) -> Json:
     """Return the payload with VS Code event names, session id, tool names, file path field and Stop fields."""
     event = CURSOR_EVENTS[payload["hook_event_name"]] if client == "cursor" else payload["hook_event_name"]
@@ -47,7 +57,7 @@ def to_vscode(payload: Json, client: Client) -> Json:
             if client == "cursor":
                 response = payload["tool_output"]
             elif client == "copilot":
-                response = payload["tool_result"]["text_result_for_llm"]
+                response = copilot_response(payload)
             else:
                 response = payload["tool_response"]
             out["tool_response"] = ask_answers(tool_input, response) if payload["tool_name"] == "AskUserQuestion" and client == "claude" else response
