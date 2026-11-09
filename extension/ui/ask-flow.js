@@ -158,27 +158,51 @@ async function chooseChat(mc, ask, kind, brief) {
  * @returns {Promise<void>}
  */
 async function startChat(mc, ask, kind, brief, choice) {
+  await openChat(mc, ask, choice, starterPrompt(kind, ask, brief), AGENT);
+  mc.open('live');
+  void vscode.window.showInformationMessage(`The chat for “${brief ? brief.title : ask.title}” has a starter message filled in, with the ask's request and plan attached. `
+    + 'Add references (files, screenshots, links) or more detail, then send it.', 'Attach files…')
+    .then(answer => answer === 'Attach files…' ? mc.execute({ action: 'attachReferences' }) : null);
+}
+
+/** Open the chosen chat with an agent, the ask's request and plan attached and a message filled in but not sent; link the chat to the ask.
+ * @param {MissionControl} mc
+ * @param {import('./types').AskSummary} ask
+ * @param {ChatChoice} choice
+ * @param {string} query
+ * @param {string} mode
+ * @returns {Promise<void>}
+ */
+async function openChat(mc, ask, choice, query, mode) {
   const root = mc.target().uri.fsPath;
-  const query = starterPrompt(kind, ask, brief);
   const attachFiles = ['request.md', 'plan.md'].map(name => path.join(root, '.aria', 'asks', ask.id, name)).filter(file => fs.existsSync(file))
     .map(file => vscode.Uri.file(file));
   if (choice.target === 'new') {
     await mc.context.workspaceState.update('pendingChat', { ask: ask.id, at: new Date().toISOString() });
     await vscode.commands.executeCommand('workbench.action.chat.open');
     await vscode.commands.executeCommand('workbench.action.chat.newLocalChat');
-    await vscode.commands.executeCommand('workbench.action.chat.open', { query, isPartialQuery: true, mode: AGENT, attachFiles });
+    await vscode.commands.executeCommand('workbench.action.chat.open', { query, isPartialQuery: true, mode, attachFiles });
   } else {
     const chat = /** @type {import('./types').Chat} */ (choice.chat);
     if (choice.target === 'own') await vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(chatSessionUri(chat.id)));
     else if (!chat.asks.some(link => link.ask === ask.id)) {
       await mc.context.workspaceState.update('chatAsks', { ...claimsFrom(mc.context.workspaceState.get('chatAsks')), [chat.id]: { ask: ask.id, how: 'continued' } });
     }
-    await vscode.commands.executeCommand('workbench.action.chat.open', { query, isPartialQuery: true, mode: AGENT, attachFiles });
+    await vscode.commands.executeCommand('workbench.action.chat.open', { query, isPartialQuery: true, mode, attachFiles });
   }
-  mc.open('live');
-  void vscode.window.showInformationMessage(`The chat for “${brief ? brief.title : ask.title}” has a starter message filled in, with the ask's request and plan attached. `
-    + 'Add references (files, screenshots, links) or more detail, then send it.', 'Attach files…')
-    .then(answer => answer === 'Attach files…' ? mc.execute({ action: 'attachReferences' }) : null);
+}
+
+/** Put a message for the ask's agent into the ask's latest chat (a new chat linked to the ask when it has none), filled in but not sent.
+ * @param {MissionControl} mc
+ * @param {string} askId
+ * @param {string} query
+ * @returns {Promise<void>}
+ */
+async function messageInChat(mc, askId, query) {
+  const ask = listAsks(mc.target().uri.fsPath).find(row => row.id === askId);
+  if (!ask) throw new Error(`No ask ${askId} in this project.`);
+  const own = (mc.state.activity?.chats || []).find(chat => chat.asks.some(link => link.ask === askId));
+  await openChat(mc, ask, own ? { target: 'own', chat: own } : { target: 'new' }, query, ask.agent);
 }
 
 /** Let the user pick or create a folder outside this workspace for a different project, keep the brief for it, and open it in a new window.
@@ -252,4 +276,4 @@ async function attachReferences(mc) {
   await vscode.commands.executeCommand('workbench.action.chat.open', { attachFiles: files });
 }
 
-module.exports = { AGENT, HANDOFF, askBrief, newAsk, newChat, chooseChat, startChat, attachReferences, startElsewhere, handoff, offerHandoff, startHandoff, dismissHandoff };
+module.exports = { AGENT, HANDOFF, askBrief, newAsk, newChat, chooseChat, startChat, messageInChat, attachReferences, startElsewhere, handoff, offerHandoff, startHandoff, dismissHandoff };

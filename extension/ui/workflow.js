@@ -152,7 +152,8 @@ class Workflow {
     return { ask: state.ask.id, item, itemRevision: revision, value };
   }
 
-  /** Persist a confirmed review through the guarded core API, with a ticket taken just before recording, and verify its saved record.
+  /** Persist a confirmed review through the guarded core API, with a ticket taken just before recording, and verify its saved record;
+   * changes requested on a done stage set it back to active, so it is not shown as ready until the agent finishes them.
    * @param {string} workspace
    * @param {ReviewTicket} ticket
    * @param {string} note
@@ -161,7 +162,7 @@ class Workflow {
   async recordReview(workspace, ticket, note) {
     return this.mutate(async () => {
       text(note, 'Human review note');
-      const { state } = itemAsSeen(workspace, ticket.item, ticket.itemRevision);
+      const { state, review } = itemAsSeen(workspace, ticket.item, ticket.itemRevision);
       if (state.ask?.id !== ticket.ask || !state.ask.active) throw new Error('The active ask changed in the meantime. Look at Mission Control again and retry.');
       const core = record(await lifecycle(this.connection, workspace, ['review-status', ticket.ask]), 'Review ticket');
       const coreRevision = text(core.revision, 'Review revision');
@@ -173,6 +174,11 @@ class Workflow {
       const saved = record(reader.json(path.join('.aria', 'asks', ticket.ask, 'contract.json')), 'Saved contract');
       const entry = record(record(saved.checklist, 'Saved checklist')[ticket.item], 'Saved review');
       if (entry.value !== ticket.value || entry.note !== note) throw new Error('Review response did not match the saved human decision.');
+      if (ticket.value === 'changes' && ticket.item.startsWith('stage:') && review.status === 'done') {
+        const stage = ticket.item.slice('stage:'.length);
+        const reopened = record(await lifecycle(this.connection, workspace, ['stage', stage, 'active', `Changes requested: ${note}`]), 'Stage update');
+        if (reopened.name !== stage || reopened.status !== 'active') throw new Error('Harness returned a different stage update.');
+      }
       return snapshot(workspace);
     });
   }

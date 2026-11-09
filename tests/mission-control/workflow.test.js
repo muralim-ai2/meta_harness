@@ -6,6 +6,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { mission } = require('./vscode-stub');
 const { snapshot } = require('../../extension/ui/workspace-state');
+const { text } = require('../../extension/ui/media/vnode');
+const { dashboard } = require('../../extension/ui/media/pages');
 
 /** Create a real ask through the New ask command, renamed and confirmed by the user.
  * @param {ReturnType<typeof mission>} fixture
@@ -50,6 +52,33 @@ test('requested changes persist through the guarded API and the new ask opens on
   const saved = snapshot(fixture.root);
   assert.equal(saved.reviews[0].decision, 'changes');
   assert.equal(saved.reviews[0].note, 'Clarify the policy acceptance criteria.');
+});
+
+test('Request changes on a done stage reopens it and hands the request to the ask\'s agent in Chat, filled in but not sent', async t => {
+  const fixture = mission(t);
+  const state = await create(fixture, 'changes');
+  fixture.controls.inputs.push('Built and checked in the chat.');
+  fixture.controls.confirmations.push('Mark done');
+  await fixture.controls.provider.execute({ action: 'markDone', item: 'stage:deliver', revision: state.reviews[0].revision });
+  const done = snapshot(fixture.root);
+  assert.equal(done.reviews[0].ready, true);
+  const seen = fixture.controls.calls.length;
+  fixture.controls.inputs.push('Add a review stage before delivery');
+  fixture.controls.confirmations.push('Request changes');
+  await fixture.controls.provider.execute({ action: 'review', item: 'stage:deliver', value: 'changes', revision: done.reviews[0].revision });
+  const after = snapshot(fixture.root);
+  assert.deepEqual([after.reviews[0].decision, after.reviews[0].status, after.reviews[0].ready], ['changes', 'active', false]);
+  const calls = fixture.controls.calls.slice(seen);
+  assert.match(calls.find(call => call[0] === 'input')[1].title, /What should change in stage:deliver\?/);
+  assert.match(calls.find(call => call[0] === 'confirmation')[2].detail, /sets the stage back to active and opens the ask's chat/);
+  const chat = calls.filter(call => call[0] === 'workbench.action.chat.open').at(-1)[1];
+  assert.equal(chat.isPartialQuery, true, 'filled in, never sent for the user');
+  assert.equal(chat.mode, 'ARIA Lite');
+  assert.match(chat.query, new RegExp(`^Changes requested on stage:deliver \\(“[^”]+”\\) of ask ${state.ask.id}: Add a review stage before delivery`));
+  assert.match(chat.query, /update plan\.md, run `lifecycle\.py plan-sync`[\s\S]*lifecycle\.py stage deliver done/);
+  assert.ok(chat.attachFiles.some(file => file.fsPath.endsWith('request.md')));
+  const plan = text(dashboard(fixture.controls.commands.get('frontierHve.missionControlModel')(), { page: 'plan', filter: 'all', open: {}, seq: 0 }, Date.now()));
+  assert.match(plan, /Your change request went to the agent in Chat; accept once it is done again\./);
 });
 
 test('accepting unfinished work is refused before any confirmation or write', async t => {

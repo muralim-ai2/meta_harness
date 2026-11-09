@@ -151,7 +151,9 @@
       const settled = ['accepted', 'skipped'].includes(review.decision);
       return h('li', { class: `review decision-${review.decision}` },
         h('div', { class: 'review-text' }, h('span', { class: 'section-label' }, review.item), h('strong', null, review.title),
-          h('span', { class: 'muted' }, review.ready ? 'Done and ready for your review.' : `Status: ${review.status}. You can accept it once it is done.`),
+          h('span', { class: 'muted' }, review.decision === 'changes'
+            ? review.ready ? 'Done again after your change request: review it again.' : 'Your change request went to the agent in Chat; accept once it is done again.'
+            : review.ready ? 'Done and ready for your review.' : `Status: ${review.status}. You can accept it once it is done.`),
           review.note ? h('span', { class: 'quote' }, review.note) : null, fileLinks(review.files),
           review.commit ? button(`Show changes (${review.commit.base.slice(0, 7)}..${review.commit.head.slice(0, 7)})`, 'showChanges',
             { kind: 'link', data: { item: review.item }, title: 'Open what this task\'s commits changed in a diff editor' }) : null),

@@ -11,6 +11,7 @@ const { sameAsk } = require('./workflow');
 const { listAsks, askTree, projectTree, evaluationFiles } = require('./asks');
 const { claimsFrom } = require('./chats');
 const { containedPath } = require('./file-access');
+const askFlow = require('./ask-flow');
 const IMAGES = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
 
 /** @typedef {import('./mission-control').MissionControl} MissionControl */
@@ -97,7 +98,21 @@ async function revealAsk(mc) {
   await vscode.commands.executeCommand('revealInExplorer', vscode.Uri.file(containedPath(state.workspace, path.join('.aria', 'asks', state.ask.id))));
 }
 
-/** Confirm and record a human sign-off through the guarded review commands.
+/** Return the chat message that hands a change request to the ask's agent.
+ * @param {string} ask
+ * @param {import('./types').Review} item
+ * @param {string} note
+ * @returns {string}
+ */
+function changeMessage(ask, item, note) {
+  const stage = item.item.startsWith('stage:') ? item.item.slice('stage:'.length) : null;
+  return [`Changes requested on ${item.item} (“${item.title}”) of ask ${ask}: ${note}`, '',
+    'Make these changes in this ask. If they change the plan (for example a new stage), update plan.md, run `lifecycle.py plan-sync`, and log the decision.',
+    stage ? `When they are done, set the stage done again with \`lifecycle.py stage ${stage} done "<what changed>"\` and link the files I should look at, so I can review it.`
+      : 'When they are done, re-run its check and link the files I should look at, so I can review it.'].join('\n');
+}
+
+/** Confirm and record a human sign-off through the guarded review commands; a change request also goes to the ask's agent in Chat.
  * @param {MissionControl} mc
  * @param {Record<string, string>} data
  * @returns {Promise<void>}
@@ -107,16 +122,27 @@ async function review(mc, data) {
   const target = mc.target();
   const flow = await mc.connect();
   const ticket = flow.prepareReview(target.uri.fsPath, data.revision, data.item, data.value);
-  const note = await vscode.window.showInputBox({ title: data.value === 'accepted' ? `Accept ${data.item}: what did you check?` : `Changes for ${data.item}: what needs to change?`,
-    ignoreFocusOut: true, validateInput: value => !value.trim() ? 'A note is required.' : value.length > 4000 ? 'Use at most 4,000 characters.' : null });
+  const item = /** @type {import('./types').Review} */ (snapshot(target.uri.fsPath).reviews.find(row => row.item === data.item));
+  const changes = data.value === 'changes';
+  const note = await vscode.window.showInputBox({ title: changes ? `What should change in ${data.item}?` : `Accept ${data.item}: what did you check?`,
+    placeHolder: changes ? 'For example: add a review stage before delivery' : undefined, ignoreFocusOut: true,
+    validateInput: value => !value.trim() ? 'A note is required.' : value.length > 4000 ? 'Use at most 4,000 characters.' : null });
   if (note === undefined) return;
-  const label = data.value === 'accepted' ? 'Accept' : 'Request changes';
+  const label = changes ? 'Request changes' : 'Accept';
   const confirm = await vscode.window.showWarningMessage(`${label}: ${data.item}?`, { modal: true,
-    detail: `Ask ${ticket.ask} in ${target.uri.fsPath}\n\n“${note}”\n\nThis records your decision in the ask. It does not push code or start the next stage.` }, label);
+    detail: `Ask ${ticket.ask} in ${target.uri.fsPath}\n\n“${note}”\n\n` + (changes
+      ? `This records your request${item.status === 'done' ? ', sets the stage back to active' : ''} and opens the ask's chat with your request filled in `
+        + 'for its agent, plan attached. Press Enter in Chat to send it; you can add detail first.'
+      : 'This records your decision in the ask. It does not push code or start the next stage.') }, label);
   if (confirm !== label) return;
   mc.target();
   await flow.recordReview(target.uri.fsPath, ticket, note);
-  void vscode.window.showInformationMessage(`${label === 'Accept' ? 'Accepted' : 'Changes requested for'} ${data.item}.`);
+  if (!changes) {
+    void vscode.window.showInformationMessage(`Accepted ${data.item}.`);
+    return;
+  }
+  await askFlow.messageInChat(mc, ticket.ask, changeMessage(ticket.ask, item, note));
+  void vscode.window.showInformationMessage(`Your change request for ${data.item} is filled in the ask's chat. Press Enter there to send it to the agent.`);
 }
 
 /** Confirm and set a stage of the active ask to done, so the plan matches what the chat shows; the harness still checks its evidence.
