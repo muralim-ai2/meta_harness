@@ -29,9 +29,10 @@ function row(type, seconds, data = {}) { return { type, data, timestamp: at(seco
  */
 function dropped(root) {
   const slide = name => ({ filePath: path.join(root, 'presentation', 'previews', name) });
+  const request = (id, name) => ({ toolCallId: id, name: 'view_image', arguments: JSON.stringify(slide(name)) });
   return [row('session.start', 0, { startTime: at(0) }), row('user.message', 0, { content: 'Build me 5 slides for an investor' }),
     row('assistant.turn_start', 1, { turnId: '13' }),
-    row('assistant.message', 18, { content: '', toolRequests: [{ toolCallId: 'a' }, { toolCallId: 'b' }, { toolCallId: 'c' }] }),
+    row('assistant.message', 18, { content: '', toolRequests: [request('a', 'Slide3.PNG'), request('b', 'Slide2.PNG'), request('c', 'Slide1.PNG')] }),
     row('assistant.turn_end', 18, { turnId: '13' }), row('assistant.turn_start', 18, { turnId: '14' }),
     row('tool.execution_start', 20, { toolCallId: 'a', toolName: 'view_image', arguments: slide('Slide3.PNG') }), row('tool.execution_complete', 21, { toolCallId: 'a', success: true }),
     row('tool.execution_start', 24, { toolCallId: 'b', toolName: 'view_image', arguments: slide('Slide2.PNG') }), row('tool.execution_complete', 24, { toolCallId: 'b', success: true }),
@@ -64,7 +65,8 @@ test('a call still waiting for its result is the current step until the conversa
 
 test('a call whose result never arrived shows as stopped once the agent answers, and Now follows the next step', t => {
   const { root, file } = setup(t, root => [...dropped(root),
-    row('assistant.message', 162, { content: '', toolRequests: [{ toolCallId: 'd' }] }), row('assistant.turn_end', 162, { turnId: '0' }),
+    row('assistant.message', 162, { content: '', toolRequests: [{ toolCallId: 'd', name: 'read_file',
+      arguments: JSON.stringify({ filePath: path.join(root, 'presentation', 'build_deck.py') }) }] }), row('assistant.turn_end', 162, { turnId: '0' }),
     row('assistant.turn_start', 162, { turnId: '1' }),
     row('tool.execution_start', 163, { toolCallId: 'd', toolName: 'read_file', arguments: { filePath: path.join(root, 'presentation', 'build_deck.py') } })]);
   const { session } = activity(root, file, null, START + 170_000);
