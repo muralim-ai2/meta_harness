@@ -80,6 +80,12 @@ export interface AskFiles {
   count: number;
   truncated: boolean;
 }
+export interface ProjectFiles {
+  name: string;
+  entries: FileNode[];
+  count: number;
+  truncated: boolean;
+}
 export interface Claim {
   ask: string;
   how: 'started' | 'linked' | 'continued';
@@ -177,6 +183,8 @@ export interface Model {
   outputsError: string | null;
   files: AskFiles | null;
   filesError: string | null;
+  project: ProjectFiles | null;
+  projectError: string | null;
   packs: Pack[] | null;
   packsError: string | null;
   navigate: { page: Page; seq: number };
@@ -208,6 +216,8 @@ export interface Views {
   pretty(slug: string): string;
   button(label: string, action: string, options?: { kind?: string; icon?: string; data?: Record<string, string>; disabled?: boolean; title?: string }): VNode;
   fileLinks(files: string[]): VNode | null;
+  size(bytes: number): string;
+  fileTree(nodes: FileNode[], ui: UiState, now: number, options: { about: Record<string, string>; key: string; openTop: boolean; compact: boolean }): VNode;
   chip(model: Model): VNode;
   needs(model: Model): Need[];
   attention(items: Need[], compact: boolean): VNode | null;

@@ -9,6 +9,8 @@ const ASK = /^\d{8}-\d{4}-[a-z0-9][a-z0-9-]{0,40}$/;
 const ASK_LIMIT = 200;
 const TREE_LIMIT = 400;
 const TREE_DEPTH = 6;
+const PROJECT_DEPTH = 10;
+const PROJECT_SKIP = new Set(['.git', 'node_modules']);
 const HANDOFF_MS = 24 * 60 * 60 * 1000;
 const FILLER = new Set(['a', 'an', 'the', 'and', 'or', 'for', 'to', 'of', 'in', 'on', 'with', 'that', 'this', 'it', 'is', 'are', 'be', 'we', 'i', 'me', 'my',
   'our', 'please', 'can', 'you', 'could', 'would', 'should', 'new', 'some', 'into', 'from', 'by', 'as', 'at', 'so', 'just', 'also']);
@@ -47,6 +49,35 @@ function listAsks(workspace) {
     }).sort((a, b) => Date.parse(b.created) - Date.parse(a.created) || b.id.localeCompare(a.id));
 }
 
+/** Return a folder of the workspace as a tree, folders first, bounded in depth and entries; links and special files are listed but never
+ * followed, and folders named in skip are left out.
+ * @param {string} root The workspace's real path.
+ * @param {string} folder Workspace-relative; '' is the workspace itself.
+ * @param {Set<string>} skip
+ * @param {number} limit Folder depth below which folders are listed but not opened.
+ * @returns {{entries: import('./types').FileNode[], count: number, truncated: boolean}}
+ */
+function folderTree(root, folder, skip, limit) {
+  let count = 0;
+  let truncated = false;
+  /** @param {string} relative @param {number} depth @returns {import('./types').FileNode[]} */
+  const walk = (relative, depth) => fs.readdirSync(relative ? containedPath(root, relative) : root, { withFileTypes: true })
+    .filter(entry => !(entry.isDirectory() && skip.has(entry.name)))
+    .sort((a, b) => Number(b.isDirectory()) - Number(a.isDirectory()) || a.name.localeCompare(b.name)).flatMap(entry => {
+      if (count >= TREE_LIMIT) { truncated = true; return []; }
+      count += 1;
+      const child = path.join(relative, entry.name);
+      const stat = fs.lstatSync(path.join(root, child));
+      const kind = stat.isSymbolicLink() ? 'other' : stat.isDirectory() ? 'folder' : stat.isFile() ? 'file' : 'other';
+      if (kind === 'folder' && depth >= limit) truncated = true;
+      const children = kind === 'folder' && depth < limit ? walk(child, depth + 1) : [];
+      return [{ name: entry.name, path: child.split(path.sep).join('/'), kind, size: kind === 'folder' ? children.length : stat.size,
+        modified: stat.mtime.toISOString(), children }];
+    });
+  const entries = walk(folder, 1);
+  return { entries, count, truncated };
+}
+
 /** Return an ask's folder as a tree, folders first, bounded in depth and entries; links and special files are listed but never followed.
  * @param {string} workspace
  * @param {string} ask
@@ -58,23 +89,16 @@ function askTree(workspace, ask) {
   const folder = path.join('.aria', 'asks', ask);
   const absolute = containedPath(root, folder);
   if (!fs.existsSync(absolute) || !fs.statSync(absolute).isDirectory()) throw new Error(`No ask folder: ${folder}`);
-  let count = 0;
-  let truncated = false;
-  /** @param {string} relative @param {number} depth @returns {import('./types').FileNode[]} */
-  const walk = (relative, depth) => fs.readdirSync(containedPath(root, relative), { withFileTypes: true })
-    .sort((a, b) => Number(b.isDirectory()) - Number(a.isDirectory()) || a.name.localeCompare(b.name)).flatMap(entry => {
-      if (count >= TREE_LIMIT) { truncated = true; return []; }
-      count += 1;
-      const child = path.join(relative, entry.name);
-      const stat = fs.lstatSync(path.join(root, child));
-      const kind = stat.isSymbolicLink() ? 'other' : stat.isDirectory() ? 'folder' : stat.isFile() ? 'file' : 'other';
-      if (kind === 'folder' && depth >= TREE_DEPTH) truncated = true;
-      const children = kind === 'folder' && depth < TREE_DEPTH ? walk(child, depth + 1) : [];
-      return [{ name: entry.name, path: child.split(path.sep).join('/'), kind, size: kind === 'folder' ? children.length : stat.size,
-        modified: stat.mtime.toISOString(), children }];
-    });
-  const entries = walk(folder, 1);
-  return { ask, path: folder.split(path.sep).join('/'), entries, count, truncated };
+  return { ask, path: folder.split(path.sep).join('/'), ...folderTree(root, folder, new Set(), TREE_DEPTH) };
+}
+
+/** Return the whole workspace folder as a bounded tree, without git internals and installed packages (.git, node_modules).
+ * @param {string} workspace
+ * @returns {import('./types').ProjectFiles}
+ */
+function projectTree(workspace) {
+  const root = fs.realpathSync(workspace);
+  return { name: path.basename(root), ...folderTree(root, '', PROJECT_SKIP, PROJECT_DEPTH) };
 }
 
 /** Return a short lowercase name for a new ask from its request: its first few meaningful words, at most 41 characters.
@@ -170,4 +194,4 @@ function handoffFrom(value, folder, now) {
   return { title, description, from: text(row.from, 'Carried-over source'), at };
 }
 
-module.exports = { ASK, askTime, listAsks, askTree, slugFor, askRequest, scopeText, starterPrompt, evaluationFiles, deletedAsks, handoffFrom };
+module.exports = { ASK, askTime, listAsks, askTree, projectTree, slugFor, askRequest, scopeText, starterPrompt, evaluationFiles, deletedAsks, handoffFrom };

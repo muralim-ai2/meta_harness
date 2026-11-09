@@ -107,14 +107,15 @@ test('files in the ask open beside Mission Control; files behind a link or outsi
   t.after(() => removeWorkspace(outside));
   fs.writeFileSync(path.join(outside, 'secret.txt'), 'private');
   fs.symlinkSync(outside, path.join(fixture.root, FOLDER, 'linked'), 'junction');
-  fs.writeFileSync(path.join(fixture.root, 'secret.txt'), 'private');
+  fs.mkdirSync(path.join(fixture.root, 'node_modules'));
+  fs.writeFileSync(path.join(fixture.root, 'node_modules', 'secret.txt'), 'private');
   await fixture.controls.commands.get('frontierHve.refreshMissionControl')();
   await fixture.controls.provider.execute({ action: 'openFile', path: `${FOLDER}/loop/prs/policy.json` });
   const opened = fixture.controls.calls.filter(call => call[0] === 'document');
   assert.equal(path.relative(fs.realpathSync(fixture.root), opened[0][1].fsPath), path.join('.aria', 'asks', ASK, 'loop', 'prs', 'policy.json'));
   assert.equal(opened[0][2].viewColumn, -2);
   await assert.rejects(fixture.controls.provider.execute({ action: 'openFile', path: `${FOLDER}/linked/secret.txt` }), /not listed/);
-  await assert.rejects(fixture.controls.provider.execute({ action: 'openFile', path: 'secret.txt' }), /not listed/);
+  await assert.rejects(fixture.controls.provider.execute({ action: 'openFile', path: 'node_modules/secret.txt' }), /not listed/);
   await assert.rejects(fixture.controls.provider.execute({ action: 'openFile', path: `${FOLDER}/loop` }), /not listed/);
   await fixture.controls.provider.execute({ action: 'revealAsk' });
   const reveal = fixture.controls.calls.find(call => call[0] === 'revealInExplorer');
@@ -125,7 +126,7 @@ test('files a waiting question or a guard alert names, and the evidence of each 
   const fixture = mission(t);
   const folder = project(fixture.root);
   const root = fixture.root;
-  for (const [name, body] of [['docs/prd.md', '# PRD'], ['notes/push.md', 'push'], ['secret.txt', 'private']]) {
+  for (const [name, body] of [['docs/prd.md', '# PRD'], ['notes/push.md', 'push'], ['node_modules/secret.txt', 'private']]) {
     fs.mkdirSync(path.join(root, path.dirname(name)), { recursive: true });
     fs.writeFileSync(path.join(root, name), body);
   }
@@ -154,7 +155,7 @@ test('files a waiting question or a guard alert names, and the evidence of each 
     && review.includes(path.join(folder, 'loop', 'evidence', 'policy', 'check.log')), review.join(', '));
   for (const file of ['docs/prd.md', 'notes/push.md']) await fixture.controls.provider.execute({ action: 'openFile', path: file });
   assert.equal(fixture.controls.calls.filter(call => call[0] === 'document').length, 2);
-  await assert.rejects(fixture.controls.provider.execute({ action: 'openFile', path: 'secret.txt' }), /not listed/);
+  await assert.rejects(fixture.controls.provider.execute({ action: 'openFile', path: 'node_modules/secret.txt' }), /not listed/);
 });
 
 test('a task links the files its commits changed and Show changes opens base..head in the multi-file diff editor', async t => {
@@ -196,6 +197,32 @@ test('a task links the files its commits changed and Show changes opens base..he
       ['policy.test.js', undefined, `policy.test.js@${head.slice(0, 7)}`]]);
   await fixture.controls.provider.execute({ action: 'openFile', path: 'policy.test.js' });
   await assert.rejects(fixture.controls.provider.execute({ action: 'showChanges', item: 'stage:deliver' }), /no recorded commits/);
+});
+
+test('the sidebar shows the whole project folder as a tree, without .git and node_modules, and its files open', async t => {
+  const fixture = mission(t);
+  project(fixture.root);
+  for (const name of ['src/app.js', 'src/lib/util.js', 'README.md', '.git/HEAD', 'node_modules/pkg/index.js']) {
+    fs.mkdirSync(path.join(fixture.root, path.dirname(name)), { recursive: true });
+    fs.writeFileSync(path.join(fixture.root, name), 'x');
+  }
+  await fixture.controls.commands.get('frontierHve.refreshMissionControl')();
+  const model = fixture.controls.commands.get('frontierHve.missionControlModel')();
+  assert.equal(model.project.name, path.basename(fs.realpathSync(fixture.root)));
+  const bar = sidebar({ ...model, surface: 'sidebar' }, UI, Date.now());
+  const section = find(bar, node => node.attrs['data-key'] === 'project-files')[0];
+  assert.ok(section && 'open' in section.attrs, 'the project tree shows in the sidebar, open');
+  const folders = find(section, node => node.tag === 'details' && node.attrs['data-key']?.startsWith('proj:'));
+  assert.deepEqual(folders.map(node => node.attrs['data-key']).sort(), ['proj:.aria', 'proj:.aria/asks', `proj:.aria/asks/${ASK}`, `proj:.aria/asks/${ASK}/loop`,
+    `proj:.aria/asks/${ASK}/loop/evidence`, `proj:.aria/asks/${ASK}/loop/evidence/policy`, `proj:.aria/asks/${ASK}/loop/prs`, 'proj:.aria/project', 'proj:src', 'proj:src/lib']);
+  assert.ok(folders.every(node => !('open' in node.attrs)), 'folders start closed');
+  const files = find(section, node => node.attrs['data-action'] === 'openFile').map(node => node.attrs['data-path']);
+  assert.ok(files.includes('README.md') && files.includes('src/app.js') && files.includes('src/lib/util.js'), files.join(', '));
+  assert.ok(!files.some(file => file.startsWith('.git/') || file.startsWith('node_modules/')), files.join(', '));
+  assert.match(text(section), /Without \.git and node_modules\./);
+  await fixture.controls.provider.execute({ action: 'openFile', path: 'src/lib/util.js' });
+  assert.ok(fixture.controls.calls.some(call => call[0] === 'document' && call[1].fsPath.endsWith(path.join('src', 'lib', 'util.js'))));
+  await assert.rejects(fixture.controls.provider.execute({ action: 'openFile', path: 'node_modules/pkg/index.js' }), /not listed/);
 });
 
 test('the Files page follows the ask chosen in the dropdown', async t => {

@@ -11,7 +11,7 @@
   /** @type {typeof globalThis.hveTelemetry} */
   const tele = modular ? require('./telemetry') : root.hveTelemetry;
   const { telemetry } = tele;
-  const { icon, ago, count, plural, pretty, button, fileLinks, chip, needs, attention, eventRow, todoList, bar, telemetrySwitch, askChats, noChat, askPicker, viewing, handoffNotice,
+  const { icon, ago, count, plural, pretty, button, fileLinks, fileTree, chip, needs, attention, eventRow, todoList, bar, telemetrySwitch, askChats, noChat, askPicker, viewing, handoffNotice,
     PAGES } = views;
 
   /** @typedef {import('../types').Model} Model */
@@ -60,14 +60,6 @@
    * @returns {VNode}
    */
   function stat(label, value) { return h('div', { class: 'stat' }, h('span', { class: 'muted' }, label), h('strong', null, value)); }
-
-  /** Return a file size in words.
-   * @param {number} bytes
-   * @returns {string}
-   */
-  function size(bytes) {
-    return bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-  }
 
   /** Return the chats of the ask on screen, a new-chat button for the active ask, and the chats no ask claims.
    * @param {Model} model
@@ -317,21 +309,7 @@
     if (model.filesError) return [h('div', { class: 'notice error' }, model.filesError)];
     if (!tree) return [empty('No ask yet', 'Each ask keeps its request, contract, plan and evidence in its own folder under .aria/asks/.',
       button('New ask', 'newAsk', { kind: 'primary', icon: 'plus', disabled: model.busy }))];
-    /** @param {import('../types').FileNode} node @param {number} depth @returns {VNode} */
-    const item = (node, depth) => {
-      const about = ABOUT[node.name];
-      if (node.kind === 'folder') {
-        const key = `dir:${node.path}`;
-        return h('li', null, h('details', { class: 'folder', open: ui.open[key] ?? depth === 0, 'data-key': key },
-          h('summary', null, icon('folder'), h('span', { class: 'name' }, node.name),
-            h('span', { class: 'muted' }, [about, node.size ? plural(node.size, 'item') : 'empty'].filter(Boolean).join(' · '))),
-          node.children.length ? h('ul', { class: 'tree' }, ...node.children.map(child => item(child, depth + 1))) : null));
-      }
-      if (node.kind === 'other') return h('li', { class: 'muted other' }, icon('file'), `${node.name}: a link or special file, not opened`);
-      return h('li', null, h('button', { class: 'file', type: 'button', 'data-action': 'openFile', 'data-path': node.path, title: `Open ${node.path}` }, icon('file'),
-        h('span', { class: 'name' }, node.name), h('span', { class: 'muted' }, [about, size(node.size), ago(node.modified, now)].filter(Boolean).join(' · '))));
-    };
-    return [card(`${tree.path}/`, [h('ul', { class: 'tree root' }, ...tree.entries.map(node => item(node, 0))),
+    return [card(`${tree.path}/`, [fileTree(tree.entries, ui, now, { about: ABOUT, key: 'dir:', openTop: true, compact: false }),
       tree.truncated ? h('p', { class: 'muted' }, `Showing ${tree.count} entries, up to 6 folders deep. Show the folder in the Explorer to see everything.`) : null],
     button('Show in Explorer', 'revealAsk', { icon: 'folder', title: 'Reveal this ask\'s folder in VS Code\'s Explorer' }))];
   }

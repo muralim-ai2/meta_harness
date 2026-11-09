@@ -93,7 +93,8 @@ test('files open beside Mission Control only when it lists them', async t => {
   const fixture = mission(t);
   project(fixture.root);
   fs.writeFileSync(path.join(fixture.root, 'policy.js'), 'export {}');
-  fs.writeFileSync(path.join(fixture.root, 'secret.txt'), 'private');
+  fs.mkdirSync(path.join(fixture.root, 'node_modules', 'pkg'), { recursive: true });
+  fs.writeFileSync(path.join(fixture.root, 'node_modules', 'pkg', 'secret.txt'), 'private');
   fs.mkdirSync(path.join(fixture.root, '.aria', 'skills', 'ux-flows'), { recursive: true });
   fs.writeFileSync(path.join(fixture.root, '.aria', 'skills', 'ux-flows', 'SKILL.md'), '# UX flows');
   transcript(fixture.transcripts, [{ type: 'tool.execution_start', data: { toolCallId: 'o', toolName: 'run_in_terminal', arguments: { command: `python lifecycle.py open ${ASK}` } } },
@@ -104,7 +105,7 @@ test('files open beside Mission Control only when it lists them', async t => {
   const opened = fixture.controls.calls.filter(call => call[0] === 'document');
   assert.deepEqual(opened.map(call => path.relative(fs.realpathSync(fixture.root), call[1].fsPath)), ['policy.js', path.join('.aria', 'skills', 'ux-flows', 'SKILL.md')]);
   assert.equal(opened[0][2].viewColumn, -2);
-  await assert.rejects(fixture.controls.provider.execute({ action: 'openFile', path: 'secret.txt' }), /not listed/);
+  await assert.rejects(fixture.controls.provider.execute({ action: 'openFile', path: 'node_modules/pkg/secret.txt' }), /not listed/);
 });
 
 test('an unreadable transcript shows as an activity error while the task view keeps working', async t => {

@@ -8,7 +8,7 @@ const { execFile } = require('node:child_process');
 const { BASE_COMMANDS } = require('./lifecycle-cli');
 const { snapshot } = require('./workspace-state');
 const { current } = require('./workflow');
-const { listAsks, askTree, evaluationFiles } = require('./asks');
+const { listAsks, askTree, projectTree, evaluationFiles } = require('./asks');
 const { claimsFrom } = require('./chats');
 const { containedPath } = require('./file-access');
 const IMAGES = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
@@ -234,8 +234,8 @@ function treeFiles(nodes) {
   return nodes.flatMap(node => node.kind === 'file' ? [node.path] : treeFiles(node.children));
 }
 
-/** Open a file Mission Control lists: in the ask's folder, evidence, the plan, files the agent changed, files a question, guard alert or
- * sign-off names, or a loaded skill.
+/** Open a file Mission Control lists: in the project tree, the ask's folder, evidence, the plan, files the agent changed, files a question, guard
+ * alert or sign-off names, or a loaded skill.
  * @param {MissionControl} mc
  * @param {string} relative
  * @returns {Promise<void>}
@@ -246,7 +246,8 @@ async function openFile(mc, relative) {
   const session = mc.state.activity?.session;
   const named = [...(session?.events || []), ...(session?.current ? [session.current] : [])].filter(event => ['ask', 'guard'].includes(event.kind));
   const listed = [...state.files, ...(session?.files.map(file => file.path) || []), ...named.flatMap(event => event.files), ...state.reviews.flatMap(review => review.files),
-    ...state.skills.map(skill => path.join('.aria', 'skills', skill.name, 'SKILL.md')), ...(state.ask ? treeFiles(askTree(root, state.ask.id).entries) : []), ...evaluationFiles(root)]
+    ...state.skills.map(skill => path.join('.aria', 'skills', skill.name, 'SKILL.md')), ...(state.ask ? treeFiles(askTree(root, state.ask.id).entries) : []), ...evaluationFiles(root),
+    ...treeFiles(projectTree(root).entries)]
     .map(file => path.normalize(file));
   if (!listed.includes(path.normalize(relative))) throw new Error('That file is not listed in Mission Control.');
   const uri = vscode.Uri.file(containedPath(state.workspace, relative));

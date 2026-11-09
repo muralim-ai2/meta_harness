@@ -267,6 +267,10 @@ details.folder > summary .muted, .tree .file .muted { flex: 1; font-size: 11px; 
 .tree .file { width: 100%; }
 .tree .file .name { font-weight: 400; }
 .tree .other { display: flex; align-items: center; gap: 8px; padding: 4px 6px; font-size: 12px; }
+details.project-files { display: grid; gap: 4px; }
+details.project-files > summary { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+details.project-files .tree .file, details.project-files details.folder > summary { padding: 3px 6px; font-size: 12px; }
+details.project-files > p { margin: 4px 0 0; font-size: 11px; }
 
 /* Early release, telemetry chips, context and visuals */
 .early { padding: 1px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; white-space: nowrap;

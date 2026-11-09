@@ -115,6 +115,57 @@
       'data-path': file, title: `Open ${file}` }, icon('file'), h('span', null, file.split('\\').join('/'))))) : null;
   }
 
+  /** Return a file size in words.
+   * @param {number} bytes
+   * @returns {string}
+   */
+  function size(bytes) {
+    return bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  }
+
+  /** Return a folder tree: folders open and close (remembered under key + path), files open beside Mission Control, links are listed only.
+   * @param {import('../types').FileNode[]} nodes
+   * @param {UiState} ui
+   * @param {number} now
+   * @param {{about: Record<string, string>, key: string, openTop: boolean, compact: boolean}} options
+   * @returns {VNode}
+   */
+  function fileTree(nodes, ui, now, options) {
+    /** @param {import('../types').FileNode} node @param {number} depth @returns {VNode} */
+    const item = (node, depth) => {
+      const about = options.about[node.name];
+      if (node.kind === 'folder') {
+        const key = `${options.key}${node.path}`;
+        return h('li', null, h('details', { class: 'folder', open: ui.open[key] ?? (options.openTop && depth === 0), 'data-key': key },
+          h('summary', null, icon('folder'), h('span', { class: 'name' }, node.name),
+            options.compact ? null : h('span', { class: 'muted' }, [about, node.size ? plural(node.size, 'item') : 'empty'].filter(Boolean).join(' · '))),
+          node.children.length ? h('ul', { class: 'tree' }, ...node.children.map(child => item(child, depth + 1))) : null));
+      }
+      if (node.kind === 'other') return h('li', { class: 'muted other' }, icon('file'), `${node.name}: a link or special file, not opened`);
+      return h('li', null, h('button', { class: 'file', type: 'button', 'data-action': 'openFile', 'data-path': node.path, title: `Open ${node.path}` }, icon('file'),
+        h('span', { class: 'name' }, node.name),
+        options.compact ? null : h('span', { class: 'muted' }, [about, size(node.size), ago(node.modified, now)].filter(Boolean).join(' · '))));
+    };
+    return h('ul', { class: 'tree root' }, ...nodes.map(node => item(node, 0)));
+  }
+
+  /** Return the whole project folder as a collapsible tree for the sidebar; files open beside Mission Control.
+   * @param {Model} model
+   * @param {UiState} ui
+   * @param {number} now
+   * @returns {VNode | null}
+   */
+  function projectFiles(model, ui, now) {
+    if (model.projectError) return h('div', { class: 'notice error' }, `Mission Control cannot list the project files: ${model.projectError}`);
+    const tree = model.project;
+    if (!tree) return null;
+    return h('details', { class: 'project-files', open: ui.open['project-files'] ?? true, 'data-key': 'project-files' },
+      h('summary', null, h('span', { class: 'section-label' }, `Project files · ${tree.name}`), h('span', { class: 'count' }, tree.count)),
+      tree.entries.length ? fileTree(tree.entries, ui, now, { about: {}, key: 'proj:', openTop: false, compact: true }) : h('p', { class: 'muted' }, 'The folder is empty.'),
+      tree.truncated ? h('p', { class: 'muted' }, `Showing the first ${tree.count} entries, up to 10 folders deep, without .git and node_modules. VS Code's Explorer shows everything.`)
+        : h('p', { class: 'muted' }, 'Without .git and node_modules.'));
+  }
+
   /** Return the session status shown in the header chip.
    * @param {Model} model
    * @returns {{key: string, label: string}}
@@ -387,10 +438,10 @@
       button('New ask', 'newAsk', { kind: 'primary new-ask', icon: 'plus', disabled: model.busy || !model.workspace,
         title: 'Start a new piece of work in this project; the harness first checks whether it continues the open ask' }),
       handoffNotice(model), askPicker(model), viewing(model), askCard(model, now), attention(needs(model), true), nowSection(model, now), recent(model, now), pageLinks(model),
-      h('footer', null, telemetrySwitch(model)));
+      projectFiles(model, ui, now), h('footer', null, telemetrySwitch(model)));
   }
 
-  const api = { ICONS, PAGES, icon, ago, count, plural, pretty, button, fileLinks, chip, needs, attention, eventRow, todoList, bar, telemetrySwitch, sessionState,
+  const api = { ICONS, PAGES, icon, ago, count, plural, pretty, button, fileLinks, size, fileTree, chip, needs, attention, eventRow, todoList, bar, telemetrySwitch, sessionState,
     askChats, noChat, askPicker, viewing, handoffNotice, sidebar };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.hveViews = api;

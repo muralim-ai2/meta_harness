@@ -79,6 +79,8 @@ VS Code starts a new chat in the chat view that last had focus, and first asks t
 
 Files to review are links everywhere they are asked about: a question the agent is waiting on (Needs you, the Now card and the activity) and a guard alert show each workspace file they name, and each sign-off on Plan lists its evidence (a feature's PR record and check output, the files a stage declares). Click one to open it beside the dashboard.
 
+The sidebar ends with **Project files**: the whole workspace folder as a tree (folders start closed; without `.git` and `node_modules`; up to 400 entries and 10 folders deep, with a note when cut). Click a file to open it. On Plan, a feature task also links the files its commits changed and offers **Show changes**, which opens its recorded commits (base to head) in VS Code's multi-file diff editor.
+
 Accept needs finished work, a recorded passing check for feature tasks, and no plan edits waiting for the agent to reconcile (an ask without a written plan can be accepted). Edited plan tick boxes must be recorded by the agent first. Sign-offs go through the guarded review commands (see [Ways of working](Ways-of-Working.md)): if the ask, plan or evidence changed after the screen was drawn, the action stops with "Workspace state changed" and the screen refreshes. Accepting does not push, merge, advance a stage or mark a tracker item `validated`. Mission Control never writes into the Chat input.
 
 ## Research telemetry

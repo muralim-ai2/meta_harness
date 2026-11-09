@@ -7,7 +7,7 @@ const { randomBytes } = require('node:crypto');
 const { runtime, inspect, guardMode, packs } = require('./lifecycle-cli');
 const { snapshot } = require('./workspace-state');
 const { activity } = require('./activity');
-const { listAsks, askTree } = require('./asks');
+const { listAsks, askTree, projectTree } = require('./asks');
 const { chatList, shownChat, claimsFrom, pendingFrom, chatMeta } = require('./chats');
 const { Workflow } = require('./workflow');
 const { HarnessTree } = require('./harness-tree');
@@ -79,7 +79,7 @@ class MissionControl {
     const version = text(record(context.extension.packageJSON, 'Extension manifest').version, 'Extension version');
     /** @type {Omit<import('./types').Model, 'now' | 'surface' | 'workspace' | 'telemetry' | 'navigate' | 'transcripts'>} */
     this.state = { busy: false, error: null, workspaceMessage: null, connection: { version, python: null, guard: guardMode(context.extensionPath) },
-      asks: null, asksError: null, snapshot: null, snapshotError: null, activity: null, activityError: null, pending: null, handoff: null, handoffError: null, insights: null, models: null, modelsError: null, analysis: null, map: null, evaluations: [], outputsError: null, files: null, filesError: null,
+      asks: null, asksError: null, snapshot: null, snapshotError: null, activity: null, activityError: null, pending: null, handoff: null, handoffError: null, insights: null, models: null, modelsError: null, analysis: null, map: null, evaluations: [], outputsError: null, files: null, filesError: null, project: null, projectError: null,
       packs: null, packsError: null };
     this.restoreWorkspace();
   }
@@ -217,7 +217,7 @@ class MissionControl {
     if (!vscode.workspace.isTrusted) throw new Error('Trust this workspace to use Mission Control.');
     this.state.workspaceMessage = null;
     if (!this.workspace) {
-      Object.assign(this.state, { asks: null, asksError: null, snapshot: null, snapshotError: null, activity: null, activityError: null, files: null, filesError: null });
+      Object.assign(this.state, { asks: null, asksError: null, snapshot: null, snapshotError: null, activity: null, activityError: null, files: null, filesError: null, project: null, projectError: null });
       this.state.workspaceMessage = (vscode.workspace.workspaceFolders?.length || 0) > 1
         ? 'Choose which workspace folder Mission Control follows.' : 'Open a project folder to use Mission Control.';
       this.paint();
@@ -249,10 +249,11 @@ class MissionControl {
         meta: shown && transcripts ? chatMeta(transcripts, shown.id) : null };
     });
     const files = await this.section('Ask files', async () => viewed ? askTree(root, viewed) : null);
+    const project = await this.section('Project files', async () => projectTree(root));
     const outputs = await this.section('Maps and evaluations', async () => ({ map: extras.mapInfo(root), evaluations: evaluationFiles(root) }));
     const carried = await this.section('Ask carried over', async () => askFlow.handoff(this));
     Object.assign(this.state, { asks: asks.value, asksError: asks.error, snapshot: state.value, snapshotError: state.error,
-      activity: live.value, activityError: live.error, files: files.value, filesError: files.error,
+      activity: live.value, activityError: live.error, files: files.value, filesError: files.error, project: project.value, projectError: project.error,
       handoff: carried.value, handoffError: carried.error, insights: live.value ? insights(live.value) : null,
       map: outputs.value?.map || null, evaluations: outputs.value?.evaluations || [], outputsError: outputs.error });
     this.paint();
