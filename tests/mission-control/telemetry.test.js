@@ -92,6 +92,10 @@ test('the Telemetry tab shows the chat\'s agent, mode and model, the tiles, the 
   assert.ok(!/≈/.test(shown));
   assert.ok(!shown.includes('Signals'));
   const find = (node, match) => typeof node === 'string' ? [] : [...(match(node) ? [node] : []), ...node.children.flatMap(child => find(child, match))];
+  const tiles = find(page, node => node.attrs.class?.startsWith('tele-tile tone-'));
+  assert.deepEqual(tiles.map(node => [node.tag, node.attrs['data-page'] || null, node.attrs['data-filter'] || null]),
+    [['button', 'live', 'conversation'], ['button', 'live', 'problems'], ['button', 'skills', null], ['button', 'skills', null], ['button', 'live', 'conversation'],
+      ['div', null, null], ['div', null, null]], 'tiles with a destination are buttons; the rest are plain and have no hover');
   const options = find(find(page, node => node.tag === 'select' && node.attrs['data-field'] === 'model')[0], node => node.tag === 'option');
   assert.deepEqual(options.filter(node => 'selected' in node.attrs).map(node => node.attrs.value), ['claude-haiku-5.5']);
   assert.equal(find(page, node => node.tag === 'textarea').length, 0);

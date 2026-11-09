@@ -93,8 +93,13 @@
     const target = event.target instanceof Element ? event.target.closest('[data-action]') : null;
     if (!(target instanceof HTMLElement) || target instanceof HTMLSelectElement || (target instanceof HTMLButtonElement && target.disabled)) return;
     const { action, go: next, ...data } = target.dataset;
-    if (action === 'go') go(data.page || '');
-    else if (action === 'filter') {
+    if (action === 'go') {
+      if (data.filter) {
+        if (!FILTERS.includes(data.filter)) throw new Error('Unknown activity filter.');
+        ui.filter = /** @type {import('../types').UiState['filter']} */ (data.filter);
+      }
+      go(data.page || '');
+    } else if (action === 'filter') {
       if (!FILTERS.includes(data.value || '')) throw new Error('Unknown activity filter.');
       ui.filter = /** @type {import('../types').UiState['filter']} */ (data.value);
       draw();

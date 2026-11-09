@@ -32,17 +32,20 @@
   /** @typedef {import('../types').VNode} VNode */
   /** @typedef {import('../types').Child} Child */
 
-  /** Return one big-number tile.
+  /** Return one big-number tile; with a destination it is a button to that page (and Live filter).
    * @param {string} glyph
    * @param {string} label
    * @param {Child} value
    * @param {string} hint
    * @param {string} tone
+   * @param {{page: string, filter?: string}} [to]
    * @returns {VNode}
    */
-  function tile(glyph, label, value, hint, tone) {
-    return h('div', { class: `tele-tile tone-${tone}` }, h('span', { class: 'tele-tile-icon' }, icon(glyph)), h('span', { class: 'tele-value' }, value),
-      h('span', { class: 'tele-label' }, label), hint ? h('span', { class: 'tele-hint' }, hint) : null);
+  function tile(glyph, label, value, hint, tone, to) {
+    const body = [h('span', { class: 'tele-tile-icon' }, icon(glyph)), h('span', { class: 'tele-value' }, value),
+      h('span', { class: 'tele-label' }, label), hint ? h('span', { class: 'tele-hint' }, hint) : null];
+    return to ? h('button', { class: `tele-tile tone-${tone}`, type: 'button', 'data-action': 'go', 'data-page': to.page, 'data-filter': to.filter,
+      title: `Show on ${to.page === 'skills' ? 'Skills & packs' : 'Live'}` }, ...body) : h('div', { class: `tele-tile tone-${tone}` }, ...body);
   }
 
   /** Return the chat picker, grouped by the ask each chat works on.
@@ -134,11 +137,13 @@
         h('span', { class: 'tele-aiu' }, `${data.aiu.toFixed(1)} AI units`))
         : h('div', { class: 'tele-total off' }, h('span', { class: 'muted' }, 'Total tokens and AI units appear for chats recorded with research telemetry on.'), telemetrySwitch(model))),
       h('div', { class: 'tele-tiles' },
-        tile('pulse', 'Turns', data.turns, 'model calls the agent made', 'violet'),
-        tile('tool', 'Tool calls', data.toolCalls, `${plural(data.commands, 'command')} · ${data.failures} failed`, 'blue'),
-        tile('box', 'Skills used', data.skills.count, data.skills.names.slice(0, 4).join(', ') || 'none read in this chat', 'teal'),
-        tile('list', 'Skill tokens', count(data.skills.tokens), data.skills.measured ? 'loaded into every request' : 'estimated from the skill files read', 'amber'),
-        tile('chat', 'Prompt and chat tokens', count(data.chatTokens), 'your messages and the agent\'s replies (estimated)', 'pink'),
+        tile('pulse', 'Turns', data.turns, 'model calls the agent made', 'violet', { page: 'live', filter: 'conversation' }),
+        tile('tool', 'Tool calls', data.toolCalls, `${plural(data.commands, 'command')} · ${data.failures} failed`, 'blue',
+          { page: 'live', filter: data.failures ? 'problems' : 'all' }),
+        tile('box', 'Skills used', data.skills.count, data.skills.names.slice(0, 4).join(', ') || 'none read in this chat', 'teal', { page: 'skills' }),
+        tile('list', 'Skill tokens', count(data.skills.tokens), data.skills.measured ? 'loaded into every request' : 'estimated from the skill files read', 'amber',
+          { page: 'skills' }),
+        tile('chat', 'Prompt and chat tokens', count(data.chatTokens), 'your messages and the agent\'s replies (estimated)', 'pink', { page: 'live', filter: 'conversation' }),
         tile('spark', 'Thinking tokens', data.thinkingTokens === null ? '—' : count(data.thinkingTokens),
           data.thinkingTokens === null ? 'recorded only with research telemetry on' : 'reasoning the model reported', 'indigo'),
         tile('refresh', 'Cache tokens', data.cachePercent === null ? '—' : `${data.cachePercent}%`,

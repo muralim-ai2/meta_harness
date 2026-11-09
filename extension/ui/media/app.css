@@ -121,7 +121,7 @@ code, pre { font-family: var(--vscode-editor-font-family); font-size: .92em; }
 .sidebar .top { display: flex; align-items: center; gap: 8px; }
 .sidebar .top strong { flex: 1; font-size: 13px; }
 .card.task { display: grid; gap: 4px; width: 100%; min-width: 0; padding: 10px 12px; }
-.card.task:hover { border-color: var(--focus); }
+button.card.task:hover { border-color: var(--focus); }
 .task-title { font-size: 13.5px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .meta { color: var(--muted); font-size: 11.5px; }
 .task-progress { display: grid; gap: 4px; margin-top: 6px; color: var(--muted); font-size: 11px; }
@@ -312,7 +312,8 @@ body.vscode-high-contrast .early, body.vscode-high-contrast-light .early { backg
 .tele-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
 .tele-tile { --tone: var(--blue); position: relative; display: grid; gap: 3px; padding: 14px 14px 12px; border-radius: 12px; border: 1px solid var(--border);
   background: linear-gradient(160deg, color-mix(in srgb, var(--tone) 16%, transparent), transparent 70%), var(--raised); transition: transform .15s ease, border-color .15s ease; }
-.tele-tile:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--tone) 60%, var(--border)); }
+button.tele-tile { width: 100%; }
+button.tele-tile:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--tone) 60%, var(--border)); }
 .tele-tile.tone-violet { --tone: var(--violet); } .tele-tile.tone-blue { --tone: var(--blue); } .tele-tile.tone-teal { --tone: var(--teal); }
 .tele-tile.tone-amber { --tone: var(--amber); } .tele-tile.tone-pink { --tone: var(--pink); } .tele-tile.tone-indigo { --tone: var(--indigo); }
 .tele-tile.tone-good { --tone: var(--good); }
