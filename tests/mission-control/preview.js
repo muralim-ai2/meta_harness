@@ -21,7 +21,7 @@ const asks = listAsks(workspace);
 const state = snapshot(workspace, selected || null);
 const viewed = state.ask ? state.ask.id : null;
 const { chats } = chatList(transcripts, workspace, asks.map(ask => ask.id), {}, null, now);
-const shown = shownChat(chats, viewed, null);
+const shown = shownChat(chats, viewed, null, viewed === (asks.find(ask => ask.active)?.id ?? null));
 /** @type {import('../../extension/ui/types').Model} */
 const model = { now: new Date(now).toISOString(), surface: 'sidebar', busy: false, error: null, workspace: { name: path.basename(workspace), path: workspace },
   workspaceMessage: null, connection: { version: manifest.version, python: 'python', guard: 'advise' }, telemetry: { enabled: !!file, file }, transcripts,

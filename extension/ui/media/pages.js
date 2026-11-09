@@ -80,6 +80,8 @@
     const shown = model.activity?.session?.id;
     const mine = askChats(model);
     const others = ask ? (model.activity?.chats || []).filter(chat => !chat.asks.length) : [];
+    const working = others.filter(chat => chat.status !== 'idle').length;
+    const loose = ask && shown && !mine.some(chat => chat.id === shown) ? (model.activity?.chats || []).find(chat => chat.id === shown) : undefined;
     /** @param {import('../types').Chat} chat @param {boolean} linked @returns {VNode} */
     const row = (chat, linked) => {
       const how = ask && chat.asks.find(link => link.ask === ask.id);
@@ -94,8 +96,10 @@
     return card(ask ? `Chats for this ask (${mine.length})` : `Chats in this window (${mine.length})`, [
       mine.length ? h('ul', { class: 'chats' }, ...mine.map(chat => row(chat, true))) : h('p', { class: 'muted' }, noChat(model)),
       mine.length && ask && model.pending?.ask === ask.id ? h('p', { class: 'muted' }, noChat(model)) : null,
+      loose ? h('div', { class: 'chat-note' }, h('span', { class: 'muted' }, `Showing \u201c${loose.title || 'Untitled chat'}\u201d below, a chat not linked to this ask${
+        loose.status === 'idle' ? '' : ' that is working now'}.`), button('Link to this ask', 'linkChat', { kind: 'link', data: { chat: loose.id }, disabled: model.busy })) : null,
       others.length ? h('details', { class: 'others', open: !!ui.open['other-chats'], 'data-key': 'other-chats' },
-        h('summary', null, `Chats not linked to any ask (${others.length})`), h('ul', { class: 'chats' }, ...others.map(chat => row(chat, false)))) : null],
+        h('summary', null, `Chats not linked to any ask (${others.length}${working ? `, ${working} working` : ''})`), h('ul', { class: 'chats' }, ...others.map(chat => row(chat, false)))) : null],
     ask?.active ? button('New chat for this ask', 'newChat', { icon: 'chat', disabled: model.busy,
       title: 'Open a new, empty Copilot Chat. It is linked to this ask when you send your first message.' }) : null);
   }

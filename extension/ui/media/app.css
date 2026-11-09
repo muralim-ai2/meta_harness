@@ -253,6 +253,7 @@ button.chat-pick:hover { background: var(--hover); }
 .chat .dot.status-working { background: var(--good); }
 .chat .dot.status-waiting { background: var(--warn); }
 details.others { margin-top: 6px; }
+.chat-note { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 6px; }
 details.others > summary, details.folder > summary { cursor: pointer; color: var(--muted); }
 .tree { list-style: none; margin: 0; padding: 0 0 0 14px; display: grid; gap: 1px; }
 .tree.root { padding-left: 0; }

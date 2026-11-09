@@ -141,6 +141,11 @@
     if (model.snapshotError) items.push({ tone: 'error', icon: 'alert', title: 'Mission Control cannot read the ask files', detail: model.snapshotError });
     if (model.activityError) items.push({ tone: 'error', icon: 'alert', title: 'Mission Control cannot read the live activity', detail: model.activityError });
     if (session?.status === 'waiting') items.push({ tone: 'warn', icon: 'question', title: 'The agent is waiting for your answer in Chat', detail: session.current?.detail || '' });
+    for (const chat of (run?.chats || []).filter(row => row.status !== 'idle' && row.id !== session?.id)) {
+      items.push({ tone: chat.status === 'waiting' ? 'warn' : 'info', icon: chat.status === 'waiting' ? 'question' : 'spark',
+        title: chat.status === 'waiting' ? 'Another chat is waiting for your answer' : 'Another chat is working',
+        detail: `${chat.title || 'Untitled chat'} \u00b7 ${chat.asks.length ? `linked to ${chat.asks.map(link => link.ask).join(', ')}` : 'not linked to any ask'}`, page: 'live' });
+    }
     if (run?.errors?.paused) {
       items.push({ tone: 'error', icon: 'alert', title: `Paused after ${plural(run.errors.failures.length, 'failed command')} in a row`,
         detail: 'Answer the agent in Chat: fix the environment, change the approach or skip the step.', page: 'live' });

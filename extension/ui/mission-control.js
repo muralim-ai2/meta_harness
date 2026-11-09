@@ -244,7 +244,7 @@ class MissionControl {
         await this.context.workspaceState.update('pendingChat', null);
       }
       this.state.pending = claimed ? null : pending;
-      const shown = shownChat(chats, viewed, this.chat);
+      const shown = shownChat(chats, viewed, this.chat, viewed === (asks.value?.find(ask => ask.active)?.id ?? null));
       return { ...activity(root, shown && transcripts ? path.join(transcripts, `${shown.id}.jsonl`) : null, this.telemetry().file, now), chats,
         meta: shown && transcripts ? chatMeta(transcripts, shown.id) : null };
     });

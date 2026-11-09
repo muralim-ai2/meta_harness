@@ -80,12 +80,13 @@ test('a chat is linked to the ask its contract created, the asks it reopened and
     'late-contract': [], plain: [] });
   assert.deepEqual(chats.map(chat => chat.id), ['plain', 'edited', 'follow-up', 'created', 'late-contract']);
   assert.equal(chats.find(chat => chat.id === 'created').title, 'Build: Pawstagram, a social photo app for dogs');
-  assert.equal(shownChat(chats, PAWS, null).id, 'follow-up');
-  assert.equal(shownChat(chats, PAWS, 'created').id, 'created');
-  assert.equal(shownChat(chats, PAWS, 'plain').id, 'plain');
-  assert.equal(shownChat(chats, PAWS, 'missing').id, 'follow-up');
-  assert.equal(shownChat(chats, REPORTING, null), null);
-  assert.equal(shownChat(chats, null, null).id, 'plain');
+  assert.equal(shownChat(chats, PAWS, null, false).id, 'follow-up');
+  assert.equal(shownChat(chats, PAWS, 'created', false).id, 'created');
+  assert.equal(shownChat(chats, PAWS, 'plain', false).id, 'plain');
+  assert.equal(shownChat(chats, PAWS, 'missing', false).id, 'follow-up');
+  assert.equal(shownChat(chats, REPORTING, null, false), null);
+  assert.equal(shownChat(chats, null, null, false).id, 'plain');
+  assert.equal(shownChat(chats, PAWS, null, true).id, 'follow-up', 'an idle chat no ask claims is not followed');
 });
 
 test('a pending new chat claims the first chat that starts after it, never an older one, and lapses after an hour', t => {
@@ -220,6 +221,32 @@ test('chats can be chosen and an unlinked chat linked by hand; a new chat needs 
   model = fixture.controls.commands.get('frontierHve.missionControlModel')();
   assert.equal(model.activity.session, null);
   assert.equal(find(dashboard(model, UI, Date.now()), node => node.attrs['data-action'] === 'newChat').length, 1);
+});
+
+test('the active ask follows a working chat no ask claims while its own chat is idle; a chosen chat wins and the other working chat needs you', async t => {
+  const fixture = mission(t);
+  const [ask] = await realAsks(fixture.root, fixture.storage, [['onboarding', 'Build an onboarding policy checker']]);
+  const quiet = new Date(Date.now() - 20 * 60_000).toISOString();
+  const recent = new Date(Date.now() - 20_000).toISOString();
+  write(fixture.transcripts, 'linked', [row('user.message', quiet, { content: 'Back to onboarding' }), row('assistant.turn_start', quiet),
+    tool(quiet, 'o', 'run_in_terminal', { command: `python ${LIFECYCLE} open ${ask}` }), row('assistant.turn_end', quiet)]);
+  write(fixture.transcripts, 'analysis', [row('user.message', recent, { content: 'Analyse the onboarding policies' }), row('assistant.turn_start', recent),
+    tool(recent, 'r', 'read_file', { filePath: path.join(fixture.root, 'policy.md') })]);
+  await fixture.controls.commands.get('frontierHve.refreshMissionControl')();
+  let model = fixture.controls.commands.get('frontierHve.missionControlModel')();
+  assert.equal(model.activity.chats.find(chat => chat.id === 'linked').status, 'idle');
+  assert.equal(model.activity.session.id, 'analysis');
+  assert.equal(model.activity.session.status, 'working');
+  let live = text(dashboard(model, UI, Date.now()));
+  assert.match(live, /Showing “Analyse the onboarding policies” below, a chat not linked to this ask that is working now\./);
+  assert.match(live, /Chats not linked to any ask \(1, 1 working\)/);
+  assert.doesNotMatch(live, /Another chat is working/);
+  await fixture.controls.provider.execute({ action: 'selectChat', chat: 'linked' });
+  model = fixture.controls.commands.get('frontierHve.missionControlModel')();
+  assert.equal(model.activity.session.id, 'linked');
+  live = text(dashboard(model, UI, Date.now()));
+  assert.match(live, /Another chat is workingAnalyse the onboarding policies · not linked to any ask/);
+  assert.doesNotMatch(live, /Showing “/);
 });
 
 /** Return every view node matching a test.
