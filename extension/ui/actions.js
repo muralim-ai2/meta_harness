@@ -172,7 +172,8 @@ function treeFiles(nodes) {
   return nodes.flatMap(node => node.kind === 'file' ? [node.path] : treeFiles(node.children));
 }
 
-/** Open a file Mission Control lists: in the ask's folder, evidence, the plan, files the agent changed, or a loaded skill.
+/** Open a file Mission Control lists: in the ask's folder, evidence, the plan, files the agent changed, files a question, guard alert or
+ * sign-off names, or a loaded skill.
  * @param {MissionControl} mc
  * @param {string} relative
  * @returns {Promise<void>}
@@ -180,7 +181,9 @@ function treeFiles(nodes) {
 async function openFile(mc, relative) {
   const root = mc.target().uri.fsPath;
   const state = snapshot(root, mc.selected);
-  const listed = [...state.files, ...(mc.state.activity?.session?.files.map(file => file.path) || []),
+  const session = mc.state.activity?.session;
+  const named = [...(session?.events || []), ...(session?.current ? [session.current] : [])].filter(event => ['ask', 'guard'].includes(event.kind));
+  const listed = [...state.files, ...(session?.files.map(file => file.path) || []), ...named.flatMap(event => event.files), ...state.reviews.flatMap(review => review.files),
     ...state.skills.map(skill => path.join('.aria', 'skills', skill.name, 'SKILL.md')), ...(state.ask ? treeFiles(askTree(root, state.ask.id).entries) : []), ...evaluationFiles(root)]
     .map(file => path.normalize(file));
   if (!listed.includes(path.normalize(relative))) throw new Error('That file is not listed in Mission Control.');

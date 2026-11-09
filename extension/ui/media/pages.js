@@ -11,7 +11,7 @@
   /** @type {typeof globalThis.hveTelemetry} */
   const tele = modular ? require('./telemetry') : root.hveTelemetry;
   const { telemetry } = tele;
-  const { icon, ago, count, plural, pretty, button, chip, needs, attention, eventRow, todoList, bar, telemetrySwitch, askChats, noChat, askPicker, viewing, handoffNotice,
+  const { icon, ago, count, plural, pretty, button, fileLinks, chip, needs, attention, eventRow, todoList, bar, telemetrySwitch, askChats, noChat, askPicker, viewing, handoffNotice,
     PAGES } = views;
 
   /** @typedef {import('../types').Model} Model */
@@ -122,7 +122,8 @@
       chats(model, ui, now),
       h('div', { class: 'grid two' },
         card('Now', [current ? h('div', { class: `current kind-${current.kind}` }, icon(current.kind === 'ask' ? 'question' : 'spark', current.kind === 'ask' ? '' : 'spin'),
-          h('div', null, h('strong', null, current.title), current.detail ? h('span', { class: 'muted' }, current.detail) : null, h('time', null, `started ${ago(current.at, now)}`)))
+          h('div', null, h('strong', null, current.title), current.detail ? h('span', { class: 'muted' }, current.detail) : null,
+            current.kind === 'ask' ? fileLinks(current.files) : null, h('time', null, `started ${ago(current.at, now)}`)))
           : h('div', { class: 'current idle' }, icon('clock'), h('div', null, h('strong', null, session.status === 'idle' ? 'Idle' : 'Thinking'),
             h('span', { class: 'muted' }, `Last activity ${ago(session.lastAt, now)}`))),
         session.todos.length ? todoList(session.todos, 50) : h('p', { class: 'muted' }, 'The agent has not shared a to-do list in this chat.')], chip(model)),
@@ -158,7 +159,7 @@
       return h('li', { class: `review decision-${review.decision}` },
         h('div', { class: 'review-text' }, h('span', { class: 'section-label' }, review.item), h('strong', null, review.title),
           h('span', { class: 'muted' }, review.ready ? 'Done and ready for your review.' : `Status: ${review.status}. You can accept it once it is done.`),
-          review.note ? h('span', { class: 'quote' }, review.note) : null),
+          review.note ? h('span', { class: 'quote' }, review.note) : null, fileLinks(review.files)),
         h('div', { class: 'review-actions' }, h('span', { class: `pill ${settled ? 'good' : review.decision === 'changes' ? 'warn' : ''}`.trim() },
           { open: 'Open', accepted: 'Accepted', changes: 'Changes requested', skipped: 'Continued without review' }[review.decision] || review.decision),
         button('Accept', 'review', { kind: 'primary', icon: 'check', data: { item: review.item, revision: snap.revision, value: 'accepted' },

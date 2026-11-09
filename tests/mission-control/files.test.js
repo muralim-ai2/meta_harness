@@ -120,6 +120,42 @@ test('files in the ask open beside Mission Control; files behind a link or outsi
   assert.equal(path.relative(fs.realpathSync(fixture.root), reveal[1].fsPath), path.join('.aria', 'asks', ASK));
 });
 
+test('files a waiting question or a guard alert names, and the evidence of each sign-off item, are links that open; other files are not', async t => {
+  const fixture = mission(t);
+  const folder = project(fixture.root);
+  const root = fixture.root;
+  for (const [name, body] of [['docs/prd.md', '# PRD'], ['notes/push.md', 'push'], ['secret.txt', 'private']]) {
+    fs.mkdirSync(path.join(root, path.dirname(name)), { recursive: true });
+    fs.writeFileSync(path.join(root, name), body);
+  }
+  const contractPath = path.join(root, folder, 'contract.json');
+  const contract = JSON.parse(fs.readFileSync(contractPath, 'utf8'));
+  contract.stages[0].evidence = [{ type: 'artifacts', paths: ['docs/prd.md', 'docs/*.md', 'docs/missing.md'] }];
+  fs.writeFileSync(contractPath, JSON.stringify(contract));
+  const now = new Date().toISOString();
+  const question = { header: 'sign-off', question: 'Accept the PRD?', message: 'Open [the PRD](docs/prd.md), `missing.md` and [outside](../outside.md).' };
+  fs.mkdirSync(fixture.transcripts, { recursive: true });
+  fs.writeFileSync(path.join(fixture.transcripts, 'review.jsonl'), [{ type: 'user.message', timestamp: now, data: { content: 'Review the PRD' } },
+    { type: 'tool.execution_start', timestamp: now, data: { toolCallId: 'q', toolName: 'vscode_askQuestions', arguments: { questions: [question] } } }]
+    .map(row => JSON.stringify(row) + '\n').join(''));
+  fs.mkdirSync(path.join(root, '.aria', 'runs'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.aria', 'runs', 'review.interventions.jsonl'), JSON.stringify({ ts_ms: Date.now(), session_id: 'review', hook: 'loop_guard',
+    kind: 'push_confirm', detail: 'Push check: git push needs your confirmation because of [push.md](notes/push.md).' }) + '\n');
+  await fixture.controls.commands.get('frontierHve.refreshMissionControl')();
+  const model = fixture.controls.commands.get('frontierHve.missionControlModel')();
+  assert.equal(model.activity.session.status, 'waiting');
+  assert.deepEqual(model.activity.session.current.files, ['docs/prd.md']);
+  assert.deepEqual(model.activity.session.events.find(event => event.kind === 'guard').files, ['notes/push.md']);
+  const links = (/** @type {string} */ page) => find(dashboard(model, { ...UI, page }, Date.now()), node => node.attrs.class === 'file-link').map(node => node.attrs['data-path']);
+  assert.deepEqual([...new Set(links('live'))].sort(), ['docs/prd.md', 'notes/push.md']);
+  const review = links('plan');
+  assert.ok(review.includes(path.normalize('docs/prd.md')) && review.includes(path.join(folder, 'loop', 'prs', 'policy.json'))
+    && review.includes(path.join(folder, 'loop', 'evidence', 'policy', 'check.log')), review.join(', '));
+  for (const file of ['docs/prd.md', 'notes/push.md']) await fixture.controls.provider.execute({ action: 'openFile', path: file });
+  assert.equal(fixture.controls.calls.filter(call => call[0] === 'document').length, 2);
+  await assert.rejects(fixture.controls.provider.execute({ action: 'openFile', path: 'secret.txt' }), /not listed/);
+});
+
 test('the Files page follows the ask chosen in the dropdown', async t => {
   const fixture = mission(t);
   const [first, second] = await realAsks(fixture.root, fixture.storage, [['onboarding', 'Build an onboarding policy checker'], ['reporting', 'Write the quarterly revenue report']]);

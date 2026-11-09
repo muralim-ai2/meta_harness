@@ -20,6 +20,7 @@ export interface Review {
   decision: string;
   note: string;
   ready: boolean;
+  files: string[];
 }
 export interface Snapshot {
   workspace: string;
@@ -192,6 +193,7 @@ export interface Need {
   title: string;
   detail: string;
   page?: string;
+  files?: string[];
 }
 export interface Views {
   ICONS: Record<string, (string | { cx: number; cy: number; r: number })[]>;
@@ -202,6 +204,7 @@ export interface Views {
   plural(value: number, noun: string): string;
   pretty(slug: string): string;
   button(label: string, action: string, options?: { kind?: string; icon?: string; data?: Record<string, string>; disabled?: boolean; title?: string }): VNode;
+  fileLinks(files: string[]): VNode | null;
   chip(model: Model): VNode;
   needs(model: Model): Need[];
   attention(items: Need[], compact: boolean): VNode | null;

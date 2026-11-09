@@ -17,6 +17,7 @@ const EVENT_LIMIT = 80;
 const SESSION = /^[\w-]+$/;
 const ASK_TOOLS = new Set(['vscode_askQuestions', 'ask_user']);
 const TODO_STATES = ['not-started', 'in-progress', 'completed'];
+const NAMED_FILES = [/\]\(([^)\s]+?)(?:#[^)\s]*)?\)/g, /`([^`\s]+\.[A-Za-z0-9]{1,8})`/g, /(?<![\w/\\.`(-])((?:[\w.-]+[\\/])+[\w.-]+\.[A-Za-z0-9]{1,8})\b/g];
 /** @type {Map<string, {size: number, mtime: number, parsed: Parsed}>} */
 const cache = new Map();
 
@@ -96,6 +97,17 @@ function inside(file, workspace) {
   return !relative || relative.startsWith('..') || path.isAbsolute(relative) ? null : relative.split(path.sep).join('/');
 }
 
+/** Return the workspace files a question or guard alert names (markdown links, code spans and plain paths), relative with forward slashes.
+ * @param {string} value
+ * @param {string} workspace
+ * @returns {string[]}
+ */
+function referenced(value, workspace) {
+  const names = NAMED_FILES.flatMap(pattern => [...value.matchAll(pattern)].map(match => inside(match[1].replace(/%20/g, ' '), workspace)));
+  return [...new Set(names.filter(/** @returns {name is string} */ name => name !== null && fs.existsSync(path.join(workspace, name))
+    && fs.statSync(path.join(workspace, name)).isFile()))];
+}
+
 /** Return a short display name for a file: workspace-relative, or its folder and name.
  * @param {string} file
  * @param {string} workspace
@@ -168,7 +180,8 @@ function describe(tool, args, workspace, at) {
     case 'vscode_askQuestions': case 'ask_user': {
       const questions = Array.isArray(args.questions) ? args.questions.map(row => record(row, 'Question')) : [];
       return event('ask', `Asked you ${questions.length || 'a'} question${questions.length === 1 ? '' : 's'}`,
-        questions.map(row => arg(row, 'header') || arg(row, 'question') || '').filter(Boolean).join(' · '));
+        questions.map(row => arg(row, 'header') || arg(row, 'question') || '').filter(Boolean).join(' · '),
+        referenced(questions.flatMap(row => ['question', 'message'].map(key => arg(row, key) || '')).join('\n'), workspace));
     }
     case 'runSubagent': return event('delegate', `Handed off to ${arg(args, 'agentName') || 'a sub-agent'}`, arg(args, 'description') || '');
     case 'execution_subagent': case 'search_subagent': case 'explore_subagent': return event('delegate', 'Started a helper agent', arg(args, 'description') || '');
@@ -261,7 +274,7 @@ function parse(file, workspace) {
       s.tools += 1;
       if (tool === 'run_in_terminal') s.commands += 1;
       if (tool === 'manage_todo_list') s.todos = todoList(args);
-      for (const name of event.files) {
+      for (const name of event.kind === 'edit' ? event.files : []) {
         const relative = inside(name, workspace);
         if (relative) s.files.set(relative, { count: (s.files.get(relative)?.count || 0) + 1, last: at });
       }
@@ -361,7 +374,7 @@ function runFiles(workspace, id) {
   const alerts = reader.text(path.join(runs, `${id}.interventions.jsonl`), true);
   const guards = alerts === undefined ? [] : jsonLines(alerts, `${id}.interventions.jsonl`).map(row => /** @type {ActivityEvent} */ ({
     at: new Date(/** @type {number} */ (row.ts_ms)).toISOString(), kind: 'guard', title: `Guard: ${text(row.hook, 'Guard hook').replace(/\.py$/, '').replace(/_/g, ' ')} ${text(row.kind, 'Guard action')}`,
-    detail: clip(text(row.detail, 'Guard detail', true), 240), files: [], state: 'ok' }));
+    detail: clip(text(row.detail, 'Guard detail', true), 240), files: referenced(text(row.detail, 'Guard detail', true), workspace), state: 'ok' }));
   return { errors, loadout, guards };
 }
 

@@ -167,6 +167,9 @@ body:has(.dashboard) { background: var(--surface); }
 .file:hover { background: var(--hover); }
 .file span:first-of-type { flex: 1; overflow-wrap: anywhere; }
 .file .muted { font-size: 11px; white-space: nowrap; }
+.file-links { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.file-link { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border: 1px solid var(--border); border-radius: 10px; font-size: 11.5px; overflow-wrap: anywhere; }
+.file-link:hover { background: var(--hover); }
 .empty-state { display: grid; gap: 8px; justify-items: start; padding: 28px; border: 1px dashed var(--border); border-radius: 8px; }
 .empty-state strong { font-size: 14px; }
 

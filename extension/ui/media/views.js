@@ -9,7 +9,7 @@
   /** @typedef {import('../types').VNode} VNode */
   /** @typedef {import('../types').Child} Child */
   /** @typedef {import('../types').ActivityEvent} ActivityEvent */
-  /** @typedef {{tone: 'error' | 'warn' | 'info', icon: string, title: string, detail: string, page?: string}} Need */
+  /** @typedef {{tone: 'error' | 'warn' | 'info', icon: string, title: string, detail: string, page?: string, files?: string[]}} Need */
 
   /** @type {Record<string, (string | {cx: number, cy: number, r: number})[]>} */
   const ICONS = {
@@ -106,6 +106,15 @@
       title: options.title, 'aria-label': label ? null : options.title, ...data }, options.icon ? icon(options.icon) : null, label ? h('span', null, label) : null);
   }
 
+  /** Return buttons that open the files a question, guard alert or sign-off names, or nothing when it names none.
+   * @param {string[]} files
+   * @returns {VNode | null}
+   */
+  function fileLinks(files) {
+    return files.length ? h('div', { class: 'file-links' }, ...files.map(file => h('button', { class: 'file-link', type: 'button', 'data-action': 'openFile',
+      'data-path': file, title: `Open ${file}` }, icon('file'), h('span', null, file.split('\\').join('/'))))) : null;
+  }
+
   /** Return the session status shown in the header chip.
    * @param {Model} model
    * @returns {{key: string, label: string}}
@@ -140,7 +149,8 @@
     if (model.handoffError) items.push({ tone: 'error', icon: 'alert', title: 'Mission Control cannot read the ask carried over from another workspace', detail: model.handoffError });
     if (model.snapshotError) items.push({ tone: 'error', icon: 'alert', title: 'Mission Control cannot read the ask files', detail: model.snapshotError });
     if (model.activityError) items.push({ tone: 'error', icon: 'alert', title: 'Mission Control cannot read the live activity', detail: model.activityError });
-    if (session?.status === 'waiting') items.push({ tone: 'warn', icon: 'question', title: 'The agent is waiting for your answer in Chat', detail: session.current?.detail || '' });
+    if (session?.status === 'waiting') items.push({ tone: 'warn', icon: 'question', title: 'The agent is waiting for your answer in Chat', detail: session.current?.detail || '',
+      files: session.current?.files || [] });
     for (const chat of (run?.chats || []).filter(row => row.status !== 'idle' && row.id !== session?.id)) {
       items.push({ tone: chat.status === 'waiting' ? 'warn' : 'info', icon: chat.status === 'waiting' ? 'question' : 'spark',
         title: chat.status === 'waiting' ? 'Another chat is waiting for your answer' : 'Another chat is working',
@@ -175,7 +185,7 @@
     if (!items.length) return null;
     return h('section', { class: 'needs', 'aria-label': 'Needs you' }, h('div', { class: 'section-label' }, 'Needs you', h('span', { class: 'count' }, items.length)),
       ...items.map(item => h('div', { class: `need tone-${item.tone}` }, icon(item.icon),
-        h('div', { class: 'need-text' }, h('strong', null, item.title), item.detail ? h('span', { class: compact ? 'clamp' : '' }, item.detail) : null),
+        h('div', { class: 'need-text' }, h('strong', null, item.title), item.detail ? h('span', { class: compact ? 'clamp' : '' }, item.detail) : null, fileLinks(item.files || [])),
         item.page ? button('', 'go', { kind: 'icon', icon: 'chevron', data: { page: item.page }, title: `Open ${item.page}` }) : null)));
   }
 
@@ -190,7 +200,8 @@
       h('span', { class: 'event-icon' }, icon(event.state === 'running' ? 'spark' : KIND_ICON[event.kind] || 'tool', event.state === 'running' ? 'spin' : '')),
       h('div', { class: 'event-body' }, h('div', { class: 'event-title' }, event.title,
         event.state === 'failed' ? h('span', { class: 'pill error' }, 'failed') : event.state === 'stopped' ? h('span', { class: 'pill' }, 'stopped') : null),
-      event.detail && !compact ? h('div', { class: 'event-detail' }, event.detail) : null),
+      event.detail && !compact ? h('div', { class: 'event-detail' }, event.detail) : null,
+      ['ask', 'guard'].includes(event.kind) && !compact ? fileLinks(event.files) : null),
       h('time', { title: new Date(event.at).toLocaleString() }, ago(event.at, now)));
   }
 
@@ -379,7 +390,7 @@
       h('footer', null, telemetrySwitch(model)));
   }
 
-  const api = { ICONS, PAGES, icon, ago, count, plural, pretty, button, chip, needs, attention, eventRow, todoList, bar, telemetrySwitch, sessionState,
+  const api = { ICONS, PAGES, icon, ago, count, plural, pretty, button, fileLinks, chip, needs, attention, eventRow, todoList, bar, telemetrySwitch, sessionState,
     askChats, noChat, askPicker, viewing, handoffNotice, sidebar };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.hveViews = api;

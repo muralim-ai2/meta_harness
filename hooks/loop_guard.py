@@ -72,11 +72,14 @@ def tool_input_of(raw: Any) -> Json:
 
 
 def escalation(proj: Path) -> str | None:
-    """Return the human question of an escalated loop or flow, if any."""
+    """Return the human question of an escalated loop or flow with links to the state and attempt ledger behind it, if any."""
     for path in (state_file(proj), state_dir(proj) / "flow.json"):
         state = read(path)
         if state and state["escalated"]:
-            return state["help"]["question"]
+            ask = state["help"]
+            ledger = state_dir(proj) / "attempts" / f"{ask.get('feature')}.jsonl"
+            files = [link(path), *([link(ledger)] if "feature" in ask and ledger.is_file() else [])]
+            return f"{ask['question']} Files: {', '.join(files)}."
     return None
 
 
@@ -196,7 +199,8 @@ def pre_tool(session_id: str, tool_name: str, tool_input: Json, tool_use_id: str
     proj = project()
     question = escalation(proj)
     if question:
-        return deny(session_id, "escalated", f"Escalated to the human: {question} Stop and ask exactly this.", stop=True)
+        return deny(session_id, "escalated", f"Escalated to the human: {question} Stop and ask exactly this, with the files as markdown links.",
+                    stop=True)
     log_tool(proj, {"phase": "pre", "tool": tool_name, "id": tool_use_id,
                     "key": tool_input.get("command") or ", ".join(edited_paths(tool_input))})
     if tool_name in READ_ONLY_TOOLS:

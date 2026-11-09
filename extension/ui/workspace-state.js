@@ -2,7 +2,7 @@
 /** Read the current harness project, evidence and sign-offs without reconciling or writing state. */
 const fs = require('node:fs');
 const path = require('node:path');
-const { Reader, digest } = require('./file-access');
+const { Reader, digest, containedPath } = require('./file-access');
 const { record, text, list, flag, integer } = require('./validate');
 const { headline } = require('./activity');
 const ASK = /^\d{8}-\d{4}-[a-z0-9][a-z0-9-]{0,40}$/;
@@ -70,6 +70,21 @@ function decision(checklist, item) {
   const value = text(entry.value, `Decision ${item} value`);
   if (!['accepted', 'changes', 'skipped'].includes(value)) throw new Error(`Invalid review decision for ${item}: ${value}`);
   return { decision: value, note: text(entry.note, `Decision ${item} note`, true) };
+}
+
+/** Return the existing files a stage declares as evidence: a file or a plain path ('{ask}' is the ask folder); globs and template checks
+ * name no single file.
+ * @param {string} root
+ * @param {string} askFolder
+ * @param {Record<string, unknown>} stage
+ * @returns {string[]}
+ */
+function stageFiles(root, askFolder, stage) {
+  const items = stage.evidence === undefined ? [] : list(stage.evidence, 'Stage evidence').map(value => record(value, 'Stage evidence item'));
+  return items.flatMap(item => item.file !== undefined ? [text(item.file, 'Evidence file')] : item.paths !== undefined
+    ? list(item.paths, 'Evidence paths').map(value => text(value, 'Evidence path')) : [])
+    .filter(name => !name.includes('*')).map(name => path.normalize(name.replace('{ask}', askFolder.split(path.sep).join('/'))))
+    .filter(name => fs.existsSync(containedPath(root, name)) && fs.statSync(containedPath(root, name)).isFile());
 }
 
 /** Compute the plan digest using the existing lifecycle's generated-block exclusions.
@@ -200,7 +215,8 @@ function snapshot(workspace, selected = null) {
       const status = text(stage.status, 'Stage status');
       if (!/^[\w.-]+$/.test(name) || !['planned', 'active', 'done', 'skipped'].includes(status)) throw new Error('Invalid stage identity or status.');
       const item = `stage:${name}`;
-      return { item, title: text(stage.goal, 'Stage goal'), status, ready: status === 'done', ...decision(checklist, item) };
+      return { item, title: text(stage.goal, 'Stage goal'), status, ready: status === 'done', files: stageFiles(reader.root, askFolder, stage),
+        ...decision(checklist, item) };
     }).filter(stage => stage.status !== 'skipped');
     for (const value of list(contract.tasks, 'Ask tasks')) {
       const task = record(value, 'Task');
@@ -208,8 +224,10 @@ function snapshot(workspace, selected = null) {
       const feature = state.features.find(row => row.name === name && row.ask === state.ask?.id);
       const passes = flag(task.passes, `${name}: task passes`);
       const item = `task:${name}`;
+      const evidenceFolder = path.join(askFolder, 'loop', 'evidence', name) + path.sep;
       state.reviews.push({ item, title: feature ? feature.description : name, status: passes ? 'marked passing' : 'pending',
-        ready: passes && !!feature?.passes && feature.check?.exitCode === 0, ...decision(checklist, item) });
+        ready: passes && !!feature?.passes && feature.check?.exitCode === 0,
+        files: [...(feature?.check ? [feature.check.source] : []), ...state.files.filter(file => file.startsWith(evidenceFolder))], ...decision(checklist, item) });
     }
     state.decisions = list(contract.decisions, 'Ask decisions').map(value => {
       const row = record(value, 'Decision');

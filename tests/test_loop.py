@@ -369,10 +369,13 @@ def test_loop_guard() -> None:
         assert stop("05", False, "budget")["hookSpecificOutput"]["decision"] == "block"  # type: ignore[index]
         assert stop("25", True, "budget") is None
         assert stop("05", False, "once") is not None and stop("05", True, "once") is None
-        state |= {"escalated": "a", "help": {"question": "Which check?"}}
+        state |= {"escalated": "a", "help": {"feature": "a", "question": "Which check?"}}
         (proj / ".harness" / "state.json").write_text(json.dumps(state), encoding="utf-8")
+        (proj / ".harness" / "attempts").mkdir()
+        (proj / ".harness" / "attempts" / "a.jsonl").write_text("{}\n", encoding="utf-8")
         stopped = pre("read_file", edit)
         assert stopped["continue"] is False and "Which check?" in stopped["stopReason"], stopped  # type: ignore[index]
+        assert "Files: [state.json](proj/.harness/state.json), [a.jsonl](proj/.harness/attempts/a.jsonl)." in stopped["stopReason"], stopped  # type: ignore[index]
         kinds = [json.loads(line)["kind"] for line in (root / ".aria" / "runs" / "s1.interventions.jsonl").read_text().splitlines()]
         assert {"loop_files", "hook_bypass", "human_only", "push_confirm", "victory_check", "escalated"} <= set(kinds), kinds
         state |= {"escalated": None, "help": None, "current": None}

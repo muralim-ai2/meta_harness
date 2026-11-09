@@ -77,6 +77,8 @@ VS Code starts a new chat in the chat view that last had focus, and first asks t
 | Skills & packs | The ask's skills with why each was chosen and its tokens against the guideline, the skills loaded in the chat shown on Live, the always-on harness skills (for example `wow-uplift`), and the expertise packs installed for you | Open a skill's `SKILL.md`; **Install a pack…** and **Manage packs…** (each says what it does; the pack list refreshes afterwards) |
 | Settings | The folder followed, the extension version, the Python launcher, the loop guard mode, where live activity comes from | Change folder; research telemetry switch; **Set up this workspace**; **Install for other tools** |
 
+Files to review are links everywhere they are asked about: a question the agent is waiting on (Needs you, the Now card and the activity) and a guard alert show each workspace file they name, and each sign-off on Plan lists its evidence (a feature's PR record and check output, the files a stage declares). Click one to open it beside the dashboard.
+
 Accept needs finished work, a recorded passing check for feature tasks, and no plan edits waiting for the agent to reconcile (an ask without a written plan can be accepted). Edited plan tick boxes must be recorded by the agent first. Sign-offs go through the guarded review commands (see [Ways of working](Ways-of-Working.md)): if the ask, plan or evidence changed after the screen was drawn, the action stops with "Workspace state changed" and the screen refreshes. Accepting does not push, merge, advance a stage or mark a tracker item `validated`. Mission Control never writes into the Chat input.
 
 ## Research telemetry
