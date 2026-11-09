@@ -117,6 +117,7 @@
           h('div', null, h('strong', null, current.title), current.detail ? h('span', { class: 'muted' }, current.detail) : null,
             current.kind === 'ask' ? fileLinks(current.files) : null, h('time', null, `started ${ago(current.at, now)}`)))
           : h('div', { class: 'current idle' }, icon('clock'), h('div', null, h('strong', null, session.status === 'idle' ? 'Idle' : 'Thinking'),
+            session.status !== 'idle' && session.last ? h('span', { class: 'muted' }, `After: ${session.last.title}`) : null,
             h('span', { class: 'muted' }, `Last activity ${ago(session.lastAt, now)}`))),
         session.todos.length ? todoList(session.todos, 50) : h('p', { class: 'muted' }, 'The agent has not shared a to-do list in this chat.')], chip(model)),
         card('This chat', [h('div', { class: 'stats' }, stat('Started', ago(session.started, now)), stat('Turns', session.turns), stat('Tool calls', session.tools),

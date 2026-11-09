@@ -105,6 +105,25 @@ test('an open question means the agent is waiting for you', t => {
   assert.equal(session.current.detail, 'Screens · Skills');
 });
 
+test('a command the agent requested but Copilot has not started waits for your Allow; between steps Now names the last one', t => {
+  const { root, chat, write } = setup(t);
+  const request = { toolCallId: 'c9', name: 'run_in_terminal', arguments: JSON.stringify({ command: 'python loop.py verify .', explanation: 'Verify theme-modes' }) };
+  const asked = [...busy(root).slice(0, -1), tool(30, 't4', 'replace_string_in_file', { filePath: path.join(root, 'index.html'), oldString: 'a', newString: 'b' }),
+    done(31, 't4'), row('assistant.message', 32, { content: '', toolRequests: [request] }), row('assistant.turn_end', 32), row('assistant.turn_start', 32)];
+  write(asked);
+  let { session } = activity(root, chat, null, START + 33_000);
+  assert.equal(session.status, 'working', 'a request is not a wait until it stays unstarted for a few seconds');
+  assert.equal(session.current, null);
+  assert.equal(session.last.title, 'Edited index.html');
+  ({ session } = activity(root, chat, null, START + 60_000));
+  assert.equal(session.status, 'waiting');
+  assert.deepEqual([session.current.kind, session.current.state, session.current.title, session.current.detail],
+    ['ask', 'pending', 'Waiting for you to allow a step in Chat', 'Verify theme-modes — python loop.py verify .']);
+  write([...asked, tool(70, 'c9', 'run_in_terminal', { command: 'python loop.py verify .', explanation: 'Verify theme-modes' })]);
+  ({ session } = activity(root, chat, null, START + 75_000));
+  assert.deepEqual([session.status, session.current.title], ['working', 'Verify theme-modes'], 'once allowed, the step runs and is the current one');
+});
+
 test('ten quiet minutes make a session idle and unfinished calls show as stopped', t => {
   const { root, chat, write } = setup(t);
   write(busy(root));

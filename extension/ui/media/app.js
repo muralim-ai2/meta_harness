@@ -176,7 +176,7 @@
     }
     const next = model.activity?.session?.status || 'none';
     if (next !== status) {
-      announce.textContent = { working: 'The agent is working.', waiting: 'The agent is waiting for your answer in Chat.', idle: 'The agent is idle.', none: '' }[next] || '';
+      announce.textContent = { working: 'The agent is working.', waiting: 'The agent is waiting for you in Chat.', idle: 'The agent is idle.', none: '' }[next] || '';
       status = next;
     }
     askForPacks();

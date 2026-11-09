@@ -3,7 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { record, text } = require('./validate');
-const { describe, headline, status, stillRunning } = require('./activity');
+const { describe, headline, status, stillRunning, requested, awaiting } = require('./activity');
 const { ASK, askTime } = require('./asks');
 const CHAT_LIMIT = 30;
 const CHUNK_BYTES = 4 * 1024 * 1024;
@@ -16,7 +16,8 @@ const ASK_PATH = /(?:^|[\\/])\.aria[\\/]asks[\\/](\d{8}-\d{4}-[a-z0-9][a-z0-9-]{
 const HOW = ['started', 'linked', 'continued'];
 
 /** @typedef {{offset: number, size: number, mtime: number, lines: number, id: string, title: string | null, started: string, lastAt: string,
- *   turnOpen: boolean, running: Map<string, {tool: string, at: string}>, contracts: {slug: string, at: number}[], opened: Set<string>, edited: Set<string>}} Scan */
+ *   turnOpen: boolean, running: Map<string, {tool: string, at: string}>, requested: Map<string, import('./types').ActivityEvent>,
+ *   contracts: {slug: string, at: number}[], opened: Set<string>, edited: Set<string>}} Scan */
 /** @type {Map<string, Scan>} */
 const scans = new Map();
 
@@ -35,13 +36,17 @@ function apply(s, row, workspace) {
   if (type === 'session.start') s.started = text(data.startTime, 'Session start time');
   else if (type === 'user.message') {
     s.running.clear();
+    s.requested.clear();
     const content = text(data.content, 'Your message', true);
     if (content.trim()) s.title ||= headline(content);
   } else if (type === 'assistant.turn_start') s.turnOpen = true;
   else if (type === 'assistant.turn_end') s.turnOpen = false;
-  else if (type === 'assistant.message') s.running.clear();
-  else if (type === 'tool.execution_start') {
+  else if (type === 'assistant.message') {
+    s.running.clear();
+    s.requested = requested(data, workspace, at);
+  } else if (type === 'tool.execution_start') {
     const tool = text(data.toolName, 'Tool name');
+    s.requested.delete(text(data.toolCallId, 'Tool call id'));
     const args = data.arguments === undefined ? {} : record(data.arguments, `${tool} arguments`);
     s.running.set(text(data.toolCallId, 'Tool call id'), { tool, at });
     const command = tool === 'run_in_terminal' && typeof args.command === 'string' ? args.command : '';
@@ -68,7 +73,7 @@ function scan(file, workspace) {
   const stat = fs.statSync(file);
   let s = scans.get(file);
   if (!s || stat.size < s.offset) {
-    s = { offset: 0, size: -1, mtime: 0, lines: 0, id, title: null, started: '', lastAt: '', turnOpen: false, running: new Map(), contracts: [],
+    s = { offset: 0, size: -1, mtime: 0, lines: 0, id, title: null, started: '', lastAt: '', turnOpen: false, running: new Map(), requested: new Map(), contracts: [],
       opened: new Set(), edited: new Set() };
     scans.set(file, s);
   }
@@ -142,7 +147,11 @@ function chatList(transcripts, workspace, asks, claims, pending, now) {
     .sort((a, b) => a.started.localeCompare(b.started))[0] : undefined;
   const claimed = pending && fresh ? { chat: fresh.id, ask: pending.ask } : null;
   const chats = scanned.map(s => ({ id: s.id, title: s.title, started: s.started, lastAt: s.lastAt,
-    status: (() => { const open = [...s.running.values()].at(-1); return status(open && stillRunning(open.tool, open.at, now) ? open.tool : null, s.turnOpen, s.lastAt, now); })(),
+    status: (() => {
+      const last = [...s.running.values()].at(-1);
+      const open = last && stillRunning(last.tool, last.at, now) ? last.tool : null;
+      return status(open, s.turnOpen, s.lastAt, now, !open && !!awaiting(s.requested, now));
+    })(),
     asks: links(s, asks, claimed?.chat === s.id ? { ask: claimed.ask, how: 'started' } : claims[s.id] || null) }));
   return { chats: chats.sort((a, b) => b.lastAt.localeCompare(a.lastAt)), claimed };
 }

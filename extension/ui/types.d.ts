@@ -251,7 +251,7 @@ export interface ActivityEvent {
   title: string;
   detail: string;
   files: string[];
-  state: 'running' | 'ok' | 'failed' | 'stopped';
+  state: 'running' | 'ok' | 'failed' | 'stopped' | 'pending';
 }
 export interface Todo {
   title: string;
@@ -264,6 +264,7 @@ export interface Session {
   lastAt: string;
   status: 'working' | 'waiting' | 'idle';
   current: ActivityEvent | null;
+  last: ActivityEvent | null;
   turns: number;
   tools: number;
   failures: number;

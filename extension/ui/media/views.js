@@ -200,7 +200,8 @@
     if (model.handoffError) items.push({ tone: 'error', icon: 'alert', title: 'Mission Control cannot read the ask carried over from another workspace', detail: model.handoffError });
     if (model.snapshotError) items.push({ tone: 'error', icon: 'alert', title: 'Mission Control cannot read the ask files', detail: model.snapshotError });
     if (model.activityError) items.push({ tone: 'error', icon: 'alert', title: 'Mission Control cannot read the live activity', detail: model.activityError });
-    if (session?.status === 'waiting') items.push({ tone: 'warn', icon: 'question', title: 'The agent is waiting for your answer in Chat', detail: session.current?.detail || '',
+    if (session?.status === 'waiting') items.push({ tone: 'warn', icon: 'question', title: session.current?.state === 'pending' ? 'A step waits for your Allow in Chat'
+      : 'The agent is waiting for your answer in Chat', detail: session.current?.detail || '',
       files: session.current?.files || [] });
     for (const chat of (run?.chats || []).filter(row => row.status !== 'idle' && row.id !== session?.id)) {
       items.push({ tone: chat.status === 'waiting' ? 'warn' : 'info', icon: chat.status === 'waiting' ? 'question' : 'spark',
@@ -392,6 +393,7 @@
       current ? h('div', { class: `current kind-${current.kind}` }, icon(current.kind === 'ask' ? 'question' : 'spark', current.kind === 'ask' ? '' : 'spin'),
         h('div', null, h('strong', null, current.title), current.detail ? h('span', { class: 'clamp muted' }, current.detail) : null, h('time', null, `started ${ago(current.at, now)}`)))
         : h('div', { class: 'current idle' }, icon('clock'), h('div', null, h('strong', null, session.status === 'idle' ? 'Idle' : 'Thinking'),
+          session.status !== 'idle' && session.last ? h('span', { class: 'clamp muted' }, `After: ${session.last.title}`) : null,
           h('span', { class: 'muted' }, `Last activity ${ago(session.lastAt, now)}`))),
       session.todos.length ? todoList(session.todos, 6) : null);
   }

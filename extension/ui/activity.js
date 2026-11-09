@@ -8,6 +8,7 @@ const TAIL_BYTES = 8 * 1024 * 1024;
 const TELEMETRY_TAIL_BYTES = 4 * 1024 * 1024;
 const IDLE_AFTER_MS = 5 * 60 * 1000;
 const QUICK_TOOL_MS = 60 * 1000;
+const APPROVAL_MS = 3000;
 const IMAGE_BYTES = 6000;
 /** @type {Record<string, string>} */
 const CONTEXT_GROUP = { read: 'reads', edit: 'edits', run: 'commands', search: 'searches', delegate: 'subagents', ask: 'questions', todo: 'other', tool: 'other' };
@@ -23,6 +24,7 @@ const cache = new Map();
 
 /** @typedef {import('./types').ActivityEvent} ActivityEvent */
 /** @typedef {{id: string, title: string | null, started: string, lastAt: string, turnOpen: boolean, open: {event: ActivityEvent, tool: string} | null,
+ *   requested: Map<string, ActivityEvent>,
  *   turns: number, tools: number, failures: number, commands: number, todos: import('./types').Todo[], events: ActivityEvent[],
  *   files: Map<string, {count: number, last: string}>, chars: {user: number, agent: number, args: number}, skills: Map<string, number>,
  *   calls: Map<string, {title: string, count: number}>, gap: {from: string, to: string} | null,
@@ -214,6 +216,31 @@ function settle(running) {
   running.clear();
 }
 
+/** Return the tool calls an agent message asks for, by call id. Copilot records a call's start only once it runs, so a command waiting for
+ * your Allow shows only here.
+ * @param {Record<string, unknown>} data
+ * @param {string} workspace
+ * @param {string} at
+ * @returns {Map<string, ActivityEvent>}
+ */
+function requested(data, workspace, at) {
+  const rows = data.toolRequests === undefined ? [] : list(data.toolRequests, 'Tool requests').map(value => record(value, 'Tool request'));
+  return new Map(rows.map(row => {
+    const tool = text(row.name, 'Requested tool');
+    const args = row.arguments === undefined ? {} : record(typeof row.arguments === 'string' ? JSON.parse(row.arguments) : row.arguments, `${tool} request arguments`);
+    return [text(row.toolCallId, 'Requested tool call id'), { ...describe(tool, args, workspace, at), state: /** @type {const} */ ('pending') }];
+  }));
+}
+
+/** Return the newest requested call that has not started for a few seconds: it waits for your approval in Chat.
+ * @param {Map<string, ActivityEvent>} calls
+ * @param {number} now
+ * @returns {ActivityEvent | null}
+ */
+function awaiting(calls, now) {
+  return [...calls.values()].filter(event => now - Date.parse(event.at) >= APPROVAL_MS).at(-1) || null;
+}
+
 /** Parse one transcript into its session facts.
  * @param {string} file
  * @param {string} workspace
@@ -223,7 +250,7 @@ function parse(file, workspace) {
   const id = path.basename(file, '.jsonl');
   if (!SESSION.test(id)) throw new Error(`Unexpected chat session file name: ${path.basename(file)}`);
   /** @type {Parsed} */
-  const s = { id, title: null, started: '', lastAt: '', turnOpen: false, open: null, turns: 0, tools: 0, failures: 0, commands: 0, todos: [],
+  const s = { id, title: null, started: '', lastAt: '', turnOpen: false, open: null, requested: new Map(), turns: 0, tools: 0, failures: 0, commands: 0, todos: [],
     events: [], files: new Map(), chars: { user: 0, agent: 0, args: 0 }, skills: new Map(), calls: new Map(), gap: null, context: new Map() };
   /** @type {Map<string, {event: ActivityEvent, tool: string}>} */
   const running = new Map();
@@ -237,6 +264,7 @@ function parse(file, workspace) {
     if (type === 'session.start') s.started = text(data.startTime, 'Session start time');
     else if (type === 'user.message') {
       settle(running);
+      s.requested.clear();
       const content = text(data.content, 'Your message', true);
       s.chars.user += content.length;
       if (content.trim()) {
@@ -247,11 +275,13 @@ function parse(file, workspace) {
     else if (type === 'assistant.turn_end') s.turnOpen = false;
     else if (type === 'assistant.message') {
       settle(running);
+      s.requested = requested(data, workspace, at);
       const content = text(data.content, 'Agent message', true);
       s.chars.agent += content.length;
       if (content.trim()) s.events.push({ at, kind: 'message', title: clip(content, 160), detail: '', files: [], state: 'ok' });
     } else if (type === 'tool.execution_start') {
       const tool = text(data.toolName, 'Tool name');
+      s.requested.delete(text(data.toolCallId, 'Tool call id'));
       const args = data.arguments === undefined ? {} : record(data.arguments, `${tool} arguments`);
       const event = describe(tool, args, workspace, at);
       const key = `${tool} ${JSON.stringify(args)}`;
@@ -318,16 +348,17 @@ function stillRunning(tool, at, now) {
   return LONG_TOOLS.has(tool) || now - Date.parse(at) <= QUICK_TOOL_MS;
 }
 
-/** Return a chat's state: waiting for your answer, working, or idle after five quiet minutes.
+/** Return a chat's state: waiting for your answer or approval, working, or idle after five quiet minutes.
  * @param {string | null} openTool The tool still running, if any.
  * @param {boolean} turnOpen
  * @param {string} lastAt
  * @param {number} now
+ * @param {boolean} approval A requested call waits for your Allow.
  * @returns {import('./types').Session['status']}
  */
-function status(openTool, turnOpen, lastAt, now) {
+function status(openTool, turnOpen, lastAt, now, approval) {
   const quiet = now - Date.parse(lastAt) > IDLE_AFTER_MS;
-  return openTool && ASK_TOOLS.has(openTool) ? 'waiting' : !quiet && (openTool || turnOpen) ? 'working' : 'idle';
+  return approval || (openTool && ASK_TOOLS.has(openTool)) ? 'waiting' : !quiet && (openTool || turnOpen) ? 'working' : 'idle';
 }
 
 /** Return the session as shown: working, waiting for you, or idle after five quiet minutes; a stale quick call shows as stopped.
@@ -337,10 +368,14 @@ function status(openTool, turnOpen, lastAt, now) {
  */
 function session(s, now) {
   const open = s.open && stillRunning(s.open.tool, s.open.event.at, now) ? s.open : null;
-  const state = status(open?.tool || null, s.turnOpen, s.lastAt, now);
+  const asked = open ? null : awaiting(s.requested, now);
+  const state = status(open?.tool || null, s.turnOpen, s.lastAt, now, !!asked);
   const events = s.events.slice(-EVENT_LIMIT).reverse()
     .map(event => ({ ...event, state: event.state === 'running' && (state === 'idle' || event !== open?.event) ? 'stopped' : event.state }));
-  return { id: s.id, title: s.title, started: s.started, lastAt: s.lastAt, status: state, current: state === 'idle' ? null : open?.event || null,
+  const current = state === 'idle' ? null : asked ? { ...asked, kind: /** @type {const} */ ('ask'), title: 'Waiting for you to allow a step in Chat',
+    detail: [asked.title, asked.detail].filter(Boolean).join(' — '), files: [] } : open?.event || null;
+  return { id: s.id, title: s.title, started: s.started, lastAt: s.lastAt, status: state, current,
+    last: events.find(event => event.kind !== 'prompt') || null,
     turns: s.turns, tools: s.tools, failures: s.failures, commands: s.commands, todos: s.todos, events,
     stats: { chars: { ...s.chars }, skills: [...s.skills].map(([name, bytes]) => ({ name, bytes })), gap: s.gap,
       repeats: [...s.calls.values()].filter(call => call.count >= 3).sort((a, b) => b.count - a.count).slice(0, 5),
@@ -428,4 +463,4 @@ function activity(workspace, file, telemetryFile, now) {
   return { session: current, errors: run.errors, loadout: run.loadout, tokens: telemetryFile ? usage(workspace, telemetryFile, current.id) : null };
 }
 
-module.exports = { activity, describe, status, stillRunning, headline, clip, jsonLines };
+module.exports = { activity, describe, status, stillRunning, requested, awaiting, headline, clip, jsonLines };
