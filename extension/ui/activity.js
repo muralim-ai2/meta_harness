@@ -131,7 +131,7 @@ function editedFiles(tool, args) {
   if (tool === 'multi_replace_string_in_file') {
     return [...new Set(list(args.replacements, 'Replacements').map(row => text(record(row, 'Replacement').filePath, 'Replacement file')))];
   }
-  if (tool === 'apply_patch') return [...text(args.input, 'Patch').matchAll(/^\*\*\* (?:Add|Update|Delete) File: (.+)$/gm)].map(match => match[1].trim());
+  if (tool === 'apply_patch') return [...text(args.input, 'Patch').matchAll(/^\*\*\* (?:(?:Add|Update|Delete) File|Move to): (.+)$/gm)].map(match => match[1].trim());
   const file = arg(args, 'filePath');
   return file ? [file] : [];
 }

@@ -61,6 +61,15 @@ def read(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
 
 
+def tool_input_of(raw: Any) -> Json:
+    """Return a tool input as a dict: freeform text (Copilot CLI's apply_patch) becomes {'input': text}, the shape VS Code's apply_patch sends."""
+    if isinstance(raw, str):
+        return {"input": raw}
+    if not isinstance(raw, dict):
+        raise ValueError(f"loop_guard.py expects tool_input as an object or patch text, got {type(raw).__name__}")
+    return raw
+
+
 def escalation(proj: Path) -> str | None:
     """Return the human question of an escalated loop or flow, if any."""
     for path in (state_file(proj), state_dir(proj) / "flow.json"):
@@ -162,7 +171,7 @@ def pre_tool(session_id: str, tool_name: str, tool_input: Json, tool_use_id: str
     if question:
         return deny(session_id, "escalated", f"Escalated to the human: {question} Stop and ask exactly this.", stop=True)
     log_tool(proj, {"phase": "pre", "tool": tool_name, "id": tool_use_id,
-                    "key": tool_input.get("command", tool_input.get("filePath", ""))})
+                    "key": tool_input.get("command") or ", ".join(edited_paths(tool_input))})
     if tool_name in READ_ONLY_TOOLS:
         return None
     if tool_name == PR_TOOL:
@@ -224,7 +233,7 @@ def main() -> None:
     event, session_id = payload["hook_event_name"], payload["session_id"]
     output = None
     if event == "PreToolUse":
-        output = pre_tool(session_id, payload["tool_name"], payload["tool_input"], payload["tool_use_id"])
+        output = pre_tool(session_id, payload["tool_name"], tool_input_of(payload["tool_input"]), payload["tool_use_id"])
     elif event == "PostToolUse":
         response = payload["tool_response"]
         if payload["tool_name"] == ASK_TOOL:

@@ -41,14 +41,23 @@ def copilot_response(payload: Json) -> Any:
     raise ValueError(f"Copilot PostToolUse payload has neither tool_result nor tool_response; its fields are {sorted(payload)}")
 
 
+def tool_input_of(payload: Json) -> Any:
+    """Return the tool input in VS Code's shape: freeform text (Copilot CLI's apply_patch) becomes {'input': text} as VS Code's own
+    apply_patch sends it, and file_path becomes filePath."""
+    tool_input = payload["tool_input"]
+    if isinstance(tool_input, str):
+        return {"input": tool_input}
+    if isinstance(tool_input, dict) and "file_path" in tool_input:
+        return {k: v for k, v in tool_input.items() if k != "file_path"} | {"filePath": tool_input["file_path"]}
+    return tool_input
+
+
 def to_vscode(payload: Json, client: Client) -> Json:
     """Return the payload with VS Code event names, session id, tool names, file path field and Stop fields."""
     event = CURSOR_EVENTS[payload["hook_event_name"]] if client == "cursor" else payload["hook_event_name"]
     out = payload | {"hook_event_name": event, "session_id": payload["conversation_id"] if client == "cursor" else payload["session_id"]}
     if "tool_name" in payload:
-        tool_input = payload["tool_input"]
-        if isinstance(tool_input, dict) and "file_path" in tool_input:
-            tool_input = {k: v for k, v in tool_input.items() if k != "file_path"} | {"filePath": tool_input["file_path"]}
+        tool_input = tool_input_of(payload)
         out |= {"tool_name": TOOL_NAMES.get(payload["tool_name"], payload["tool_name"]), "tool_input": tool_input}
         if client == "copilot":
             # Copilot sends no tool call id; the timestamp identifies the call within the session.

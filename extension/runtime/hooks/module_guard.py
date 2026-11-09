@@ -10,7 +10,7 @@ from guard_policy import check
 
 MAX_LINES = 500
 EDIT_TOOLS = {"create_file", "replace_string_in_file", "multi_replace_string_in_file", "insert_edit_into_file", "apply_patch"}
-PATCH_FILE = re.compile(r"^\*\*\* (?:Add|Update) File: (.+)$", re.M)
+PATCH_FILE = re.compile(r"^\*\*\* (?:(?:Add|Update|Delete) File|Move to): (.+)$", re.M)
 EXEMPT = {"package-lock.json", "pnpm-lock.yaml", "yarn.lock"}
 
 

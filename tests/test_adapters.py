@@ -343,6 +343,20 @@ def test_copilot_post_tool_use_payload_shapes() -> None:
         raise AssertionError("a PostToolUse without a result must fail with a clear message")
 
 
+def test_copilot_apply_patch_text_becomes_vscode_input() -> None:
+    """Copilot CLI's freeform apply_patch text maps to VS Code's {'input': patch} shape, and every added, updated, deleted and moved
+    path in it is found."""
+    sys.path.insert(0, str(REPO / "hooks"))
+    import agent_compat
+    from module_guard import edited_paths
+    patch = ("*** Begin Patch\n*** Add File: a.py\n+x\n*** Update File: b.md\n*** Move to: docs/b.md\n@@\n-a\n+b\n"
+             "*** Delete File: c.txt\n*** End Patch\n")
+    out = agent_compat.to_vscode({"hook_event_name": "PreToolUse", "session_id": "s1", "timestamp": "2026-11-09T10:00:00Z", "cwd": ".",
+                                  "tool_name": "apply_patch", "tool_input": patch}, "copilot")
+    assert out["tool_input"] == {"input": patch}, out
+    assert edited_paths(out["tool_input"]) == ["a.py", "b.md", "docs/b.md", "c.txt"]
+
+
 if __name__ == "__main__":
     test_export_structure()
     test_export_refuses_foreign_files_and_bad_organizations()

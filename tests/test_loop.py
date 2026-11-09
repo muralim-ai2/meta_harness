@@ -380,6 +380,31 @@ def test_loop_guard() -> None:
         assert pre("run_in_terminal", {"command": "rm .harness/state.json"}) is not None
 
 
+def test_loop_guard_reads_apply_patch_text() -> None:
+    """Copilot CLI sends apply_patch as raw patch text: the guard reads every added, updated, deleted and moved path and applies the
+    protected-file rules to them instead of crashing (a crash exits 1, which Copilot treats as a deny)."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = make_root(tmp)
+        proj = root / "proj"
+        (proj / "feature_list.json").write_text(json.dumps([{"name": "a", "passes": False}]), encoding="utf-8")
+        (proj / ".harness" / "state.json").write_text(json.dumps({"review": "local", "current": "a", "escalated": None}), encoding="utf-8")
+
+        def pre(*lines: str) -> dict[str, Any] | None:
+            """Fire PreToolUse for an apply_patch whose input is the patch text itself."""
+            patch = "\n".join(["*** Begin Patch", *lines, "*** End Patch", ""])
+            return fire(root, "loop_guard.py", {"hook_event_name": "PreToolUse", "tool_name": "apply_patch", "tool_input": patch,
+                                                "tool_use_id": "t1"}, HARNESS_PROJECT="proj", HARNESS_STOP_POLICY="once")
+
+        assert pre("*** Add File: proj/src.py", "+x = 1", "*** Delete File: proj/old.py", "*** Update File: proj/plan.md", "@@", "-a", "+b") is None
+        update = pre("*** Update File: proj/feature_list.json", "@@", "-false", "+true")
+        assert update and "loop scripts" in update["hookSpecificOutput"]["permissionDecisionReason"], update
+        assert pre("*** Delete File: proj/progress.txt") is not None
+        moved = pre("*** Update File: proj/notes.md", "*** Move to: proj/.harness/notes.md", "@@", "-a", "+b")
+        assert moved and "Loop state" in moved["hookSpecificOutput"]["permissionDecisionReason"], moved
+        keys = [json.loads(line)["key"] for line in (proj / ".harness" / "tool_log.jsonl").read_text().splitlines()]
+        assert keys[0] == "proj/src.py, proj/old.py, proj/plan.md" and keys[-1] == "proj/notes.md, proj/.harness/notes.md", keys
+
+
 def test_guard_waiver() -> None:
     """After 3 trips the deny asks for a waiver; laid down it allows loop files but never .harness/; an open evaluation makes it strict."""
     with tempfile.TemporaryDirectory() as tmp:
