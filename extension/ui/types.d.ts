@@ -24,6 +24,7 @@ export interface Review {
   ready: boolean;
   files: string[];
   commit: { base: string; head: string } | null;
+  revision: string;
 }
 export interface Snapshot {
   workspace: string;

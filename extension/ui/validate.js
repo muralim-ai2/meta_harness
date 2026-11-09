@@ -72,7 +72,7 @@ function message(value) {
     ready: [], refresh: [], selectWorkspace: [], newAsk: [], newChat: [], editPlan: [], loadPacks: [], revealAsk: [], attachReferences: [], startHandoff: [], dismissHandoff: [], loadModels: [],
     analyze: ['model', 'question'], summarize: ['model'], pruneTelemetry: [], refreshMap: [], openMap: [], infographic: [],
     openDashboard: ['page'], openFile: ['path'], command: ['name'], telemetry: ['value'], review: ['item', 'revision', 'value'], markDone: ['item', 'revision'],
-    addSkill: ['revision'], showChanges: ['item'],
+    addSkill: ['ask'], showChanges: ['item'],
     selectAsk: ['ask'], activateAsk: ['ask'], selectChat: ['chat'], linkChat: ['chat'],
   };
   if (!Object.hasOwn(fields, action)) throw new Error(`Unknown UI action: ${action}`);

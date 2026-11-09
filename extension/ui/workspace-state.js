@@ -224,7 +224,7 @@ function snapshot(workspace, selected = null) {
       if (!/^[\w.-]+$/.test(name) || !['planned', 'active', 'done', 'skipped'].includes(status)) throw new Error('Invalid stage identity or status.');
       const item = `stage:${name}`;
       return { item, title: text(stage.goal, 'Stage goal'), status, ready: status === 'done', files: stageFiles(reader.root, askFolder, stage), commit: null,
-        ...decision(checklist, item) };
+        revision: '', ...decision(checklist, item) };
     }).filter(stage => stage.status !== 'skipped');
     for (const value of list(contract.tasks, 'Ask tasks')) {
       const task = record(value, 'Task');
@@ -236,7 +236,7 @@ function snapshot(workspace, selected = null) {
       state.reviews.push({ item, title: feature ? feature.description : name, status: passes ? 'marked passing' : 'pending',
         ready: passes && !!feature?.passes && feature.check?.exitCode === 0,
         files: [...(feature?.check ? [feature.check.source, ...feature.check.changed] : []), ...state.files.filter(file => file.startsWith(evidenceFolder))],
-        commit: feature?.check?.commit ?? null, ...decision(checklist, item) });
+        commit: feature?.check?.commit ?? null, revision: '', ...decision(checklist, item) });
     }
     state.decisions = list(contract.decisions, 'Ask decisions').map(value => {
       const row = record(value, 'Decision');
@@ -245,6 +245,10 @@ function snapshot(workspace, selected = null) {
     });
   }
   state.revision = reader.revision();
+  for (const review of state.reviews) {
+    review.revision = digest(JSON.stringify([state.ask?.id, state.ask?.active, review.item, review.status, review.ready, review.decision, review.note,
+      state.planState, state.pendingPlanTicks]));
+  }
   return state;
 }
 

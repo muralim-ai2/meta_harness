@@ -117,7 +117,8 @@ test('the Plan page shows the formatted plan, where it stands, Edit, and sign-of
   assert.equal(actions(tree, 'editPlan').length, 1);
   const accept = actions(tree, 'review').filter(node => node.attrs['data-value'] === 'accepted');
   assert.equal(accept.length, 2);
-  assert.ok(accept.every(node => node.attrs['data-revision'] === data.snapshot.revision && !('disabled' in node.attrs)));
+  assert.ok(accept.every(node => node.attrs['data-revision'] === data.snapshot.reviews.find(review => review.item === node.attrs['data-item']).revision
+    && /^[a-f0-9]{64}$/.test(node.attrs['data-revision']) && !('disabled' in node.attrs)));
   data.snapshot.planState = 'unsynced';
   const held = dashboard(data, { ...UI, page: 'plan' }, NOW);
   assert.ok(actions(held, 'review').filter(node => node.attrs['data-value'] === 'accepted').every(node => 'disabled' in node.attrs));

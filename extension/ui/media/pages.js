@@ -157,13 +157,13 @@
             { kind: 'link', data: { item: review.item }, title: 'Open what this task\'s commits changed in a diff editor' }) : null),
         h('div', { class: 'review-actions' }, h('span', { class: `pill ${settled ? 'good' : review.decision === 'changes' ? 'warn' : ''}`.trim() },
           { open: 'Open', accepted: 'Accepted', changes: 'Changes requested', skipped: 'Continued without review' }[review.decision] || review.decision),
-        button('Accept', 'review', { kind: 'primary', icon: 'check', data: { item: review.item, revision: snap.revision, value: 'accepted' },
+        button('Accept', 'review', { kind: 'primary', icon: 'check', data: { item: review.item, revision: review.revision, value: 'accepted' },
           disabled: blocked || settled || !review.ready || snap.planState === 'unsynced',
           title: !snap.ask?.active ? 'Make this ask active to sign off' : snap.planState === 'unsynced' ? 'The plan was edited: the agent reconciles it first'
             : !review.ready ? 'Accept once the work is done' : undefined }),
-        review.item.startsWith('stage:') && !review.ready && !settled ? button('Mark done', 'markDone', { icon: 'flag', data: { item: review.item, revision: snap.revision },
+        review.item.startsWith('stage:') && !review.ready && !settled ? button('Mark done', 'markDone', { icon: 'flag', data: { item: review.item, revision: review.revision },
           disabled: blocked, title: !snap.ask?.active ? 'Make this ask active to change its status' : 'Set this stage to done when the chat shows it is finished' }) : null,
-        button('Request changes', 'review', { data: { item: review.item, revision: snap.revision, value: 'changes' }, disabled: blocked,
+        button('Request changes', 'review', { data: { item: review.item, revision: review.revision, value: 'changes' }, disabled: blocked,
           title: !snap.ask?.active ? 'Make this ask active to sign off' : undefined })));
     }), snap.reviews.length ? null : h('li', { class: 'muted' }, 'No milestones yet.'));
   }
@@ -347,7 +347,7 @@
     const snap = model.snapshot;
     const load = snap?.skillLoad;
     const session = model.activity?.loadout;
-    const add = snap?.ask ? h('div', { class: 'actions-row' }, button('Add a skill…', 'addSkill', { icon: 'plus', data: { revision: snap.revision },
+    const add = snap?.ask ? h('div', { class: 'actions-row' }, button('Add a skill…', 'addSkill', { icon: 'plus', data: { ask: snap.ask.id },
       disabled: model.busy || !snap.ask.active,
       title: snap.ask.active ? 'Pick a library skill to add to this ask; agents load it from your next message' : 'Make this ask active to add skills to it' })) : null;
     return [

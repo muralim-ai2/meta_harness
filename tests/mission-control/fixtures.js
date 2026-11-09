@@ -49,7 +49,7 @@ async function realAsks(root, storage, asks) {
   /** @type {string[]} */
   const ids = [];
   for (const [slug, request] of asks) {
-    const state = await flow.createAsk(root, snapshot(root).revision, slug, request);
+    const state = await flow.createAsk(root, snapshot(root).ask?.id ?? null, slug, request);
     ids.push(/** @type {NonNullable<typeof state.ask>} */ (state.ask).id);
   }
   return ids;

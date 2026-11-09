@@ -7,7 +7,7 @@ const { promisify } = require('node:util');
 const { execFile } = require('node:child_process');
 const { BASE_COMMANDS } = require('./lifecycle-cli');
 const { snapshot } = require('./workspace-state');
-const { current } = require('./workflow');
+const { sameAsk } = require('./workflow');
 const { listAsks, askTree, projectTree, evaluationFiles } = require('./asks');
 const { claimsFrom } = require('./chats');
 const { containedPath } = require('./file-access');
@@ -106,7 +106,7 @@ async function review(mc, data) {
   if (data.value !== 'accepted' && data.value !== 'changes') throw new Error('Unknown review decision.');
   const target = mc.target();
   const flow = await mc.connect();
-  const ticket = await flow.prepareReview(target.uri.fsPath, data.revision, data.item, data.value);
+  const ticket = flow.prepareReview(target.uri.fsPath, data.revision, data.item, data.value);
   const note = await vscode.window.showInputBox({ title: data.value === 'accepted' ? `Accept ${data.item}: what did you check?` : `Changes for ${data.item}: what needs to change?`,
     ignoreFocusOut: true, validateInput: value => !value.trim() ? 'A note is required.' : value.length > 4000 ? 'Use at most 4,000 characters.' : null });
   if (note === undefined) return;
@@ -145,13 +145,13 @@ async function markDone(mc, data) {
 
 /** Pick a library skill the active ask does not have, confirm, and add it to the ask; agents load it from the next prompt.
  * @param {MissionControl} mc
- * @param {string} revision
+ * @param {string} ask The ask on screen when the user clicked.
  * @returns {Promise<void>}
  */
-async function addSkill(mc, revision) {
+async function addSkill(mc, ask) {
   const target = mc.target();
-  const state = current(target.uri.fsPath, revision);
-  if (!state.ask?.active) throw new Error('Make this ask active before adding skills to it.');
+  const state = sameAsk(target.uri.fsPath, ask);
+  if (!state.ask) throw new Error('Make this ask active before adding skills to it.');
   const flow = await mc.connect();
   const offered = await flow.availableSkills(target.uri.fsPath);
   if (!offered.length) {
@@ -167,7 +167,7 @@ async function addSkill(mc, revision) {
     detail: `${state.ask.id}\n\nThe skill is installed into .aria/skills/ and listed in the ask's plan. Agents load it from the next message you send; `
       + `the ask's skills then come to ${tokens.toLocaleString('en-US')} tokens${load ? ` against a ${load.maxTokens.toLocaleString('en-US')}-token guideline` : ''}.` }, 'Add skill');
   if (confirm !== 'Add skill') return;
-  await flow.addSkill(target.uri.fsPath, revision, picked.label);
+  await flow.addSkill(target.uri.fsPath, ask, picked.label);
   void vscode.window.showInformationMessage(`${picked.label} added; agents load it from your next message.`);
 }
 

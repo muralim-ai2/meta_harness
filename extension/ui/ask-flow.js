@@ -84,7 +84,7 @@ async function newAsk(mc, preset = {}) {
     slug = name;
   }
   mc.target();
-  await flow.createAsk(root, scope.revision, slug, askRequest(brief));
+  await flow.createAsk(root, scope.activeAsk, slug, askRequest(brief));
   await mc.view(null);
   const created = listAsks(root).find(ask => ask.active);
   if (!created) throw new Error('The new ask was created but is not active. Inspect .aria/asks/active.json.');

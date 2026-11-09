@@ -7,16 +7,31 @@ const { snapshot, askId } = require('./workspace-state');
 const { Reader } = require('./file-access');
 const { record, text, list, integer } = require('./validate');
 
-/** @typedef {{ask: string, revision: string, workspaceRevision: string, item: string, value: 'accepted' | 'changes'}} ReviewTicket */
+/** @typedef {{ask: string, item: string, itemRevision: string, value: 'accepted' | 'changes'}} ReviewTicket */
 
-/** Reject an outdated UI snapshot before a live action.
+/** Return the workspace with the review item as the user saw it; the agent's other writes (evidence, attempts, loop state) do not matter.
  * @param {string} workspace
- * @param {string} revision
+ * @param {string} item
+ * @param {string} revision The item's revision when the user acted on it.
+ * @returns {{state: import('./types').Snapshot, review: import('./types').Review}}
+ */
+function itemAsSeen(workspace, item, revision) {
+  const state = snapshot(workspace);
+  const review = state.reviews.find(row => row.item === item);
+  if (!review || review.revision !== revision) {
+    throw new Error(`${item} changed since you acted on it (its ask, status, sign-off or the plan moved on). Look at it again and retry.`);
+  }
+  return { state, review };
+}
+
+/** Return the workspace while the active ask is still the one the user saw.
+ * @param {string} workspace
+ * @param {string | null} ask
  * @returns {import('./types').Snapshot}
  */
-function current(workspace, revision) {
+function sameAsk(workspace, ask) {
   const state = snapshot(workspace);
-  if (state.revision !== revision) throw new Error('Workspace state changed. Refresh and review the current ask before trying again.');
+  if ((state.ask?.active ? state.ask.id : null) !== ask) throw new Error('The active ask changed in the meantime. Look at Mission Control again and retry.');
   return state;
 }
 
@@ -52,13 +67,14 @@ class Workflow {
   /** Describe where a request lands, using the harness's own recommendation, without creating anything.
    * @param {string} workspace
    * @param {string} request
-   * @returns {Promise<{revision: string, activeAsk: string | null, verdict: string, why: string}>}
+   * @returns {Promise<{activeAsk: string | null, verdict: string, why: string}>}
    */
   async describeAsk(workspace, request) {
     const state = snapshot(workspace);
+    const activeAsk = state.ask?.active ? state.ask.id : null;
     const result = record(await this.requestFile(request, file => lifecycle(this.connection, workspace, ['where', file])), 'Ask scope');
-    current(workspace, state.revision);
-    return { revision: state.revision, activeAsk: state.ask?.id || null, verdict: text(result.verdict, 'Scope verdict'), why: text(result.why, 'Scope reason') };
+    sameAsk(workspace, activeAsk);
+    return { activeAsk, verdict: text(result.verdict, 'Scope verdict'), why: text(result.why, 'Scope reason') };
   }
 
   /** Serialize UI-owned mutations and release the lock on failure.
@@ -71,17 +87,17 @@ class Workflow {
     try { return await action(); } finally { this.busy = false; }
   }
 
-  /** Create and verify a real ask after the user confirms its target workspace.
+  /** Create and verify a real ask after the user confirms its target workspace, while the active ask is still the one they saw.
    * @param {string} workspace
-   * @param {string} revision
+   * @param {string | null} activeAsk
    * @param {string} slug
    * @param {string} request
    * @returns {Promise<import('./types').Snapshot>}
    */
-  async createAsk(workspace, revision, slug, request) {
+  async createAsk(workspace, activeAsk, slug, request) {
     return this.mutate(async () => {
       if (!/^[a-z0-9][a-z0-9-]{0,40}$/.test(slug)) throw new Error('Ask name must contain 1-41 lowercase letters, digits or hyphens.');
-      current(workspace, revision);
+      sameAsk(workspace, activeAsk);
       const result = record(await this.requestFile(request, file =>
         lifecycle(this.connection, workspace, ['contract', 'direct', slug, 'ARIA Lite', file])), 'Created ask');
       const created = askId(result.ask);
@@ -118,32 +134,25 @@ class Workflow {
     });
   }
 
-  /** Obtain a guarded core ticket for the exact review displayed to the user.
+  /** Check a review the user started against the item as they saw it.
    * @param {string} workspace
-   * @param {string} revision
+   * @param {string} revision The item's revision on screen.
    * @param {string} item
    * @param {'accepted' | 'changes'} value
-   * @returns {Promise<ReviewTicket>}
+   * @returns {ReviewTicket}
    */
-  async prepareReview(workspace, revision, item, value) {
-    const state = current(workspace, revision);
-    if (!state.ask) throw new Error('No active ask to review.');
+  prepareReview(workspace, revision, item, value) {
+    const { state, review } = itemAsSeen(workspace, item, revision);
+    if (!state.ask?.active) throw new Error('Make this ask active to sign off.');
     if (state.pendingPlanTicks) throw new Error('Plan checkboxes changed. Reconcile them through the harness before another review.');
-    const review = state.reviews.find(row => row.item === item);
-    if (!review) throw new Error('The review item is not in the active ask.');
     if (!['accepted', 'changes'].includes(value)) throw new Error('Unknown human review decision.');
     if (value === 'accepted' && (!review.ready || state.planState === 'unsynced')) {
       throw new Error('Acceptance requires completed work, its required evidence, and no unreconciled plan edits.');
     }
-    const ticket = record(await lifecycle(this.connection, workspace, ['review-status', state.ask.id]), 'Review ticket');
-    current(workspace, revision);
-    if (ticket.ask !== state.ask.id) throw new Error('Harness returned a ticket for a different ask.');
-    const coreRevision = text(ticket.revision, 'Review revision');
-    if (!/^[a-f0-9]{64}$/.test(coreRevision)) throw new Error('Harness returned an invalid review revision.');
-    return { ask: state.ask.id, revision: coreRevision, workspaceRevision: revision, item, value };
+    return { ask: state.ask.id, item, itemRevision: revision, value };
   }
 
-  /** Persist a confirmed review through the guarded core API and verify its saved record.
+  /** Persist a confirmed review through the guarded core API, with a ticket taken just before recording, and verify its saved record.
    * @param {string} workspace
    * @param {ReviewTicket} ticket
    * @param {string} note
@@ -152,9 +161,13 @@ class Workflow {
   async recordReview(workspace, ticket, note) {
     return this.mutate(async () => {
       text(note, 'Human review note');
-      current(workspace, ticket.workspaceRevision);
+      const { state } = itemAsSeen(workspace, ticket.item, ticket.itemRevision);
+      if (state.ask?.id !== ticket.ask || !state.ask.active) throw new Error('The active ask changed in the meantime. Look at Mission Control again and retry.');
+      const core = record(await lifecycle(this.connection, workspace, ['review-status', ticket.ask]), 'Review ticket');
+      const coreRevision = text(core.revision, 'Review revision');
+      if (core.ask !== ticket.ask || !/^[a-f0-9]{64}$/.test(coreRevision)) throw new Error('Harness returned an invalid review ticket.');
       const result = record(await lifecycle(this.connection, workspace,
-        ['tick-for', ticket.ask, ticket.revision, ticket.item, ticket.value, note]), 'Recorded review');
+        ['tick-for', ticket.ask, coreRevision, ticket.item, ticket.value, note]), 'Recorded review');
       if (result.ask !== ticket.ask || result.item !== ticket.item || result.value !== ticket.value) throw new Error('Harness returned a different review result.');
       const reader = new Reader(workspace);
       const saved = record(reader.json(path.join('.aria', 'asks', ticket.ask, 'contract.json')), 'Saved contract');
@@ -164,9 +177,9 @@ class Workflow {
     });
   }
 
-  /** Set a planned or active stage of the active ask to done for the user, after checking the displayed state is current.
+  /** Set a planned or active stage of the active ask to done for the user, while the stage is as they saw it.
    * @param {string} workspace
-   * @param {string} revision
+   * @param {string} revision The stage's revision on screen.
    * @param {string} item
    * @param {string} note
    * @returns {Promise<import('./types').Snapshot>}
@@ -174,10 +187,9 @@ class Workflow {
   async markStageDone(workspace, revision, item, note) {
     return this.mutate(async () => {
       text(note, 'Stage note');
-      const state = current(workspace, revision);
+      const { state, review } = itemAsSeen(workspace, item, revision);
       if (!state.ask?.active) throw new Error('Make this ask active before changing its stages.');
-      const review = state.reviews.find(row => row.item === item);
-      if (!review || !item.startsWith('stage:') || review.ready) throw new Error('Only a planned or active stage of the active ask can be marked done.');
+      if (!item.startsWith('stage:') || review.ready) throw new Error('Only a planned or active stage of the active ask can be marked done.');
       const stage = item.slice('stage:'.length);
       const result = record(await lifecycle(this.connection, workspace, ['stage', stage, 'done', note]), 'Stage update');
       if (result.name !== stage || result.status !== 'done') throw new Error('Harness returned a different stage update.');
@@ -197,16 +209,15 @@ class Workflow {
     });
   }
 
-  /** Add a library skill to the active ask, after checking the displayed state is current, and verify the contract lists it.
+  /** Add a library skill to the ask the user saw, while it is still active, and verify the contract lists it.
    * @param {string} workspace
-   * @param {string} revision
+   * @param {string} ask
    * @param {string} name
    * @returns {Promise<import('./types').Snapshot>}
    */
-  async addSkill(workspace, revision, name) {
+  async addSkill(workspace, ask, name) {
     return this.mutate(async () => {
-      const state = current(workspace, revision);
-      if (!state.ask?.active) throw new Error('Make this ask active before adding skills to it.');
+      sameAsk(workspace, ask);
       const result = record(await lifecycle(this.connection, workspace, ['skills', 'add', name]), 'Added skill');
       const after = snapshot(workspace);
       if (result.added !== name || !after.skills.some(skill => skill.name === name)) throw new Error(`The harness did not add ${name} to the ask.`);
@@ -215,4 +226,4 @@ class Workflow {
   }
 }
 
-module.exports = { Workflow, current };
+module.exports = { Workflow, sameAsk };

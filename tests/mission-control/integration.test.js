@@ -22,7 +22,7 @@ async function setup(t) {
   const description = await flow.describeAsk(root, 'Build an onboarding policy checker');
   assert.equal(description.verdict, 'new-project');
   assert.deepEqual(fs.readdirSync(root), []);
-  const state = await flow.createAsk(root, description.revision, 'policy', 'Build an onboarding policy checker');
+  const state = await flow.createAsk(root, description.activeAsk, 'policy', 'Build an onboarding policy checker');
   return { root, storage, flow, state };
 }
 
@@ -55,14 +55,30 @@ test('acceptance and requested changes persist through the guarded API', async t
   const { root, flow, state } = await setup(t);
   completeStage(root, state.ask.id);
   const ready = snapshot(root);
-  const ticket = await flow.prepareReview(root, ready.revision, 'stage:deliver', 'accepted');
+  const ticket = flow.prepareReview(root, ready.reviews[0].revision, 'stage:deliver', 'accepted');
   const accepted = await flow.recordReview(root, ticket, 'Human inspected the scratch evidence');
   assert.equal(accepted.reviews[0].decision, 'accepted');
   assert.equal(accepted.decisions.at(-1).choice, 'accepted');
-  const next = await flow.prepareReview(root, accepted.revision, 'stage:deliver', 'changes');
+  const next = flow.prepareReview(root, accepted.reviews[0].revision, 'stage:deliver', 'changes');
   const revised = await flow.recordReview(root, next, 'Add a missing input check');
   assert.equal(revised.reviews[0].decision, 'changes');
   assert.equal(revised.reviews[0].note, 'Add a missing input check');
+});
+
+test('a decision records while the agent keeps writing evidence, attempts and loop state elsewhere in the workspace', async t => {
+  const { root, flow, state } = await setup(t);
+  completeStage(root, state.ask.id);
+  const seen = snapshot(root).reviews[0].revision;
+  const ticket = flow.prepareReview(root, seen, 'stage:deliver', 'changes');
+  const loop = path.join(root, '.aria', 'asks', state.ask.id, 'loop');
+  fs.mkdirSync(path.join(loop, 'evidence', 'hello-page'), { recursive: true });
+  fs.writeFileSync(path.join(loop, 'evidence', 'hello-page', 'dark.png'), 'png');
+  fs.mkdirSync(path.join(loop, 'attempts'), { recursive: true });
+  fs.writeFileSync(path.join(loop, 'attempts', 'hello-page.jsonl'), '{}\n');
+  fs.writeFileSync(path.join(root, 'index.html'), '<h1>Hello</h1>');
+  assert.notEqual(snapshot(root).revision, ticket.itemRevision, 'the workspace moved on while the user typed the note');
+  const revised = await flow.recordReview(root, ticket, 'Use the brand colours in dark mode');
+  assert.deepEqual([revised.reviews[0].decision, revised.reviews[0].note], ['changes', 'Use the brand colours in dark mode']);
 });
 
 test('preparing a review ticket does not write project state', async t => {
@@ -70,7 +86,7 @@ test('preparing a review ticket does not write project state', async t => {
   completeStage(root, state.ask.id);
   const ready = snapshot(root);
   const contract = fs.readFileSync(path.join(root, '.aria', 'asks', state.ask.id, 'contract.json'));
-  await flow.prepareReview(root, ready.revision, 'stage:deliver', 'accepted');
+  flow.prepareReview(root, ready.reviews[0].revision, 'stage:deliver', 'accepted');
   assert.equal(snapshot(root).revision, ready.revision);
   assert.deepEqual(fs.readFileSync(path.join(root, '.aria', 'asks', state.ask.id, 'contract.json')), contract);
 });
@@ -79,23 +95,24 @@ test('stale UI and active-ask switches cannot approve another task', async t => 
   const { root, flow, state } = await setup(t);
   completeStage(root, state.ask.id);
   const ready = snapshot(root);
-  const ticket = await flow.prepareReview(root, ready.revision, 'stage:deliver', 'accepted');
-  const second = await flow.createAsk(root, ready.revision, 'second', 'Build a second onboarding checker');
-  await assert.rejects(flow.recordReview(root, ticket, 'Old approval'), /state changed/);
-  await assert.rejects(lifecycle(bundled(), root, ['tick-for', ticket.ask, ticket.revision, ticket.item, ticket.value, 'Stale subprocess']), /changed/);
+  const ticket = flow.prepareReview(root, ready.reviews[0].revision, 'stage:deliver', 'accepted');
+  const core = await lifecycle(bundled(), root, ['review-status', state.ask.id]);
+  const second = await flow.createAsk(root, state.ask.id, 'second', 'Build a second onboarding checker');
+  await assert.rejects(flow.recordReview(root, ticket, 'Old approval'), /changed since you acted on it/);
+  await assert.rejects(lifecycle(bundled(), root, ['tick-for', ticket.ask, core.revision, ticket.item, ticket.value, 'Stale subprocess']), /changed/);
   assert.ok(second.reviews.every(review => review.decision === 'open'));
   assert.ok(snapshot(root).reviews.every(review => review.decision === 'open'));
 });
 
 test('changed plans, incomplete work, and invalid identifiers reject before mutation', async t => {
   const { root, flow, state } = await setup(t);
-  await assert.rejects(flow.prepareReview(root, state.revision, 'stage:deliver', 'accepted'), /Acceptance requires/);
-  await assert.rejects(flow.createAsk(root, state.revision, '..\\escape', 'Build a checker'), /Ask name must contain/);
+  await assert.rejects(async () => flow.prepareReview(root, state.reviews[0].revision, 'stage:deliver', 'accepted'), /Acceptance requires/);
+  await assert.rejects(flow.createAsk(root, state.ask.id, '..\\escape', 'Build a checker'), /Ask name must contain/);
   completeStage(root, state.ask.id);
   const ready = snapshot(root);
-  const ticket = await flow.prepareReview(root, ready.revision, 'stage:deliver', 'accepted');
+  const ticket = flow.prepareReview(root, ready.reviews[0].revision, 'stage:deliver', 'accepted');
   fs.appendFileSync(path.join(root, '.aria', 'asks', state.ask.id, 'plan.md'), '\nAnother requirement.');
-  await assert.rejects(flow.recordReview(root, ticket, 'Old approval'), /state changed/);
+  await assert.rejects(flow.recordReview(root, ticket, 'Old approval'), /changed since you acted on it/);
   assert.equal(snapshot(root).reviews[0].decision, 'open');
   assert.equal(flow.busy, false);
 });

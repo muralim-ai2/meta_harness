@@ -46,7 +46,7 @@ test('requested changes persist through the guarded API and the new ask opens on
   assert.deepEqual(fixture.controls.commands.get('frontierHve.missionControlModel')().navigate, { page: 'live', seq: 1 });
   fixture.controls.inputs.push('Clarify the policy acceptance criteria.');
   fixture.controls.confirmations.push('Request changes');
-  await fixture.controls.provider.execute({ action: 'review', item: 'stage:deliver', value: 'changes', revision: state.revision });
+  await fixture.controls.provider.execute({ action: 'review', item: 'stage:deliver', value: 'changes', revision: state.reviews[0].revision });
   const saved = snapshot(fixture.root);
   assert.equal(saved.reviews[0].decision, 'changes');
   assert.equal(saved.reviews[0].note, 'Clarify the policy acceptance criteria.');
@@ -56,7 +56,7 @@ test('accepting unfinished work is refused before any confirmation or write', as
   const fixture = mission(t);
   const state = await create(fixture, 'unfinished');
   const seen = fixture.controls.calls.length;
-  await assert.rejects(fixture.controls.provider.execute({ action: 'review', item: 'stage:deliver', value: 'accepted', revision: state.revision }),
+  await assert.rejects(fixture.controls.provider.execute({ action: 'review', item: 'stage:deliver', value: 'accepted', revision: state.reviews[0].revision }),
     /Acceptance requires/);
   assert.equal(snapshot(fixture.root).revision, state.revision);
   assert.ok(!fixture.controls.calls.slice(seen).some(call => call[0] === 'confirmation'));
@@ -69,15 +69,15 @@ test('without a written plan the user can mark the stage done to match the chat,
   assert.equal(state.reviews[0].status, 'planned');
   fixture.controls.inputs.push('Checker built and verified in the chat.');
   fixture.controls.confirmations.push('Mark done');
-  await fixture.controls.provider.execute({ action: 'markDone', item: 'stage:deliver', revision: state.revision });
+  await fixture.controls.provider.execute({ action: 'markDone', item: 'stage:deliver', revision: state.reviews[0].revision });
   const done = snapshot(fixture.root);
   assert.equal(done.reviews[0].status, 'done');
   assert.equal(done.decisions.at(-1).why, 'Checker built and verified in the chat.');
   fixture.controls.inputs.push('Ran the checker on two policies.');
   fixture.controls.confirmations.push('Accept');
-  await fixture.controls.provider.execute({ action: 'review', item: 'stage:deliver', value: 'accepted', revision: done.revision });
+  await fixture.controls.provider.execute({ action: 'review', item: 'stage:deliver', value: 'accepted', revision: done.reviews[0].revision });
   assert.equal(snapshot(fixture.root).reviews[0].decision, 'accepted');
-  await assert.rejects(fixture.controls.provider.execute({ action: 'markDone', item: 'stage:deliver', revision: snapshot(fixture.root).revision }),
+  await assert.rejects(fixture.controls.provider.execute({ action: 'markDone', item: 'stage:deliver', revision: snapshot(fixture.root).reviews[0].revision }),
     /Only a planned or active stage/);
   fs.appendFileSync(path.join(fixture.root, '.aria', 'project', 'journal.jsonl'), JSON.stringify({ ts: '2026-11-06T10:00:00+00:00', ask: state.ask.id,
     stage: 'deliver', kind: 'pitfall', text: 'The policy files use Windows line endings', why: 'the parser split on \\n only' }) + '\n');
@@ -89,25 +89,25 @@ test('Add a skill lists only library skills the ask lacks, adds the picked one a
   const state = await create(fixture, 'skills');
   const before = state.skills.map(skill => skill.name);
   fixture.controls.picks.push(null);
-  await fixture.controls.provider.execute({ action: 'addSkill', revision: state.revision });
+  await fixture.controls.provider.execute({ action: 'addSkill', ask: state.ask.id });
   assert.equal(snapshot(fixture.root).revision, state.revision, 'cancelling the pick writes nothing');
   const offered = fixture.controls.calls.filter(call => call[0] === 'pick').at(-1)[1];
   assert.ok(offered.length && !offered.some(row => before.includes(row.label)), 'only skills the ask does not have are offered');
   fixture.controls.picks.push(0);
   fixture.controls.confirmations.push('Add skill');
-  await fixture.controls.provider.execute({ action: 'addSkill', revision: state.revision });
+  await fixture.controls.provider.execute({ action: 'addSkill', ask: state.ask.id });
   const added = snapshot(fixture.root);
   assert.deepEqual(added.skills.map(skill => skill.name), [...before, offered[0].label]);
   assert.equal(added.skills.at(-1).reason, 'added');
   assert.match(fixture.controls.calls.filter(call => call[0] === 'confirmation').at(-1)[2].detail, /Agents load it from the next message you send/);
-  await assert.rejects(fixture.controls.provider.execute({ action: 'addSkill', revision: state.revision }), /Workspace state changed/);
+  await assert.rejects(fixture.controls.provider.execute({ action: 'addSkill', ask: '20200101-0000-other' }), /active ask changed/);
 });
 
 test('a stale view cannot record a review after the project changes', async t => {
   const fixture = mission(t);
   const state = await create(fixture, 'stale');
   fs.appendFileSync(path.join(fixture.root, '.aria', 'asks', state.ask.id, 'plan.md'), '\nAnother requirement.');
-  await assert.rejects(fixture.controls.provider.execute({ action: 'review', item: 'stage:deliver', value: 'changes', revision: state.revision }),
-    /state changed/);
+  await assert.rejects(fixture.controls.provider.execute({ action: 'review', item: 'stage:deliver', value: 'changes', revision: state.reviews[0].revision }),
+    /changed since you acted on it/);
   assert.equal(snapshot(fixture.root).reviews[0].decision, 'open');
 });
