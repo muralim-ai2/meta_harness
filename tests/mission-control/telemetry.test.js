@@ -192,3 +192,59 @@ test('Copilot mode sessions in ~/.copilot/session-state update Live and measured
     [28000, 500, 28500, 21000, 75, 400, 3.5]);
   assert.deepEqual(model.insights.skills.names, ['delivery-coach']);
 });
+
+test('Telemetry separates main-agent non-cached tokens and peak prompt from per-subagent token and AIU breakdown', async t => {
+  const fixture = mission(t);
+  const sid = 'sub-split-1';
+  const start = Date.now() - 60_000;
+  const iso = s => new Date(start + s * 1000).toISOString();
+  const hr = s => [Math.floor((start + s * 1000) / 1000), ((start + s * 1000) % 1000) * 1e6];
+  const fileA = path.join(fixture.root, 'server.js');
+  fs.writeFileSync(fileA, 'x'.repeat(8000));
+  const rows = [
+    ['session.start', 0, { sessionId: sid, startTime: iso(0) }],
+    ['user.message', 1, { content: 'Build leave tracker' }],
+    ['assistant.turn_start', 2, { turnId: '0' }],
+    ['tool.execution_start', 3, { toolCallId: 'm1', toolName: 'read_file', arguments: { filePath: fileA, startLine: 1, endLine: 20 } }],
+    ['tool.execution_complete', 4, { toolCallId: 'm1', success: true }],
+    ['tool.execution_start', 5, { toolCallId: 'sub1', toolName: 'runSubagent', arguments: { agentName: 'aria-engineer', description: 'Build domain' } }],
+    ['assistant.turn_start', 6, { turnId: 's0' }],
+    ['tool.execution_start', 7, { toolCallId: 'sr1', toolName: 'read_file', arguments: { filePath: fileA } }],
+    ['tool.execution_complete', 8, { toolCallId: 'sr1', success: true }],
+    ['tool.execution_complete', 15, { toolCallId: 'sub1', success: true }],
+    ['assistant.message', 16, { content: 'Domain verified.' }],
+    ['assistant.turn_end', 17, {}],
+  ];
+  const tFile = path.join(fixture.transcripts, `${sid}.jsonl`);
+  fs.mkdirSync(fixture.transcripts, { recursive: true });
+  fs.writeFileSync(tFile, rows.map(([type, s, data]) => JSON.stringify({ type, timestamp: iso(s), data }) + '\n').join(''));
+  const otel = path.join(fixture.root, '.aria', 'runs', 'copilot-otel.jsonl');
+  fs.mkdirSync(path.dirname(otel), { recursive: true });
+  const spans = [
+    { name: 'chat claude-opus-5.5', startTime: hr(2), endTime: hr(4), attributes: { 'copilot_chat.chat_session_id': sid,
+      'gen_ai.response.model': 'claude-opus-5.5', 'gen_ai.usage.input_tokens': 30000, 'gen_ai.usage.cache_read.input_tokens': 24000,
+      'gen_ai.usage.output_tokens': 400, 'copilot_chat.copilot_usage_nano_aiu': 2_000_000_000 } },
+    { name: 'chat claude-opus-5.5', startTime: hr(15), endTime: hr(17), attributes: { 'copilot_chat.chat_session_id': sid,
+      'gen_ai.response.model': 'claude-opus-5.5', 'gen_ai.usage.input_tokens': 42000, 'gen_ai.usage.cache_read.input_tokens': 38000,
+      'gen_ai.usage.output_tokens': 300, 'copilot_chat.copilot_usage_nano_aiu': 2_500_000_000 } },
+    { name: 'chat gpt-5.6-luna', startTime: hr(6), endTime: hr(14), attributes: { 'copilot_chat.chat_session_id': 'child-1',
+      'copilot_chat.parent_chat_session_id': sid, 'gen_ai.response.model': 'gpt-5.6-luna', 'gen_ai.usage.input_tokens': 12000,
+      'gen_ai.usage.cache_read.input_tokens': 9000, 'gen_ai.usage.output_tokens': 600, 'copilot_chat.copilot_usage_nano_aiu': 500_000_000 } },
+  ];
+  fs.writeFileSync(otel, spans.map(s => JSON.stringify(s) + '\n').join(''));
+  fixture.controls.settings.set('github.copilot.chat.otel.enabled', true);
+  fixture.controls.settings.set('github.copilot.chat.otel.outfile', otel);
+  await fixture.controls.commands.get('frontierHve.refreshMissionControl')();
+  const model = fixture.controls.commands.get('frontierHve.missionControlModel')();
+  const ins = model.insights;
+  assert.deepEqual([ins.main.turns, ins.main.reads, ins.main.input, ins.main.cached, ins.main.nonCached, ins.main.peakInput, ins.main.aiu],
+    [1, 1, 72000, 62000, 10000, 42000, 4.5]);
+  assert.equal(ins.subagents.length, 1);
+  assert.deepEqual([ins.subagents[0].name, ins.subagents[0].task, ins.subagents[0].model, ins.subagents[0].turns, ins.subagents[0].reads,
+    ins.subagents[0].nonCached, ins.subagents[0].total, ins.subagents[0].aiu, ins.subagents[0].state],
+    ['aria-engineer', 'Build domain', 'gpt-5.6-luna', 1, 1, 3000, 12600, 0.5, 'ok']);
+  const rendered = text(dashboard(model, UI, Date.now()));
+  assert.match(rendered, /10kmain non-cached input tokens/);
+  assert.match(rendered, /Main peak prompt: 42k · Main AIU: 4\.50/);
+  assert.match(rendered, /Sub-agents · 1 run[\s\S]*aria-engineer[\s\S]*Build domain[\s\S]*gpt-5\.6-luna[\s\S]*3,000 \/ 13k[\s\S]*0\.50/);
+});

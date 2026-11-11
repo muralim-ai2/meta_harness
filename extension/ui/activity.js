@@ -2,17 +2,13 @@
 /** Read one chat's live agent activity: its Copilot Chat transcript, its harness run files, and research telemetry. */
 const fs = require('node:fs');
 const path = require('node:path');
-const { Reader, containedPath } = require('./file-access');
+const { Reader } = require('./file-access');
 const { record, text, list, flag, integer } = require('./validate');
+const { otelUsage } = require('./insights');
 const { BRAND } = require('../brand');
 const STATE = BRAND.state_dir;
 const TAIL_BYTES = 8 * 1024 * 1024;
-const TELEMETRY_TAIL_BYTES = 4 * 1024 * 1024;
-const IDLE_AFTER_MS = 5 * 60 * 1000;
-const QUICK_TOOL_MS = 60 * 1000;
-const APPROVAL_MS = 3000;
-const APPROVAL_LAPSE_MS = 60 * 60 * 1000;
-const IMAGE_BYTES = 6000;
+const IDLE_AFTER_MS = 5 * 60 * 1000, QUICK_TOOL_MS = 60 * 1000, APPROVAL_MS = 3000, APPROVAL_LAPSE_MS = 60 * 60 * 1000, IMAGE_BYTES = 6000;
 /** @type {Record<string, string>} */
 const CONTEXT_GROUP = { read: 'reads', edit: 'edits', run: 'commands', search: 'searches', delegate: 'subagents', ask: 'questions', todo: 'other', tool: 'other' };
 const LONG_TOOLS = new Set(['run_in_terminal', 'powershell', 'bash', 'shell', 'exec_command', 'get_terminal_output', 'read_powershell', 'read_bash',
@@ -27,53 +23,33 @@ const cache = new Map();
 
 /** @typedef {import('./types').ActivityEvent} ActivityEvent */
 /** @typedef {{id: string, title: string | null, started: string, lastAt: string, turnOpen: boolean, open: {event: ActivityEvent, tool: string} | null,
- *   requested: Map<string, ActivityEvent>,
- *   turns: number, tools: number, failures: number, commands: number, todos: import('./types').Todo[], events: ActivityEvent[],
+ *   requested: Map<string, ActivityEvent>, turns: number, tools: number, failures: number, commands: number, todos: import('./types').Todo[], events: ActivityEvent[],
  *   files: Map<string, {count: number, last: string}>, chars: {user: number, agent: number, args: number}, skills: Map<string, number>,
- *   calls: Map<string, {title: string, count: number}>, gap: {from: string, to: string} | null,
- *   context: Map<string, {count: number, bytes: number, items: string[]}>, tokens: import('./types').Activity['tokens']}} Parsed */
+ *   calls: Map<string, {title: string, count: number}>, gap: {from: string, to: string} | null, context: Map<string, {count: number, bytes: number, items: string[]}>,
+ *   main: {turns: number, tools: number, reads: number, skills: number}, subagents: import('./types').SubagentTrace[], tokens: import('./types').Activity['tokens']}} Parsed */
 
-/** Return the end of a file, starting at a line boundary when it was cut.
- * @param {string} file
- * @param {number} limit
- * @returns {string}
- */
+/** Return the end of a file, starting at a line boundary when it was cut. @param {string} file @param {number} limit @returns {string} */
 function tail(file, limit) {
-  const size = fs.statSync(file).size;
-  const start = Math.max(0, size - limit);
-  const handle = fs.openSync(file, 'r');
+  const size = fs.statSync(file).size, start = Math.max(0, size - limit), handle = fs.openSync(file, 'r');
   try {
     const buffer = Buffer.alloc(size - start);
     fs.readSync(handle, buffer, 0, buffer.length, start);
     const content = buffer.toString('utf8');
     return start === 0 ? content : content.slice(content.indexOf('\n') + 1);
-  } finally {
-    fs.closeSync(handle);
-  }
+  } finally { fs.closeSync(handle); }
 }
 
-/** Parse newline-terminated JSON lines; an unterminated last line is still being written and is read complete next time.
- * @param {string} content
- * @param {string} source
- * @returns {Record<string, unknown>[]}
- */
+/** Parse newline-terminated JSON lines; an unterminated last line waits until complete. @param {string} content @param {string} source @returns {Record<string, unknown>[]} */
 function jsonLines(content, source) {
   const lines = content.split('\n');
   lines.pop();
   return lines.map((line, index) => ({ line: line.trim(), index })).filter(row => row.line).map(({ line, index }) => {
-    try {
-      return record(JSON.parse(line), `${source} line ${index + 1}`);
-    } catch (error) {
-      throw new Error(`Invalid JSON on line ${index + 1} of ${source}`, { cause: error });
-    }
+    try { return record(JSON.parse(line), `${source} line ${index + 1}`); }
+    catch (error) { throw new Error(`Invalid JSON on line ${index + 1} of ${source}`, { cause: error }); }
   });
 }
 
-/** Return text on one line, cut at a word boundary.
- * @param {string} value
- * @param {number} limit
- * @returns {string}
- */
+/** Return text on one line, cut at a word boundary. @param {string} value @param {number} limit @returns {string} */
 function clip(value, limit) {
   const line = value.replace(/\s+/g, ' ').trim();
   if (line.length <= limit) return line;
@@ -81,10 +57,7 @@ function clip(value, limit) {
   return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), limit * 0.6))}…`;
 }
 
-/** Return the first meaningful line of a message as a short headline, cut at a natural break when long.
- * @param {string} value
- * @returns {string}
- */
+/** Return the first meaningful line of a message as a short headline. @param {string} value @returns {string} */
 function headline(value) {
   const line = value.split(/\r?\n/).map(row => row.replace(/^#+\s*/, '').replace(/[*_`]/g, '').trim()).find(Boolean) || '';
   if (line.length <= 80) return line;
@@ -92,11 +65,7 @@ function headline(value) {
   return cut ? cut[1] : clip(line, 80);
 }
 
-/** Return a path relative to the workspace with forward slashes, or null when it lies outside.
- * @param {string} file
- * @param {string} workspace
- * @returns {string | null}
- */
+/** Return a path relative to the workspace with forward slashes, or null when outside. @param {string} file @param {string} workspace @returns {string | null} */
 function inside(file, workspace) {
   const relative = path.relative(workspace, path.resolve(workspace, file));
   return !relative || relative.startsWith('..') || path.isAbsolute(relative) ? null : relative.split(path.sep).join('/');
@@ -251,7 +220,24 @@ function awaiting(calls, now) {
   return [...calls.values()].filter(event => now - Date.parse(event.at) >= APPROVAL_MS && now - Date.parse(event.at) < APPROVAL_LAPSE_MS).at(-1) || null;
 }
 
-/** Parse one transcript into its session facts.
+/** Estimate bytes read by a file read call, scaling line-bounded slices instead of counting the full file size.
+ * @param {string | null} file
+ * @param {Record<string, unknown>} args
+ * @param {number} fallback
+ * @returns {number}
+ */
+function readBytes(file, args, fallback) {
+  if (!file || !path.isAbsolute(file) || !fs.existsSync(file) || !fs.statSync(file).isFile()) return fallback;
+  const full = fs.statSync(file).size;
+  if (typeof args.startLine === 'number' && typeof args.endLine === 'number' && args.endLine >= args.startLine) {
+    return Math.min(full, Math.max(1, args.endLine - args.startLine + 1) * 45);
+  }
+  const vr = Array.isArray(args.view_range) ? args.view_range : null;
+  if (vr && typeof vr[0] === 'number' && typeof vr[1] === 'number' && vr[1] >= vr[0]) return Math.min(full, Math.max(1, vr[1] - vr[0] + 1) * 45);
+  return full;
+}
+
+/** Parse one transcript into its session facts, separating main-agent activity from sub-agent brackets.
  * @param {string} file
  * @param {string} workspace
  * @returns {Parsed}
@@ -262,21 +248,30 @@ function parse(file, workspace) {
   if (!SESSION.test(id)) throw new Error(`Unexpected chat session file name: ${path.basename(file)}`);
   /** @type {Parsed} */
   const s = { id, title: null, started: '', lastAt: '', turnOpen: false, open: null, requested: new Map(), turns: 0, tools: 0, failures: 0, commands: 0, todos: [],
-    events: [], files: new Map(), chars: { user: 0, agent: 0, args: 0 }, skills: new Map(), calls: new Map(), gap: null, context: new Map(), tokens: null };
+    events: [], files: new Map(), chars: { user: 0, agent: 0, args: 0 }, skills: new Map(), calls: new Map(), gap: null, context: new Map(),
+    main: { turns: 0, tools: 0, reads: 0, skills: 0 }, subagents: [], tokens: null };
   /** @type {Map<string, import('./types').TokenUse>} */
   const models = new Map();
+  const mainUsage = { calls: 0, input: 0, output: 0, cached: 0, reasoning: 0, peakInput: 0, aiu: 0 };
   let nano = 0;
+  /** @type {(import('./types').SubagentTrace & {promptSeen?: boolean})[]} */
+  const subStack = [];
   /** @type {Map<string, {event: ActivityEvent, tool: string}>} */
   const running = new Map();
   for (const row of jsonLines(tail(file, TAIL_BYTES), path.basename(file))) {
     const type = text(row.type, 'Transcript event type');
     const at = text(row.timestamp, `${type} timestamp`);
     const data = record(row.data, `${type} data`);
+    const activeSub = subStack.at(-1) || null;
     if (s.lastAt && (!s.gap || Date.parse(at) - Date.parse(s.lastAt) > Date.parse(s.gap.to) - Date.parse(s.gap.from))) s.gap = { from: s.lastAt, to: at };
     s.started ||= at;
     s.lastAt = at;
     if (type === 'session.start') s.started = text(data.startTime, 'Session start time');
     else if (type === 'user.message') {
+      const unprompted = subStack.find(sub => !sub.promptSeen && sub.turns === 0);
+      if (unprompted) { unprompted.promptSeen = true; continue; }
+      for (const sub of subStack) { sub.state = 'stopped'; sub.endAt = at; }
+      subStack.length = 0;
       settle(running);
       s.requested.clear();
       const content = text(data.content, 'Your message', true);
@@ -285,50 +280,74 @@ function parse(file, workspace) {
         s.title ||= headline(content);
         s.events.push({ at, kind: 'prompt', title: headline(content), detail: '', files: [], state: 'ok' });
       }
-    } else if (type === 'assistant.turn_start') { s.turnOpen = true; s.turns += 1; }
-    else if (type === 'assistant.turn_end') s.turnOpen = false;
-    else if (type === 'abort') { s.turnOpen = false; settle(running); s.requested.clear(); }
-    else if (type === 'skill.invoked' && typeof data.name === 'string') {
+    } else if (type === 'assistant.turn_start') {
+      s.turnOpen = true; s.turns += 1;
+      if (activeSub) activeSub.turns += 1; else s.main.turns += 1;
+    } else if (type === 'assistant.turn_end') s.turnOpen = false;
+    else if (type === 'abort') {
+      for (const sub of subStack) { sub.state = 'stopped'; sub.endAt = at; }
+      subStack.length = 0;
+      s.turnOpen = false; settle(running); s.requested.clear();
+    } else if (type === 'skill.invoked' && typeof data.name === 'string') {
       const skPath = typeof data.path === 'string' && fs.existsSync(data.path) ? fs.statSync(data.path).size : 0;
       if (!s.skills.has(data.name)) s.skills.set(data.name, skPath);
     } else if (type === 'session.usage_record' && data.usage && typeof data.usage === 'object') {
       const u = record(data.usage, 'Session usage');
       const m = text(u.responseModel ?? u.modelDisplayName ?? u.model, 'Usage model');
-      const use = models.get(m) || { model: m, calls: 0, failed: 0, input: 0, output: 0, cached: 0, reasoning: 0 };
-      use.calls += 1;
-      use.input += u.inputTokens === undefined ? 0 : integer(u.inputTokens, 'Input tokens');
-      use.output += u.outputTokens === undefined ? 0 : integer(u.outputTokens, 'Output tokens');
-      use.cached += u.cacheReadTokens === undefined ? 0 : integer(u.cacheReadTokens, 'Cached tokens');
-      use.reasoning += u.reasoningTokens === undefined ? 0 : integer(u.reasoningTokens, 'Thinking tokens');
-      models.set(m, use);
+      const inp = u.inputTokens === undefined ? 0 : integer(u.inputTokens, 'Input tokens');
+      const out = u.outputTokens === undefined ? 0 : integer(u.outputTokens, 'Output tokens');
+      const cac = u.cacheReadTokens === undefined ? 0 : integer(u.cacheReadTokens, 'Cached tokens');
+      const rea = u.reasoningTokens === undefined ? 0 : integer(u.reasoningTokens, 'Thinking tokens');
       const cu = u.copilotUsage && typeof u.copilotUsage === 'object' ? /** @type {Record<string, unknown>} */ (u.copilotUsage) : null;
-      nano += cu && cu.totalNanoAiu !== undefined ? integer(cu.totalNanoAiu, 'AI units') : 0;
+      const callNano = cu && cu.totalNanoAiu !== undefined ? integer(cu.totalNanoAiu, 'AI units') : 0;
+      const use = models.get(m) || { model: m, calls: 0, failed: 0, input: 0, output: 0, cached: 0, reasoning: 0 };
+      use.calls += 1; use.input += inp; use.output += out; use.cached += cac; use.reasoning += rea;
+      models.set(m, use);
+      nano += callNano;
+      mainUsage.calls += 1; mainUsage.input += inp; mainUsage.output += out; mainUsage.cached += cac; mainUsage.reasoning += rea;
+      mainUsage.peakInput = Math.max(mainUsage.peakInput, inp); mainUsage.aiu += callNano / 1e9;
     } else if (type === 'assistant.message') {
-      settle(running);
-      s.requested = requested(data, workspace, at);
+      if (!activeSub) { settle(running); s.requested = requested(data, workspace, at); }
       const content = text(data.content, 'Agent message', true);
-      s.chars.agent += content.length;
+      if (!activeSub) s.chars.agent += content.length;
       if (content.trim()) s.events.push({ at, kind: 'message', title: clip(content, 160), detail: '', files: [], state: 'ok' });
     } else if (type === 'tool.execution_start') {
       const tool = text(data.toolName, 'Tool name');
-      s.requested.delete(text(data.toolCallId, 'Tool call id'));
+      const callId = text(data.toolCallId, 'Tool call id');
+      s.requested.delete(callId);
       const rawArgs = typeof data.arguments === 'string' ? JSON.parse(data.arguments) : data.arguments;
       const args = rawArgs === undefined ? {} : record(rawArgs, `${tool} arguments`);
       const event = describe(tool, args, workspace, at);
       const key = `${tool} ${JSON.stringify(args)}`;
-      s.chars.args += key.length;
       s.calls.set(key, { title: event.title, count: (s.calls.get(key)?.count || 0) + 1 });
       const readTarget = READ_FILE_TOOLS.has(tool) ? (arg(args, 'filePath') || arg(args, 'path')) : null;
       const skill = readTarget && /[\\/]([^\\/]+)[\\/]SKILL\.md$/i.exec(readTarget);
       if (skill && !s.skills.has(skill[1])) s.skills.set(skill[1], fs.existsSync(readTarget) ? fs.statSync(readTarget).size : 0);
-      const group = (skill || tool === 'skill') ? 'skills' : tool === 'view_image' ? 'images' : tool === 'fetch_webpage' ? 'web' : CONTEXT_GROUP[event.kind] || 'other';
-      const bytes = tool === 'view_image' ? IMAGE_BYTES
-        : readTarget && path.isAbsolute(readTarget) && fs.existsSync(readTarget) && fs.statSync(readTarget).isFile() ? fs.statSync(readTarget).size : key.length;
-      const row = s.context.get(group) || { count: 0, bytes: 0, items: [] };
-      row.count += 1;
-      row.bytes += bytes;
-      if (row.items.length < 4 && !row.items.includes(event.title)) row.items.push(event.title);
-      s.context.set(group, row);
+      const isSkill = Boolean(skill || tool === 'skill');
+      if (activeSub) {
+        activeSub.tools += 1;
+        if (event.kind === 'read') activeSub.reads += 1;
+        if (isSkill) activeSub.skills += 1;
+        if (!activeSub.model && typeof data.model === 'string') activeSub.model = data.model;
+      } else {
+        s.chars.args += key.length;
+        s.main.tools += 1;
+        if (event.kind === 'read') s.main.reads += 1;
+        if (isSkill) s.main.skills += 1;
+        const group = isSkill ? 'skills' : tool === 'view_image' ? 'images' : tool === 'fetch_webpage' ? 'web' : CONTEXT_GROUP[event.kind] || 'other';
+        const bytes = tool === 'view_image' ? IMAGE_BYTES : readBytes(readTarget, args, key.length);
+        const row = s.context.get(group) || { count: 0, bytes: 0, items: [] };
+        row.count += 1; row.bytes += bytes;
+        if (row.items.length < 4 && !row.items.includes(event.title)) row.items.push(event.title);
+        s.context.set(group, row);
+      }
+      if (tool === 'runSubagent' || tool === 'task') {
+        const sub = { id: callId, name: arg(args, 'agentName') || arg(args, 'name') || arg(args, 'agent_type') || 'sub-agent',
+          task: arg(args, 'description') || '', startAt: at, endAt: null, state: /** @type {const} */ ('running'), turns: 0, tools: 0, reads: 0, skills: 0,
+          model: typeof data.model === 'string' ? data.model : null };
+        s.subagents.push(sub);
+        subStack.push(sub);
+      }
       s.tools += 1;
       if (SHELL_TOOLS.has(tool)) s.commands += 1;
       if (tool === 'manage_todo_list') s.todos = todoList(args);
@@ -337,18 +356,25 @@ function parse(file, workspace) {
         if (relative) s.files.set(relative, { count: (s.files.get(relative)?.count || 0) + 1, last: at });
       }
       s.events.push(event);
-      running.set(text(data.toolCallId, 'Tool call id'), { event, tool });
+      running.set(callId, { event, tool });
     } else if (type === 'tool.execution_complete') {
-      const call = running.get(text(data.toolCallId, 'Tool call id'));
+      const callId = text(data.toolCallId, 'Tool call id');
+      const call = running.get(callId);
       if (call) {
-        running.delete(text(data.toolCallId, 'Tool call id'));
+        running.delete(callId);
         call.event.state = data.success === false ? 'failed' : 'ok';
         if (call.event.state === 'failed') s.failures += 1;
+      }
+      const subIdx = subStack.findIndex(sub => sub.id === callId);
+      if (subIdx >= 0) {
+        const [doneSub] = subStack.splice(subIdx, 1);
+        doneSub.endAt = at;
+        doneSub.state = data.success === false ? 'failed' : 'ok';
       }
     }
   }
   s.open = [...running.values()].at(-1) || null;
-  s.tokens = models.size ? { models: [...models.values()].sort((a, b) => b.input - a.input), aiu: nano / 1e9 } : null;
+  s.tokens = models.size ? { models: [...models.values()].sort((a, b) => b.input - a.input), aiu: nano / 1e9, main: mainUsage, subSpans: [] } : null;
   return s;
 }
 
@@ -408,7 +434,9 @@ function session(s, now) {
     turns: s.turns, tools: s.tools, failures: s.failures, commands: s.commands, todos: s.todos, events,
     stats: { chars: { ...s.chars }, skills: [...s.skills].map(([name, bytes]) => ({ name, bytes })), gap: s.gap,
       repeats: [...s.calls.values()].filter(call => call.count >= 3).sort((a, b) => b.count - a.count).slice(0, 5),
-      context: [...s.context].map(([group, row]) => ({ group, ...row, items: [...row.items] })).sort((a, b) => b.bytes - a.bytes) },
+      context: [...s.context].map(([group, row]) => ({ group, ...row, items: [...row.items] })).sort((a, b) => b.bytes - a.bytes),
+      main: { ...s.main },
+      subagents: s.subagents.map(sub => ({ ...sub, state: sub.state === 'running' && state === 'idle' ? 'stopped' : sub.state })) },
     files: [...s.files].map(([file, row]) => ({ path: file, ...row })).sort((a, b) => b.last.localeCompare(a.last)) };
 }
 
@@ -442,41 +470,6 @@ function runFiles(workspace, id) {
   return { errors, loadout, guards };
 }
 
-/** Sum research telemetry model calls of one chat session.
- * @param {string} workspace
- * @param {string} file
- * @param {string} id
- * @returns {import('./types').Activity['tokens']}
- */
-function usage(workspace, file, id) {
-  const relative = inside(file, workspace);
-  if (!relative || !fs.existsSync(containedPath(workspace, relative))) return null;
-  /** @type {Map<string, import('./types').TokenUse>} */
-  const models = new Map();
-  let nano = 0;
-  for (const row of jsonLines(tail(path.resolve(workspace, file), TELEMETRY_TAIL_BYTES), relative)) {
-    if (typeof row.name !== 'string' || !row.name.startsWith('chat ')) continue;
-    const attrs = record(row.attributes, 'Telemetry span attributes');
-    const owners = [attrs['gen_ai.conversation.id'], attrs['copilot_chat.chat_session_id'], attrs['copilot_chat.parent_chat_session_id']];
-    if (!owners.includes(id)) continue;
-    const model = text(attrs['gen_ai.response.model'] ?? attrs['gen_ai.request.model'], 'Telemetry model');
-    const use = models.get(model) || { model, calls: 0, failed: 0, input: 0, output: 0, cached: 0, reasoning: 0 };
-    use.calls += 1;
-    models.set(model, use);
-    if (attrs['gen_ai.usage.input_tokens'] === undefined && record(row.status, 'Telemetry span status').code === 2) {
-      use.failed += 1;
-      continue;
-    }
-    use.input += integer(attrs['gen_ai.usage.input_tokens'], 'Input tokens');
-    use.output += integer(attrs['gen_ai.usage.output_tokens'], 'Output tokens');
-    use.cached += attrs['gen_ai.usage.cache_read.input_tokens'] === undefined ? 0 : integer(attrs['gen_ai.usage.cache_read.input_tokens'], 'Cached tokens');
-    const reasoning = attrs['gen_ai.usage.reasoning_tokens'] ?? attrs['gen_ai.usage.reasoning.output_tokens'];
-    use.reasoning += reasoning === undefined ? 0 : integer(reasoning, 'Thinking tokens');
-    nano += attrs['copilot_chat.copilot_usage_nano_aiu'] === undefined ? 0 : integer(attrs['copilot_chat.copilot_usage_nano_aiu'], 'AI units');
-  }
-  return models.size ? { models: [...models.values()].sort((a, b) => b.input - a.input), aiu: nano / 1e9 } : null;
-}
-
 /** Return the live activity of one chat session, or nothing when no chat is shown.
  * @param {string} workspace
  * @param {string | null} file The chat's transcript, or null when no chat is shown.
@@ -490,7 +483,7 @@ function activity(workspace, file, telemetryFile, now) {
   const current = session(raw, now);
   const run = runFiles(workspace, current.id);
   current.events = [...current.events, ...run.guards].sort((a, b) => b.at.localeCompare(a.at)).slice(0, EVENT_LIMIT);
-  const otel = telemetryFile ? usage(workspace, telemetryFile, current.id) : null;
+  const otel = telemetryFile ? otelUsage(workspace, telemetryFile, current.id, { tail, jsonLines, inside }) : null;
   return { session: current, errors: run.errors, loadout: run.loadout, tokens: otel || raw.tokens };
 }
 

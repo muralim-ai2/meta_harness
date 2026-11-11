@@ -447,8 +447,11 @@ function migrateWorkspaces() {
   const otel = vscode.workspace.getConfiguration('github.copilot.chat.otel');
   for (const folder of vscode.workspace.workspaceFolders || []) {
     const workspace = folder.uri.fsPath;
-    if (STATE !== '.hve' && otel.get('outfile') === path.join(workspace, '.hve', 'runs', 'copilot-otel.jsonl')) {
-      otel.update('outfile', path.join(workspace, STATE, 'runs', 'copilot-otel.jsonl'), vscode.ConfigurationTarget.Global)
+    const expectedOtel = path.join(workspace, STATE, 'runs', 'copilot-otel.jsonl');
+    const currentOtel = otel.get('outfile');
+    if ((STATE !== '.hve' && currentOtel === path.join(workspace, '.hve', 'runs', 'copilot-otel.jsonl'))
+      || (otel.get('enabled') === true && typeof currentOtel === 'string' && currentOtel && currentOtel !== expectedOtel)) {
+      otel.update('outfile', expectedOtel, vscode.ConfigurationTarget.Global)
         .then(undefined, (error) => vscode.window.showErrorMessage(`ARIA could not repoint research telemetry: ${error.message}`));
     }
     try {
@@ -459,6 +462,22 @@ function migrateWorkspaces() {
       }
     } catch (error) {
       vscode.window.showErrorMessage(`${BRAND.product} could not move ${folder.name}/.hve to ${STATE}: ${error.message}`);
+    }
+  }
+}
+
+/**
+ * Re-export user-scope adapters (claude, cursor) that already have a manifest in ~/.aria/exports so ~/.aria/runtime never goes stale.
+ * @param {vscode.ExtensionContext} context
+ * @param {string} python Python launcher.
+ */
+async function refreshUserExports(context, python) {
+  if (process.env.NODE_TEST_CONTEXT && !process.env.HVE_USER_HOME) return;
+  const home = process.env.HVE_USER_HOME || os.homedir();
+  const script = path.join(context.extensionPath, 'runtime', 'tools', 'adapters', 'export.py');
+  for (const client of ['claude', 'cursor']) {
+    if (fs.existsSync(path.join(home, STATE, 'exports', `${client}.json`))) {
+      await runPythonJson(python, script, [client, '--user', '--python', python], context.extensionPath);
     }
   }
 }
@@ -543,7 +562,8 @@ async function activate(context) {
   }
   await registerPlugin(context, python);
   if (python) {
-    // Not awaited: activation must not wait for the user's answer; a failure is shown, not swallowed.
+    // Not awaited: activation must not wait on exports or user answers; failures are shown, not swallowed.
+    refreshUserExports(context, python).catch((error) => vscode.window.showErrorMessage(`ARIA adapter update: ${error.message}`));
     offerCopilotCleanup(context, python).catch((error) => vscode.window.showErrorMessage(`ARIA: ${error.message}`));
   }
   // Not awaited: activation must not wait for the user to dismiss a notification.

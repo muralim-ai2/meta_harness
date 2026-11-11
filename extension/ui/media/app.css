@@ -339,6 +339,12 @@ button.tele-tile:hover { transform: translateY(-2px); border-color: color-mix(in
 .tele-signals li > div { display: grid; gap: 2px; } .tele-signals .muted { font-size: 12px; }
 .tele-signals li.tone-warn { border-left-color: var(--warn); background: color-mix(in srgb, var(--warn) 8%, transparent); }
 .tele-signals li.tone-error { border-left-color: var(--error); background: color-mix(in srgb, var(--error) 8%, transparent); }
+.tele-subagents h2 { display: flex; align-items: center; gap: 6px; }
+.tele-table-wrap { overflow-x: auto; }
+.tele-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.tele-table th, .tele-table td { padding: 7px 9px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+.tele-table th { font-size: 11px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.tele-table td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .tele-lab { border-color: color-mix(in srgb, var(--violet) 45%, var(--border));
   background: linear-gradient(135deg, color-mix(in srgb, var(--violet) 10%, transparent), color-mix(in srgb, var(--pink) 6%, transparent) 60%, transparent), var(--raised); }
 .tele-lab h2 { display: flex; align-items: center; gap: 6px; } .tele-lab h2 .icon { color: var(--violet); }

@@ -112,6 +112,23 @@ export interface Signal {
   title: string;
   detail: string;
 }
+export interface SubagentInsight {
+  name: string;
+  task: string;
+  model: string | null;
+  state: 'running' | 'ok' | 'failed' | 'stopped';
+  turns: number;
+  tools: number;
+  reads: number;
+  skills: number;
+  measured: boolean;
+  input: number | null;
+  cached: number | null;
+  nonCached: number | null;
+  output: number | null;
+  total: number | null;
+  aiu: number | null;
+}
 export interface Insights {
   chat: string;
   measured: boolean;
@@ -133,6 +150,20 @@ export interface Insights {
   output: number;
   total: number;
   aiu: number;
+  main: {
+    turns: number;
+    toolCalls: number;
+    reads: number;
+    skillReads: number;
+    input: number | null;
+    output: number | null;
+    cached: number | null;
+    nonCached: number | null;
+    cachePercent: number | null;
+    peakInput: number | null;
+    aiu: number | null;
+  };
+  subagents: SubagentInsight[];
   signals: Signal[];
   method: string;
 }
@@ -284,12 +315,27 @@ export interface Session {
   files: { path: string; count: number; last: string }[];
   stats: SessionStats;
 }
+export interface SubagentTrace {
+  id: string;
+  name: string;
+  task: string;
+  startAt: string;
+  endAt: string | null;
+  state: 'running' | 'ok' | 'failed' | 'stopped';
+  turns: number;
+  tools: number;
+  reads: number;
+  skills: number;
+  model: string | null;
+}
 export interface SessionStats {
   chars: { user: number; agent: number; args: number };
   skills: { name: string; bytes: number }[];
   repeats: { title: string; count: number }[];
   gap: { from: string; to: string } | null;
   context: { group: string; count: number; bytes: number; items: string[] }[];
+  main?: { turns: number; tools: number; reads: number; skills: number };
+  subagents?: SubagentTrace[];
 }
 export interface TokenUse {
   model: string;
@@ -299,6 +345,17 @@ export interface TokenUse {
   output: number;
   cached: number;
   reasoning: number;
+}
+export interface SubagentSpan {
+  subId: string;
+  startMs: number;
+  endMs: number;
+  model: string;
+  input: number;
+  output: number;
+  cached: number;
+  reasoning: number;
+  aiu: number;
 }
 export interface ChatMeta {
   agent: string | null;
@@ -311,7 +368,12 @@ export interface Activity {
   meta: ChatMeta | null;
   errors: { paused: boolean; failures: { command: string; output: string }[] } | null;
   loadout: { skills: number; tokens: number; overBudget: boolean; maxSkills: number; maxTokens: number } | null;
-  tokens: { models: TokenUse[]; aiu: number } | null;
+  tokens: {
+    models: TokenUse[];
+    aiu: number;
+    main?: { calls: number; input: number; output: number; cached: number; reasoning: number; peakInput: number; aiu: number };
+    subSpans?: SubagentSpan[];
+  } | null;
 }
 declare global {
   function acquireVsCodeApi(): {

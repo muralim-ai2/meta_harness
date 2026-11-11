@@ -86,8 +86,12 @@ def match(text: str, path: Path = CATALOG) -> list[Json]:
 
 
 def by_agent(path: Path = CATALOG) -> dict[str, Json]:
-    """Return the personas keyed by agent name."""
-    return {p["agent"]: p for p in load(path)}
+    """Return the personas indexed by display name ('ARIA engineer'), exported hyphenated name ('aria-engineer'), and id ('engineer')."""
+    indexed: dict[str, Json] = {}
+    for p in load(path):
+        for key in (p["agent"], p["agent"].lower().replace(" ", "-"), f"aria-{p['id']}", p["id"]):
+            indexed[key] = p
+    return indexed
 
 
 def main() -> None:

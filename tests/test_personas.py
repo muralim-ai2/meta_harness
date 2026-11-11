@@ -110,6 +110,9 @@ def test_persona_brief_reduces_skills_and_cites_solution_map() -> None:
         assert len(delegation["skills"]) < len(all_selected) and len(delegation["skills"]) <= 6, (delegation["skills"], all_selected)
         assert "skim descriptions" in brief_text and "Solution map touchpoints" in brief_text, brief_text
         assert "src/leave.py" in brief_text and "tests/test_leave.py" in brief_text, brief_text
+        hyphen_brief = run(ws, "brief", "aria-code-reviewer", "stage=code-review")
+        hyphen_del = json.loads((ws / contract["paths"]["ask"] / "contract.json").read_text(encoding="utf-8"))["delegations"][-1]
+        assert len(hyphen_del["skills"]) <= 6 and "Your role: code reviewer." in hyphen_brief and "review.md" in hyphen_brief, hyphen_brief
 
 
 if __name__ == "__main__":

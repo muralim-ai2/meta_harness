@@ -1,9 +1,68 @@
 'use strict';
-/** Telemetry for one chat: a summary measured from research telemetry when it is on and estimated from the transcript when it is off, local warning signals, and the digest an analysis model reads. */
+/** Telemetry for one chat: main-agent vs sub-agent token/activity split, OTel span aggregation, warning signals, and the digest an analysis model reads. */
+const fs = require('node:fs');
+const path = require('node:path');
+const { containedPath } = require('./file-access');
+const { record, text, integer } = require('./validate');
 const BASE_CONTEXT_TOKENS = 12000;
 const AIU_PER_1K_INPUT = 0.125;
 const CHARS_PER_TOKEN = 4;
 const DIGEST_STEPS = 150;
+const TELEMETRY_TAIL_BYTES = 4 * 1024 * 1024;
+
+/** Convert an OTel [seconds, nanoseconds] hrtime pair to epoch milliseconds, or 0 when absent. @param {unknown} value @returns {number} */
+function hrMs(value) {
+  return Array.isArray(value) && typeof value[0] === 'number' && typeof value[1] === 'number' ? value[0] * 1000 + value[1] / 1e6 : 0;
+}
+
+/** Sum research telemetry model calls of one chat session, separating main-agent calls from sub-agent spans.
+ * @param {string} workspace
+ * @param {string} file
+ * @param {string} id
+ * @param {{tail: (f: string, limit: number) => string, jsonLines: (c: string, s: string) => Record<string, unknown>[], inside: (f: string, w: string) => string | null}} io
+ * @returns {import('./types').Activity['tokens']}
+ */
+function otelUsage(workspace, file, id, io) {
+  const relative = io.inside(file, workspace);
+  if (!relative || !fs.existsSync(containedPath(workspace, relative))) return null;
+  /** @type {Map<string, import('./types').TokenUse>} */
+  const models = new Map();
+  const main = { calls: 0, input: 0, output: 0, cached: 0, reasoning: 0, peakInput: 0, aiu: 0 };
+  /** @type {import('./types').SubagentSpan[]} */
+  const subSpans = [];
+  let nano = 0;
+  for (const row of io.jsonLines(io.tail(path.resolve(workspace, file), TELEMETRY_TAIL_BYTES), relative)) {
+    if (typeof row.name !== 'string' || !row.name.startsWith('chat ')) continue;
+    const attrs = record(row.attributes, 'Telemetry span attributes');
+    const owners = [attrs['gen_ai.conversation.id'], attrs['copilot_chat.chat_session_id'], attrs['copilot_chat.parent_chat_session_id']];
+    if (!owners.includes(id)) continue;
+    const model = text(attrs['gen_ai.response.model'] ?? attrs['gen_ai.request.model'], 'Telemetry model');
+    const use = models.get(model) || { model, calls: 0, failed: 0, input: 0, output: 0, cached: 0, reasoning: 0 };
+    use.calls += 1;
+    models.set(model, use);
+    if (attrs['gen_ai.usage.input_tokens'] === undefined && record(row.status, 'Telemetry span status').code === 2) {
+      use.failed += 1;
+      continue;
+    }
+    const inp = integer(attrs['gen_ai.usage.input_tokens'], 'Input tokens');
+    const out = integer(attrs['gen_ai.usage.output_tokens'], 'Output tokens');
+    const cac = attrs['gen_ai.usage.cache_read.input_tokens'] === undefined ? 0 : integer(attrs['gen_ai.usage.cache_read.input_tokens'], 'Cached tokens');
+    const rawR = attrs['gen_ai.usage.reasoning_tokens'] ?? attrs['gen_ai.usage.reasoning.output_tokens'];
+    const rea = rawR === undefined ? 0 : integer(rawR, 'Thinking tokens');
+    const spanNano = attrs['copilot_chat.copilot_usage_nano_aiu'] === undefined ? 0 : integer(attrs['copilot_chat.copilot_usage_nano_aiu'], 'AI units');
+    use.input += inp; use.output += out; use.cached += cac; use.reasoning += rea;
+    nano += spanNano;
+    const isSub = attrs['copilot_chat.parent_chat_session_id'] === id && attrs['copilot_chat.chat_session_id'] !== id;
+    if (isSub) {
+      subSpans.push({ subId: String(attrs['copilot_chat.chat_session_id'] || 'sub'), startMs: hrMs(row.startTime), endMs: hrMs(row.endTime),
+        model, input: inp, output: out, cached: cac, reasoning: rea, aiu: spanNano / 1e9 });
+    } else {
+      main.calls += 1; main.input += inp; main.output += out; main.cached += cac; main.reasoning += rea;
+      main.peakInput = Math.max(main.peakInput, inp); main.aiu += spanNano / 1e9;
+    }
+  }
+  return models.size ? { models: [...models.values()].sort((a, b) => b.input - a.input), aiu: nano / 1e9, main, subSpans } : null;
+}
 
 /** Return a character count as tokens.
  * @param {number} chars
@@ -17,6 +76,46 @@ function tokens(chars) { return Math.round(chars / CHARS_PER_TOKEN); }
  */
 function clock(iso) { return new Date(String(iso)).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); }
 
+/** Join transcript sub-agent runs with any measured OTel sub-agent spans by time window or sub-session id.
+ * @param {import('./types').SubagentTrace[]} traces
+ * @param {import('./types').SubagentSpan[]} spans
+ * @returns {import('./types').SubagentInsight[]}
+ */
+function buildSubagents(traces, spans) {
+  const claimed = new Set();
+  /** @type {import('./types').SubagentInsight[]} */
+  const rows = traces.map(sub => {
+    const startMs = Date.parse(sub.startAt) - 2000;
+    const endMs = (sub.endAt ? Date.parse(sub.endAt) : Number.POSITIVE_INFINITY) + 2000;
+    const matched = spans.filter((sp, idx) => !claimed.has(idx) && sp.startMs >= startMs && sp.startMs <= endMs && claimed.add(idx));
+    if (!matched.length) {
+      return { name: sub.name, task: sub.task, model: sub.model, state: sub.state, turns: sub.turns, tools: sub.tools, reads: sub.reads,
+        skills: sub.skills, measured: false, input: null, cached: null, nonCached: null, output: null, total: null, aiu: null };
+    }
+    const input = matched.reduce((sum, sp) => sum + sp.input, 0);
+    const cached = matched.reduce((sum, sp) => sum + sp.cached, 0);
+    const output = matched.reduce((sum, sp) => sum + sp.output, 0);
+    const aiu = matched.reduce((sum, sp) => sum + sp.aiu, 0);
+    return { name: sub.name, task: sub.task, model: matched[0].model || sub.model, state: sub.state, turns: sub.turns || matched.length,
+      tools: sub.tools, reads: sub.reads, skills: sub.skills, measured: true, input, cached, nonCached: Math.max(0, input - cached),
+      output, total: input + output, aiu };
+  });
+  /** @type {Map<string, import('./types').SubagentSpan[]>} */
+  const extra = new Map();
+  spans.forEach((sp, idx) => {
+    if (!claimed.has(idx)) extra.set(sp.subId, [...(extra.get(sp.subId) || []), sp]);
+  });
+  for (const [subId, list] of extra) {
+    const input = list.reduce((sum, sp) => sum + sp.input, 0);
+    const cached = list.reduce((sum, sp) => sum + sp.cached, 0);
+    const output = list.reduce((sum, sp) => sum + sp.output, 0);
+    const aiu = list.reduce((sum, sp) => sum + sp.aiu, 0);
+    rows.push({ name: `sub-agent (${subId.slice(0, 8)})`, task: '', model: list[0].model, state: 'ok', turns: list.length,
+      tools: 0, reads: 0, skills: 0, measured: true, input, cached, nonCached: Math.max(0, input - cached), output, total: input + output, aiu });
+  }
+  return rows;
+}
+
 /** Return the summary and signals of the chat Mission Control shows.
  * @param {import('./types').Activity} run
  * @returns {import('./types').Insights | null}
@@ -25,15 +124,20 @@ function insights(run) {
   const s = run.session;
   if (!s) return null;
   const { chars, skills, repeats, gap, context } = s.stats;
+  const mainActivity = s.stats.main || { turns: s.turns, tools: s.tools, reads: 0, skills: skills.length };
+  const subagents = buildSubagents(s.stats.subagents || [], run.tokens?.subSpans || []);
   const measured = run.tokens;
   const skillTokens = tokens(skills.reduce((sum, skill) => sum + skill.bytes, 0));
   const conversation = tokens(chars.user + chars.agent + chars.args);
-  const estimatedInput = s.turns * (BASE_CONTEXT_TOKENS + skillTokens) + Math.round(s.turns * conversation / 2);
+  const estimatedTurns = (s.stats.subagents || []).length ? mainActivity.turns : s.turns;
+  const estimatedInput = estimatedTurns * (BASE_CONTEXT_TOKENS + skillTokens) + Math.round(estimatedTurns * conversation / 2);
   const estimatedOutput = tokens(chars.agent + chars.args);
   const input = measured ? measured.models.reduce((sum, use) => sum + use.input, 0) : estimatedInput;
   const output = measured ? measured.models.reduce((sum, use) => sum + use.output, 0) : estimatedOutput;
   const reasoning = measured ? measured.models.reduce((sum, use) => sum + use.reasoning, 0) : 0;
   const cached = measured ? measured.models.reduce((sum, use) => sum + use.cached, 0) : null;
+  const mTok = measured ? (measured.main || { calls: s.turns, input, output, cached: cached || 0, reasoning, peakInput: input, aiu: measured.aiu }) : null;
+  const mainNonCached = mTok ? Math.max(0, mTok.input - mTok.cached) : null;
   const stopped = s.events.filter(event => event.state === 'stopped').length;
   const asked = s.events.filter(event => event.kind === 'ask').length;
   const pause = gap ? Math.round((Date.parse(gap.to) - Date.parse(gap.from)) / 1000) : 0;
@@ -54,10 +158,15 @@ function insights(run) {
     skills: { count: skills.length, names: skills.map(skill => skill.name), tokens: skillTokens, allowed: run.loadout ? run.loadout.skills : null },
     chatTokens: tokens(chars.user + chars.agent), argTokens: tokens(chars.args), thinkingTokens: reasoning || null,
     cachedTokens: cached, cachePercent: cached === null || !input ? null : Math.round(cached / input * 100),
-    input, output, total: input + output, aiu: measured ? measured.aiu : estimatedInput / 1000 * AIU_PER_1K_INPUT, signals,
+    input, output, total: input + output, aiu: measured ? measured.aiu : estimatedInput / 1000 * AIU_PER_1K_INPUT,
+    main: { turns: mainActivity.turns, toolCalls: mainActivity.tools, reads: mainActivity.reads, skillReads: mainActivity.skills,
+      input: mTok ? mTok.input : null, output: mTok ? mTok.output : null, cached: mTok ? mTok.cached : null, nonCached: mainNonCached,
+      cachePercent: mTok && mTok.input ? Math.round(mTok.cached / mTok.input * 100) : null, peakInput: mTok && mTok.peakInput ? mTok.peakInput : null,
+      aiu: mTok ? mTok.aiu : null },
+    subagents, signals,
     method: measured ? (run.meta?.mode?.startsWith('Copilot') ? 'Measured from this Copilot session.' : 'Measured by research telemetry for this chat.')
       : `Estimated (research telemetry is off): ${BASE_CONTEXT_TOKENS.toLocaleString('en-US')} tokens of instructions and tool definitions plus the skills read, per turn, `
-        + `the conversation growing over ${s.turns} turns, 4 characters per token, and ${AIU_PER_1K_INPUT} AI units per 1,000 input tokens `
+        + `the conversation growing over ${estimatedTurns} main turns, 4 characters per token, and ${AIU_PER_1K_INPUT} AI units per 1,000 input tokens `
         + '(measured on a Claude Opus 5.5 session). Tool results are not in the transcript, so the real figure is higher.',
   };
 }
@@ -91,4 +200,4 @@ function analysisPrompt(question, log) {
   `The user asks: ${question}`, '', log].join('\n');
 }
 
-module.exports = { insights, digest, analysisPrompt, BASE_CONTEXT_TOKENS, AIU_PER_1K_INPUT };
+module.exports = { insights, digest, analysisPrompt, otelUsage, BASE_CONTEXT_TOKENS, AIU_PER_1K_INPUT };
