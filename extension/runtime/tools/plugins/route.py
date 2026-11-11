@@ -1,11 +1,17 @@
 """Decide which expertise packs a request is about: named packs first, then task patterns and keywords, ordered by workspace signals."""
 
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "hooks"))
+from brand import BRAND  # noqa: E402
+
+STATE = BRAND["state_dir"]
+
 NAMED = re.compile(r"\b(?:use|with|using)\s+(?:the\s+)?([a-z0-9]+(?:-[a-z0-9]+)*)\s+(?:plugin|pack)\b", re.I)
-SKIP_DIRS = {"node_modules", ".git", ".aria", ".harness", "dist", "build", ".venv"}
+SKIP_DIRS = {"node_modules", ".git", STATE, ".harness", "dist", "build", ".venv"}
 
 Json = dict[str, Any]
 

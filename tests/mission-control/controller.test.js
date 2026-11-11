@@ -75,7 +75,7 @@ test('the telemetry switch runs the extension\'s own commands with no extra conf
 });
 
 test('set-up and pack buttons run the original commands directly, and pack changes reload the installed packs', async t => {
-  const home = fs.mkdtempSync(path.join(fs.realpathSync.native(os.tmpdir()), 'hve-mission-control-'));
+  const home = fs.mkdtempSync(path.join(fs.realpathSync.native(os.tmpdir()), 'aria-mission-control-'));
   const previous = process.env.HVE_PLUGIN_HOME;
   process.env.HVE_PLUGIN_HOME = home;
   t.after(() => { process.env.HVE_PLUGIN_HOME = previous; removeWorkspace(home); });

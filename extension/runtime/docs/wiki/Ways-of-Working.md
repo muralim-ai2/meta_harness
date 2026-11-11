@@ -54,9 +54,9 @@ flowchart LR
 | Agent | Lifecycle | Where you are asked |
 |---|---|---|
 | `ARIA Lite` | `direct` | Skill choice, plan and dependencies with the telemetry option, escalations, feature sign-off, human review of the evaluation |
-| `ARIA Auto` (`hve-e2e`) | You pick (`sdlc`, `team-delivery`, `consulting-delivery`, `document`, or a plugin or workspace one) and skip stages | Lifecycle and skips, skill choice, plan with the telemetry option and `Pause for my review after` (ticked milestones only); other stages run on |
-| `ARIA Collab` (`hve-agile`) | Any stages of `team-delivery` you pick (each visit a new ask, shown in `lifecycle.py ledger`), a pack lifecycle in place of a stage, or an agile overlay | Stages for this visit, pack lifecycle offer, skill choice, plan with evaluation and telemetry options, a hand-off review after each persona |
-| `ARIA Prototype Creator` (`hve-prototype`) | `direct` when you run it; none as Collab's designer (it works in Collab's ask) | Screens, skill choice and options in one form; sign-off of the self-checked clickthrough with its screenshots |
+| `ARIA Auto` (`auto`) | You pick (`sdlc`, `team-delivery`, `consulting-delivery`, `document`, or a plugin or workspace one) and skip stages | Lifecycle and skips, skill choice, plan with the telemetry option and `Pause for my review after` (ticked milestones only); other stages run on |
+| `ARIA Collab` (`collab`) | Any stages of `team-delivery` you pick (each visit a new ask, shown in `lifecycle.py ledger`), a pack lifecycle in place of a stage, or an agile overlay | Stages for this visit, pack lifecycle offer, skill choice, plan with evaluation and telemetry options, a hand-off review after each persona |
+| `ARIA Prototype Creator` (`prototype-creator`) | `direct` when you run it; none as Collab's designer (it works in Collab's ask) | Screens, skill choice and options in one form; sign-off of the self-checked clickthrough with its screenshots |
 | `ARIA product-manager` | `direct`, `prd` required (none as Auto's or Collab's persona) | Skill choice, options, research questions, backlog target, PRD sign-off |
 
 Every agent that opens asks also asks first whether to continue the open ask, start a new one in the project, or move to a new workspace.
@@ -159,7 +159,7 @@ The brief is the one logged just before the sub-agent started; the model comes f
 From the workspace root (`<repo>` is a clone of this repository, or use the extension's `runtime/` folder):
 
 ```
-python <repo>/tools/observe/provenance.py <repo>/extension/agents/hve-creator.agent.md latest
+python <repo>/tools/observe/provenance.py <repo>/extension/agents/lite.agent.md latest
 ```
 
 It reports each component the agent declares as `verified`, `not-exercised` or `failed`, plus the ask contract (gaps, skills recommended but unused, skills used outside the contract) and guard trips. The ask's `provenance.md` (`lifecycle.py report <session>`) opens with a **Pillars** table, then the stages, the sign-off checklist, the recommended-against-used table, the skill load and the prompt cache.

@@ -84,8 +84,9 @@ def test_flow_guard_blocks_unfinished_stage() -> None:
         root = Path(tmp)
         (root / "hooks").mkdir()
         (root / ".aria" / "runs").mkdir(parents=True)
-        for hook in ("flow_guard.py", "interventions.py", "hve_paths.py"):
+        for hook in ("flow_guard.py", "interventions.py", "hve_paths.py", "brand.py"):
             shutil.copy(REPO / "hooks" / hook, root / "hooks")
+        shutil.copy(REPO / "brand.json", root)
         (root / "tools" / "loop").mkdir(parents=True)
         shutil.copy(REPO / "tools" / "loop" / "loop_paths.py", root / "tools" / "loop")
         project = make_flow(tmp)
@@ -144,7 +145,7 @@ def test_guardrail_flags_non_enterprise_prototype() -> None:
 def test_plugin_skills_pass_the_scan() -> None:
     """Every harness-assist skill passes the Phase 9 structure and security scan."""
     reports = [skill_scan(p.parent) for p in sorted((PLUGIN / "skills").glob("*/SKILL.md"))]
-    assert len(reports) == 19 and all(r["ok"] for r in reports), [(r["name"], r["findings"]) for r in reports if not r["ok"]]
+    assert len(reports) == 20 and all(r["ok"] for r in reports), [(r["name"], r["findings"]) for r in reports if not r["ok"]]
 
 
 if __name__ == "__main__":

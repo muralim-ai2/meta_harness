@@ -11,6 +11,10 @@ from pathlib import Path
 from typing import TypedDict
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "hooks"))
+from brand import BRAND  # noqa: E402
+
+STATE = BRAND["state_dir"]
 BUNDLED = ROOT / "templates" / "deliverables"
 CONFIG_NAME = "frontier-hve.templates.json"
 KINDS = ("prd", "technicalDesign", "testStrategy")
@@ -61,7 +65,7 @@ class State(TypedDict):
 def safe_path(workspace: Path, value: str) -> Path:
     """Return a contained, non-state path without traversal or links."""
     if (not value or "\\" in value or ":" in value or Path(value).is_absolute()
-             or any(part.lower() in ("", ".", "..", ".git", ".aria", ".harness")
+             or any(part.lower() in ("", ".", "..", ".git", STATE, ".harness")
                  or part.endswith((".", " "))
                    for part in value.split("/"))):
         raise ValueError(f"unsafe workspace path: {value!r}")
@@ -102,11 +106,11 @@ def configuration(workspace: Path) -> Config:
 
 def ask_packs(workspace: Path) -> dict[str, dict]:
     """Return the expertise packs the workspace's active ask chose, by name (none without an open ask)."""
-    active = workspace / ".aria" / "asks" / "active.json"
+    active = workspace / STATE / "asks" / "active.json"
     if not active.is_file():
         return {}
     ask = json.loads(active.read_text(encoding="utf-8"))["active"]
-    chosen = json.loads((workspace / ".aria" / "asks" / ask / "contract.json").read_text(encoding="utf-8")).get("packs", [])
+    chosen = json.loads((workspace / STATE / "asks" / ask / "contract.json").read_text(encoding="utf-8")).get("packs", [])
     sys.path.insert(0, str(ROOT / "tools" / "plugins"))
     import store
     return {p["name"]: store.pack(workspace, p["name"]) for p in chosen}
@@ -178,7 +182,7 @@ def state_path(workspace: Path, session: str) -> Path:
     if not SESSION.fullmatch(session):
         raise ValueError("unsafe session id")
     current = workspace.resolve()
-    for part in (".aria", "deliverables", f"{session}.json"):
+    for part in (STATE, "deliverables", f"{session}.json"):
         current /= part
         if linked(current):
             raise ValueError(f"linked session state: {current}")

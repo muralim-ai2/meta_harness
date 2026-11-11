@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "loop"))
 from branch_workflow import git, read_json, write_json  # noqa: E402
 from diagnose import append, entry  # noqa: E402
 from loop import escalate, run_check  # noqa: E402
-from loop_paths import state_dir, state_file  # noqa: E402
+from loop_paths import STATE, state_dir, state_file  # noqa: E402
 
 APPROACH = re.compile(r"^[a-z0-9][a-z0-9-]{0,30}$")
 FIRST_PORT = 3100
@@ -27,7 +27,7 @@ def options_file(project: Path, feature: str) -> Path:
 
 def worktree(project: Path, feature: str, approach: str) -> Path:
     """Return the worktree folder of one approach, inside the project's ignored .aria/discovery/ folder."""
-    return project / ".aria" / "discovery" / f"{feature}--{approach}"
+    return project / STATE / "discovery" / f"{feature}--{approach}"
 
 
 def create(project: Path, feature: str, approaches: list[str]) -> Json:

@@ -42,6 +42,7 @@ def make_root(tmp: str) -> Path:
     root = Path(tmp)
     (root / "tools" / "observe").mkdir(parents=True)
     shutil.copy(REPO / "tools" / "observe" / "collect.py", root / "tools" / "observe")
+    shutil.copy(REPO / "brand.json", root)
     (root / "tests" / "prompts").mkdir(parents=True)
     (root / "tests" / "prompts" / "color-palette.md").write_bytes(PROMPT.encode("utf-8"))
     (root / ".aria" / "runs").mkdir(parents=True)

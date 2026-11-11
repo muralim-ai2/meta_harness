@@ -9,12 +9,12 @@ from typing import Any
 
 import micro_eval
 from onboard import NON_PYTHON_SCRIPTS, decide, decide_provisional
-from recommend import SKILLS_DIR, stems
+from recommend import SKILLS_DIR, STATE as STATE_FOLDER, stems
 from scan import scan
 from triage import load_categories, skill_categories
 
 WORKSPACE = Path.cwd()
-STATE = WORKSPACE / ".aria"
+STATE = WORKSPACE / STATE_FOLDER
 USER_REGISTRY = STATE / "skills-registry.json"
 USER_LIBRARY = STATE / "skill-library"
 DUPLICATE_SIMILARITY = 0.5

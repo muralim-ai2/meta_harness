@@ -1,5 +1,6 @@
 """Task-use gate hook: load every relevant library skill for the prompt and the active ask, flag loads over the guideline, and block other library skills."""
 
+import functools
 import json
 import os
 import re
@@ -15,16 +16,24 @@ SKILLS_DIR = ROOT / "skills"
 OVERRIDE_FILE = SKILLS_DIR / "eval_override.json"
 SESSION_ID = re.compile(r"^[\w-]+$")
 SKILL_REF = re.compile(r"([^\s\"'/\\]+)[/\\]+SKILL\.md", re.I)
+RAW_MAP_REF = re.compile(r"(?:^|[/\\])(?:" + re.escape(STATE_DIR.name) + r"[/\\]map[/\\]map\.json|docs[/\\]architecture[/\\]solution-map\.json)$", re.I)
+FRONT_DESC = re.compile(r"^description:\s*>?-?\s*\n?\s*(.+)$", re.M)
 OPENS_ASK = re.compile(r"lifecycle\.py\"?\s+(contract|open)\b")
 ASK_TOOL = "vscode_askQuestions"
-sys.path.insert(0, str(ROOT / "tools" / "skills"))
-sys.path.insert(0, str(ROOT / "tools" / "loop"))
-sys.path.insert(0, str(ROOT / "tools" / "plugins"))
-from recommend import rank, skill_dir  # noqa: E402
-from lifecycle import active, current_skills, install, project_status, project_text, shift_message, topic_shift  # noqa: E402
-import store  # noqa: E402
 
 Json = dict[str, Any]
+
+
+@functools.cache
+def _deps() -> tuple[Any, ...]:
+    """Import the tools/skills, tools/loop and tools/plugins helpers lazily when needed."""
+    sys.path.insert(0, str(ROOT / "tools" / "skills"))
+    sys.path.insert(0, str(ROOT / "tools" / "loop"))
+    sys.path.insert(0, str(ROOT / "tools" / "plugins"))
+    from recommend import rank, skill_dir  # noqa: E402
+    from lifecycle import active, current_skills, install, project_status, project_text, shift_message, topic_shift  # noqa: E402
+    import store  # noqa: E402
+    return rank, skill_dir, active, current_skills, install, project_status, project_text, shift_message, topic_shift, store
 
 
 class Loadout(TypedDict):
@@ -53,6 +62,7 @@ def ask_packs() -> tuple[Json, ...]:
     """Return the expertise packs the active ask chose (none without an open ask)."""
     if not (STATE_DIR / "asks" / "active.json").is_file():
         return ()
+    _, _, active, *_, store = _deps()
     return tuple(store.pack(STATE_DIR.parent, p["name"]) for p in active()[1]["packs"])
 
 
@@ -62,6 +72,7 @@ def library() -> set[str]:
     folders = [SKILLS_DIR / "admitted", SKILLS_DIR / "candidates", STATE_DIR / "skill-library"]
     names = {p.name for folder in folders if folder.is_dir() for p in folder.iterdir() if p.is_dir()}
     if (STATE_DIR / "asks" / "active.json").is_file():
+        _, _, active, *_, store = _deps()
         chosen = {p["name"] for p in active()[1]["packs"]}
         names |= {s["name"] for n, p in store.packs(STATE_DIR.parent).items() if n not in chosen for s in p["manifest"]["skills"]}
     return names
@@ -75,24 +86,41 @@ def choose(prompt: str) -> tuple[Loadout, list[Json]]:
         skills = json.loads(OVERRIDE_FILE.read_text(encoding="utf-8"))["skills"]
         return (Loadout(categories=[], skills=skills, tokens=0, over_budget=False, budget={}, announced=False, used=list(skills),
                         shift_noted=None, ask=None, displaced_noted=None), [{"name": Path(s).name, "path": s} for s in skills])
+    rank, skill_dir, _, current_skills, *_ = _deps()
     value = os.environ.get("HARNESS_REQUIRED_SKILLS")
     required = tuple(name.strip() for name in value.split(",")) if value is not None else ()
     required += tuple(s for s in current_skills() if s not in required)
     ask_open = (STATE_DIR / "asks" / "active.json").is_file()
     ranked = rank("" if ask_open else prompt, os.environ["HARNESS_SKILLS_MIN_STATUS"], required, ask_packs())  # type: ignore[arg-type]
-    skills = [f".aria/skills/{skill_dir(r['name'])}" if ":" in r["name"] else r["path"] for r in ranked["load"]]
+    skills = [f"{STATE_DIR.name}/skills/{skill_dir(r['name'])}" if ":" in r["name"] else r["path"] for r in ranked["load"]]
     return (Loadout(categories=ranked["categories"], skills=skills, tokens=ranked["load_tokens"], over_budget=ranked["over_budget"],
                     budget=ranked["budget"], announced=False, used=[], shift_noted=None, ask=None, displaced_noted=None),
             ranked["load"])
 
 
+def skill_summary(name: str) -> str:
+    """Return a short one-line description read from the installed skill's SKILL.md frontmatter."""
+    skill_md = STATE_DIR / "skills" / name / "SKILL.md"
+    if not skill_md.is_file():
+        return ""
+    match = FRONT_DESC.search(skill_md.read_text(encoding="utf-8")[:800])
+    text = " ".join(match[1].split()) if match else ""
+    return text if len(text) <= 140 else text[:137] + "..."
+
+
 def announcement(loadout: Loadout) -> str:
-    """Return the instruction naming the loaded skills and, when the load exceeds the guideline, telling the agent to surface it."""
+    """Return the compact skill catalog (skim descriptions and read only chosen SKILL.md files) and any over-guideline notice."""
     if not loadout["skills"]:
         return ""
-    paths = ", ".join(f".aria/skills/{Path(s).name}/SKILL.md" for s in loadout["skills"])
-    text = (f"Skills loaded for this task ({len(loadout['skills'])}, {loadout['tokens']:,} tokens): read and follow {paths} before "
-            "continuing. Do not use other library skills.")
+    entries = []
+    for raw in loadout["skills"]:
+        name = Path(raw).name
+        rel = f"{STATE_DIR.name}/skills/{name}/SKILL.md"
+        desc = skill_summary(name)
+        entries.append(f"{name}: {desc} ({rel})" if desc else rel)
+    text = (f"Skills loaded for this task ({len(loadout['skills'])}, {loadout['tokens']:,} tokens): skim descriptions, skip skills for "
+            f"other stages or roles, and read SKILL.md only for the skill(s) you choose to apply — {'; '.join(entries)}. "
+            "Do not use other library skills.")
     if loadout["over_budget"]:
         text += (f" This is over the loadout guideline ({loadout['budget']['max_skills']} skills, {loadout['budget']['max_tokens']:,} "
                  "tokens): score every shortlisted skill 0-10 for this ask and run `lifecycle.py skills score <file>`, then show the user "
@@ -106,6 +134,7 @@ def prompt_output(loadout: Loadout, prompt: str) -> Json | None:
     recommendation when the prompt starts a different project."""
     if not (STATE_DIR / "asks" / "active.json").is_file():
         return None
+    _, _, active, _, _, project_status, project_text, shift_message, topic_shift, _ = _deps()
     data = active()[1]
     p = data["paths"]
     context = (f"Frontier HVE open ask {data['ask']}: plan {p['plan']}, evidence {p['evidence']}, project feature list "
@@ -124,6 +153,7 @@ def displaced_context(loadout: Loadout) -> str | None:
     """Return a once-per-switch note when another chat opened a different ask in this workspace after this chat opened its own."""
     if loadout["ask"] is None or not (STATE_DIR / "asks" / "active.json").is_file():
         return None
+    _, _, active, *_ = _deps()
     current = active()[1]["ask"]
     if current == loadout["ask"] or loadout["displaced_noted"] == current:
         return None
@@ -134,19 +164,35 @@ def displaced_context(loadout: Loadout) -> str | None:
             "git worktrees, one window each.")
 
 
-def pre_tool_output(session_id: str, loadout: Loadout, tool_input: Json) -> Json | None:
-    """Return a deny for reading a library SKILL.md outside the loadout and the active lifecycle stage, the one-time announcement, or nothing."""
-    stage = {skill_dir(s) for s in current_skills()}
-    allowed = {Path(s).name for s in loadout["skills"]} | stage
-    reads = set(SKILL_REF.findall(json.dumps(tool_input)))
-    loadout["used"] = sorted({*loadout["used"], *(f"skills/admitted/{m}" for m in reads & allowed)})
-    blocked = sorted({m for m in reads if m in library() and m not in allowed})
-    if blocked:
-        reason = check(session_id, "skill_loader", "skill_denied",
-                       f"Skill(s) {blocked} are not loaded for this task. Use only: {sorted(allowed) or 'none'}.")
-        if reason is not None:
+def rehydration_note(session_id: str) -> str | None:
+    """Return the one-time post-compaction working-set anchor when PreCompact recorded a pending compaction."""
+    if not (RUNS_DIR / f"{session_id}.compact.json").is_file() or not (Path(__file__).parent / "compaction.py").is_file():
+        return None
+    from compaction import consume_rehydration  # noqa: E402
+    return consume_rehydration(STATE_DIR.parent, session_id)
+
+
+def pre_tool_output(session_id: str, loadout: Loadout, tool_name: str | None, tool_input: Json) -> Json | None:
+    """Deny raw map.json reads or unlisted library SKILL.md reads, or emit the one-time skill catalog announcement."""
+    if tool_name in (None, "read_file", "view") and isinstance(tool_input, dict):
+        target = str(tool_input.get("filePath") or tool_input.get("path") or "")
+        if RAW_MAP_REF.search(target):
+            reason = (f"Do not read {target} directly (raw solution-map JSON can exceed 200k tokens). "
+                      f"Read {STATE_DIR.name}/map/overview.md or run `solution_map.py explain|impact|search` instead.")
             return {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": reason}}
-        loadout["used"] = sorted({*loadout["used"], *(f"skills/admitted/{m}" for m in blocked)})
+    reads = set(SKILL_REF.findall(json.dumps(tool_input)))
+    if reads:
+        _, skill_dir, _, current_skills, *_ = _deps()
+        stage = {skill_dir(s) for s in current_skills()}
+        allowed = {Path(s).name for s in loadout["skills"]} | stage
+        loadout["used"] = sorted({*loadout["used"], *(f"skills/admitted/{m}" for m in reads & allowed)})
+        blocked = sorted({m for m in reads if m in library() and m not in allowed})
+        if blocked:
+            reason = check(session_id, "skill_loader", "skill_denied",
+                           f"Skill(s) {blocked} are not loaded for this task. Use only: {sorted(allowed) or 'none'}.")
+            if reason is not None:
+                return {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": reason}}
+            loadout["used"] = sorted({*loadout["used"], *(f"skills/admitted/{m}" for m in blocked)})
     if loadout["announced"] or not loadout["skills"]:
         return None
     loadout["announced"] = True
@@ -156,9 +202,11 @@ def pre_tool_output(session_id: str, loadout: Loadout, tool_input: Json) -> Json
 def main() -> None:
     """Choose and install the loadout on UserPromptSubmit; enforce and announce it on PreToolUse; record guard-waiver answers on PostToolUse."""
     payload = json.load(sys.stdin)
-    path = state_file(payload["session_id"])
+    session_id = payload["session_id"]
+    path = state_file(session_id)
     event = payload["hook_event_name"]
     if event == "UserPromptSubmit":
+        _, _, _, _, install, *_ = _deps()
         loadout, rows = choose(payload["prompt"])
         if path.exists():
             previous = json.loads(path.read_text(encoding="utf-8"))
@@ -167,39 +215,65 @@ def main() -> None:
             loadout["shift_noted"] = previous.get("shift_noted")
             loadout["ask"] = previous.get("ask")
             loadout["displaced_noted"] = previous.get("displaced_noted")
-        output = prompt_output(loadout, payload["prompt"])
         install(rows)
+        output = prompt_output(loadout, payload["prompt"])
+        rehydrated = rehydration_note(session_id)
+        if rehydrated:
+            existing = output["hookSpecificOutput"]["additionalContext"] if output else ""
+            output = (output or {}) | {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit",
+                                                              "additionalContext": " ".join(filter(None, [existing, rehydrated]))}}
         path.write_text(json.dumps(loadout), encoding="utf-8")
         if output:
             print(json.dumps(output))
         return
     if event not in ("PreToolUse", "PostToolUse"):
         raise ValueError(f"skill_loader.py does not handle hook event {event!r}")
-    if not path.exists():
+    if event == "PostToolUse":
+        tool_name = payload.get("tool_name")
+        cmd = payload["tool_input"].get("command", "") if isinstance(payload.get("tool_input"), dict) else ""
+        if tool_name != ASK_TOOL and not (tool_name == "run_in_terminal" and OPENS_ASK.search(cmd)):
+            return
+    existed = path.exists()
+    if not existed:
         if not (STATE_DIR / "asks" / "active.json").is_file():
-            raise FileNotFoundError(f"{path} missing: the UserPromptSubmit skill_loader hook did not run for this session and no ask is active")
+            if event == "PreToolUse":
+                output = pre_tool_output(session_id, Loadout(categories=[], skills=[], tokens=0, over_budget=False, budget={}, announced=False,
+                                                             used=[], shift_noted=None, ask=None, displaced_noted=None),
+                                         payload.get("tool_name"), payload["tool_input"])
+                denied = output is not None and output["hookSpecificOutput"].get("permissionDecision") == "deny"
+                note = rehydration_note(session_id) if not denied else None
+                if note:
+                    context = " ".join(filter(None, [output["hookSpecificOutput"]["additionalContext"] if output else "", note]))
+                    output = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": context}}
+                if output:
+                    print(json.dumps(output))
+            return
         # Harnesses whose prompt hook carries no prompt or ran before the ask existed: load the active ask's skills for its request.
+        _, _, active, _, install, *_ = _deps()
         loadout, rows = choose(active()[1]["request"])
         install(rows)
     else:
         loadout = json.loads(path.read_text(encoding="utf-8"))
+    before = json.dumps(loadout, sort_keys=True) if existed else None
     # Loadouts written before 0.14.0 do not track the chat's ask.
     loadout.setdefault("ask", None)
     loadout.setdefault("displaced_noted", None)
     output = None
     if event == "PreToolUse":
-        output = pre_tool_output(payload["session_id"], loadout, payload["tool_input"])
-        note = displaced_context(loadout)
+        output = pre_tool_output(session_id, loadout, payload.get("tool_name"), payload["tool_input"])
         denied = output is not None and output["hookSpecificOutput"].get("permissionDecision") == "deny"
-        if note and not denied:
-            context = " ".join(filter(None, [output["hookSpecificOutput"]["additionalContext"] if output else "", note]))
+        notes = [n for n in (displaced_context(loadout), rehydration_note(session_id)) if n] if not denied else []
+        if notes:
+            context = " ".join(filter(None, [output["hookSpecificOutput"]["additionalContext"] if output else "", *notes]))
             output = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": context}}
     elif payload["tool_name"] == ASK_TOOL:
-        record_answers(payload["session_id"], payload["tool_input"], payload["tool_response"])
+        record_answers(session_id, payload["tool_input"], payload["tool_response"])
     elif (payload["tool_name"] == "run_in_terminal" and OPENS_ASK.search(payload["tool_input"]["command"])
           and (STATE_DIR / "asks" / "active.json").is_file()):
+        _, _, active, *_ = _deps()
         loadout["ask"] = active()[1]["ask"]
-    path.write_text(json.dumps(loadout), encoding="utf-8")
+    if json.dumps(loadout, sort_keys=True) != before:
+        path.write_text(json.dumps(loadout), encoding="utf-8")
     if output:
         print(json.dumps(output))
 

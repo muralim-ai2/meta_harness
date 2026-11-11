@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "git"))
 from branch_workflow import git, open_pr, read_json, start, write_json  # noqa: E402
 from diagnose import QUESTIONS, append, decide, entry, read_jsonl, ledger_file  # noqa: E402
-from loop_paths import append_journal, ask_evidence, ask_folder, evidence_dir, loop_dir, state_dir, state_file  # noqa: E402
+from loop_paths import STATE, append_journal, ask_evidence, ask_folder, evidence_dir, loop_dir, state_dir, state_file  # noqa: E402
 
 NO_FALLBACK = ROOT / "hooks" / "no_fallback.py"
 NAME = re.compile(r"^[a-z0-9][a-z0-9_-]{0,40}$")
@@ -25,7 +25,7 @@ FIELDS = {"name", "description", "verify", "passes"}
 MIN_FEATURES = 3
 MAX_ATTEMPTS = 5
 VERIFY_TIMEOUT_S = 300
-GITIGNORE = ("node_modules/", ".next/", ".harness/", ".aria/")
+GITIGNORE = ("node_modules/", ".next/", ".harness/", f"{STATE}/")
 Review = Literal["local", "github"]
 
 Json = dict[str, Any]
@@ -63,7 +63,9 @@ def init(project: Path, review: Review) -> Json:
         raise FileExistsError(f"{hook} already exists; add `{script.splitlines()[1]}` to it, then run init again")
     ignore = project / ".gitignore"
     existing = ignore.read_text(encoding="utf-8").splitlines() if ignore.exists() else []
-    ignore.write_text("\n".join(existing + [g for g in GITIGNORE if g not in existing]) + "\n", encoding="utf-8")
+    # `.aria/*` means the repository commits its ask records (Copilot cloud agent export); `.aria/` would hide them again.
+    missing = [g for g in GITIGNORE if g not in existing and not (g == f"{STATE}/" and f"{STATE}/*" in existing)]
+    ignore.write_text("\n".join(existing + missing) + "\n", encoding="utf-8")
     (loop_dir(project) / "progress.txt").write_text("", encoding="utf-8")
     hook.parent.mkdir(parents=True, exist_ok=True)
     hook.write_text(script, encoding="utf-8", newline="\n")

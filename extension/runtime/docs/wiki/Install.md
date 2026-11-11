@@ -16,7 +16,7 @@ Frontier HVE ships as one VS Code extension (VSIX). Installing it is the only re
 2. Extensions view → `...` → **Install from VSIX...**, or `code --install-extension aria-<version>.vsix`.
 3. Click **Reload Window** when asked.
 4. Open your project folder, open the Chat view, start a **new chat with Session Target: Local**, and pick an **HVE** or **Frontier** agent ([Agents](Agents.md)). How a piece of work then runs: [Ways of working](Ways-of-Working.md). The **HVE icon in the Activity Bar** opens [Mission Control](Mission-Control.md).
-5. For other harnesses (Session Target **Copilot**, Copilot CLI, the Copilot cloud agent, Claude Code, Codex, Cursor), run **ARIA: Install for other harnesses** ([Adapters](Adapters.md)).
+5. The agents work with Session Target **Local** or **Copilot**. For Copilot CLI, the Copilot cloud agent, Claude Code, Codex and Cursor, run **ARIA: Install for other harnesses** ([Adapters](Adapters.md)).
 
 On activation the extension finds Python, renders the agents and skills into its storage with that Python launcher and the runtime path, and registers them in `chat.pluginLocations`. It does this again after an update or when Python appears. The hooks create `<workspace>/.aria/` the first time they run.
 

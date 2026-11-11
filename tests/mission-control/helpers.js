@@ -6,7 +6,7 @@ const path = require('node:path');
 const EXTENSION = path.resolve(__dirname, '..', '..', 'extension');
 const { runtime } = require('../../extension/ui/lifecycle-cli');
 const TEMP = fs.realpathSync.native(os.tmpdir());
-const PREFIX = 'hve-mission-control-';
+const PREFIX = 'aria-mission-control-';
 
 /** Create a disposable workspace in the system temp folder.
  * @returns {string}

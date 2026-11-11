@@ -5,6 +5,8 @@ const path = require('node:path');
 const { Reader, digest, containedPath } = require('./file-access');
 const { record, text, list, flag, integer } = require('./validate');
 const { headline } = require('./activity');
+const { BRAND } = require('../brand');
+const STATE = BRAND.state_dir;
 const ASK = /^\d{8}-\d{4}-[a-z0-9][a-z0-9-]{0,40}$/;
 const FEATURE = /^[a-z0-9][a-z0-9_-]{0,40}$/;
 const COMMIT = /^[0-9a-f]{7,64}$/;
@@ -40,7 +42,7 @@ function featureName(value) {
  * @returns {import('./types').Check | null}
  */
 function evidence(reader, owner, name, command, passes) {
-  const folder = path.join('.aria', 'asks', owner, 'loop');
+  const folder = path.join(STATE, 'asks', owner, 'loop');
   const prPath = path.join(folder, 'prs', `${name}.json`);
   const pr = reader.json(prPath, true);
   if (passes && pr !== undefined) {
@@ -115,7 +117,7 @@ function snapshot(workspace, selected = null) {
   /** @type {import('./types').Snapshot} */
   const state = { workspace: reader.root, revision: '', project: null, ask: null, features: [], reviews: [], files: [],
     planState: 'missing', plan: null, pendingPlanTicks: false, decisions: [], journal: [], skills: [], skillLoad: null, pluginSkills: [], options: [], stages: [] };
-  const projectPath = path.join('.aria', 'project', 'project.json');
+  const projectPath = path.join(STATE, 'project', 'project.json');
   const projectValue = reader.json(projectPath, true);
   /** @type {string[]} */
   let projectAsks = [];
@@ -123,7 +125,7 @@ function snapshot(workspace, selected = null) {
     const project = record(projectValue, projectPath);
     state.project = { name: text(project.name, 'Project name'), goal: text(project.goal, 'Project goal') };
     projectAsks = list(project.asks, 'Project asks').map(askId);
-    const journalPath = path.join('.aria', 'project', 'journal.jsonl');
+    const journalPath = path.join(STATE, 'project', 'journal.jsonl');
     const journal = reader.text(journalPath, true);
     state.journal = (journal || '').split(/\r?\n/).filter(line => line.trim()).map(line => {
       const row = record(JSON.parse(line), 'Journal entry');
@@ -133,7 +135,7 @@ function snapshot(workspace, selected = null) {
         kind: /** @type {'decision' | 'issue' | 'pitfall'} */ (kind), text: text(row.text, 'Journal text'), why: text(row.why, 'Journal reason', true) };
     });
   }
-  const activeValue = reader.json(path.join('.aria', 'asks', 'active.json'), true);
+  const activeValue = reader.json(path.join(STATE, 'asks', 'active.json'), true);
   const activeId = activeValue === undefined ? null : askId(record(activeValue, 'Active ask pointer').active);
   const shown = selected === null ? activeId : askId(selected);
   /** @type {Record<string, unknown> | null} */
@@ -141,7 +143,7 @@ function snapshot(workspace, selected = null) {
   let askFolder = '';
   if (shown !== null) {
     if (!state.project || !projectAsks.includes(shown)) throw new Error(`Ask ${shown} is missing from the project record.`);
-    askFolder = path.join('.aria', 'asks', shown);
+    askFolder = path.join(STATE, 'asks', shown);
     if (!fs.existsSync(path.join(reader.root, askFolder, 'contract.json'))) {
       throw new Error(`Ask ${shown} has no contract.json: its files were deleted. New ask offers to forget it so the harness can start another ask.`);
     }
@@ -176,8 +178,8 @@ function snapshot(workspace, selected = null) {
     state.files.push(requestFile);
     state.files.push(...reader.files(path.join(askFolder, 'loop', 'evidence')));
   }
-  const featureValue = reader.json(path.join('.aria', 'project', 'feature_list.json'), true);
-  const lockValue = reader.json(path.join('.aria', 'project', 'state.json'), true);
+  const featureValue = reader.json(path.join(STATE, 'project', 'feature_list.json'), true);
+  const lockValue = reader.json(path.join(STATE, 'project', 'state.json'), true);
   const lock = lockValue === undefined ? null : record(record(lockValue, 'Loop state').lock, 'Feature lock');
   if (featureValue !== undefined) {
     state.features = list(featureValue, 'Project features').map(value => {

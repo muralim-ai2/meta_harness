@@ -1,5 +1,6 @@
 """Prototype complexity guardrail: flag oversized code, non-enterprise components and self-built infrastructure, and name who to involve."""
 
+import functools
 import hashlib
 import json
 import os
@@ -9,15 +10,9 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
-# The runtime ships this script in scripts/ next to tools/; the repository keeps it in plugins/harness-assist/scripts/.
-sys.path.insert(0, str(next(p for p in Path(__file__).resolve().parents if (p / "tools" / "loop" / "loop_paths.py").is_file())
-                       / "tools" / "loop"))
-from loop_paths import state_dir  # noqa: E402
-
-CATALOG = json.loads((Path(__file__).parent / "enterprise_catalog.json").read_text(encoding="utf-8"))
 CODE_SUFFIXES = {".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".css", ".scss", ".html", ".vue", ".svelte", ".sql"}
-SKIP_DIRS = {"node_modules", ".next", ".git", ".harness", ".aria", "dist", "build", "coverage", ".venv", "venv",
-             "__pycache__"}
+READ_ONLY_TOOLS = {"read_file", "file_search", "grep_search", "list_dir", "semantic_search", "get_errors", "get_terminal_output",
+                   "terminal_last_command", "manage_todo_list", "view_image", "vscode_askQuestions", "ask_user", "view", "grep", "glob"}
 REQUIREMENT_NAME = re.compile(r"^\s*([A-Za-z0-9_.\-]+)")
 IMAGE = re.compile(r"^\s*(?:image:|FROM)\s+([^\s:@]+)", re.I | re.M)
 INFRA_NAMES = re.compile(r"^(Dockerfile|docker-compose[\w.-]*\.ya?ml|Chart\.yaml|.*\.tf|.*\.bicep)$", re.I)
@@ -25,11 +20,29 @@ INFRA_NAMES = re.compile(r"^(Dockerfile|docker-compose[\w.-]*\.ya?ml|Chart\.yaml
 Json = dict[str, Any]
 
 
+@functools.cache
+def loop_paths_mod() -> tuple[str, Any]:
+    """Import loop_paths lazily when scanning or checking a project."""
+    # The runtime ships this script in scripts/ next to tools/; the repository keeps it in plugins/harness-assist/scripts/.
+    sys.path.insert(0, str(next(p for p in Path(__file__).resolve().parents if (p / "tools" / "loop" / "loop_paths.py").is_file())
+                           / "tools" / "loop"))
+    from loop_paths import STATE, state_dir  # noqa: E402
+    return STATE, state_dir
+
+
+@functools.cache
+def catalog() -> Json:
+    """Load enterprise_catalog.json once when a scan actually runs."""
+    return json.loads((Path(__file__).parent / "enterprise_catalog.json").read_text(encoding="utf-8"))
+
+
 def walk(project: Path) -> list[Path]:
     """Return the project's files, skipping dependency, build and state folders."""
+    state, _ = loop_paths_mod()
+    skip_dirs = {"node_modules", ".next", ".git", ".harness", state, "dist", "build", "coverage", ".venv", "venv", "__pycache__"}
     files = []
     for folder, dirs, names in os.walk(project):
-        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        dirs[:] = [d for d in dirs if d not in skip_dirs]
         files += [Path(folder) / n for n in names]
     return files
 
@@ -54,38 +67,42 @@ def dependencies(files: list[Path]) -> list[tuple[str, str]]:
 
 def scan(project: Path) -> Json:
     """Return the guardrail report: code size, flagged components with enterprise alternatives, infra files, verdict, experts."""
+    cat = catalog()
     files = walk(project)
     sizes = {p: len(p.read_text(encoding="utf-8", errors="replace").splitlines()) for p in files if p.suffix.lower() in CODE_SUFFIXES}
     flagged = []
     for name, manifest in dependencies(files):
-        for component in CATALOG["components"]:
+        for component in cat["components"]:
             if re.match(component["pattern"], name.lower()):
                 flagged.append({"name": name, "manifest": manifest, "category": component["category"], "enterprise": component["enterprise"]})
     infra = sorted(p.relative_to(project).as_posix() for p in files
                    if INFRA_NAMES.match(p.name) or ".github/workflows/" in p.relative_to(project).as_posix())
     code_lines = sum(sizes.values())
     large = sorted((p.relative_to(project).as_posix(), round(p.stat().st_size / 1e6, 1)) for p in files
-                   if p.stat().st_size > CATALOG["file_mb_limit"] * 1e6)
-    reasons = ([f"{code_lines} lines of code (limit {CATALOG['code_lines_limit']})"] if code_lines > CATALOG["code_lines_limit"] else [])
-    reasons += [f"{name} is {mb} MB (limit {CATALOG['file_mb_limit']} MB): unbounded logs, exports or data files need retention"
+                   if p.stat().st_size > cat["file_mb_limit"] * 1e6)
+    reasons = ([f"{code_lines} lines of code (limit {cat['code_lines_limit']})"] if code_lines > cat["code_lines_limit"] else [])
+    reasons += [f"{name} is {mb} MB (limit {cat['file_mb_limit']} MB): unbounded logs, exports or data files need retention"
                 for name, mb in large]
     reasons += [f"{f['name']} ({f['category']}) in {f['manifest']}: enterprise option is {f['enterprise']}" for f in flagged]
     reasons += [f"self-built infrastructure: {', '.join(infra)}"] if infra else []
-    areas = ({"size"} if code_lines > CATALOG["code_lines_limit"] else set()) | ({"storage"} if large else set())
+    areas = ({"size"} if code_lines > cat["code_lines_limit"] else set()) | ({"storage"} if large else set())
     areas |= {f["category"] for f in flagged} | ({"infrastructure"} if infra else set())
     return {"project": project.as_posix(), "code_lines": code_lines, "largest_files": sorted(
                 ({"path": p.relative_to(project).as_posix(), "lines": n} for p, n in sizes.items()), key=lambda f: -f["lines"])[:5],
             "flagged": flagged, "infrastructure_files": infra, "verdict": "review" if reasons else "ok", "reasons": reasons,
-            "experts": sorted({e.strip() for a in areas for e in CATALOG["experts"][a].split(",")})}
+            "experts": sorted({e.strip() for a in areas for e in cat["experts"][a].split(",")})}
 
 
 def hook() -> None:
-    """PostToolUse: re-scan harness projects and tell the user and agent once per new finding set."""
+    """PostToolUse: re-scan harness projects after mutating tool calls and tell the user and agent once per new finding set."""
     payload = json.load(sys.stdin)
     if payload["hook_event_name"] != "PostToolUse":
         raise ValueError(f"guardrail.py --hook does not handle {payload['hook_event_name']!r}")
+    if payload.get("tool_name") in READ_ONLY_TOOLS:
+        return
+    state, state_dir = loop_paths_mod()
     cwd = Path.cwd()
-    for project, harness in [(cwd, state_dir(cwd)), *((h.parent, h) for h in cwd.glob(".aria/outputs/*/current/.harness"))]:
+    for project, harness in [(cwd, state_dir(cwd)), *((h.parent, h) for h in cwd.glob(f"{state}/outputs/*/current/.harness"))]:
         if not harness.is_dir():
             continue
         report = scan(project)

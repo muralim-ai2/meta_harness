@@ -50,7 +50,7 @@ def test_uplift_skill_polish_contract() -> None:
     skill = (EXTENSION / "skills" / "wow-uplift" / "SKILL.md").read_text(encoding="utf-8")
     source = REPO / "plugins" / "harness-assist" / "skills" / "wow-uplift" / "SKILL.md"
     assert skill == source.read_text(encoding="utf-8"), "Rebuild extension skills from the canonical plugin templates"
-    judge = (EXTENSION / "agents" / "hve-uplift-judge.agent.md").read_text(encoding="utf-8")
+    judge = (EXTENSION / "agents" / "uplift-judge.agent.md").read_text(encoding="utf-8")
     assert re.match(r"---\nname: wow-uplift\ndescription: .+\n---\n", skill)
     checklist = skill.split("## Ten quick uplift candidates\n", 1)[1].split("\n## ", 1)[0]
     assert re.findall(r"^\| (\d+) \|", checklist, re.M) == [str(number) for number in range(1, 11)]
@@ -82,22 +82,22 @@ def test_rendered_plugin_shape() -> None:
         agents = render(out)
         assert len(agents) == 41, agents
         assert json.loads((out / "plugin.json").read_text(encoding="utf-8"))["name"] == "aria"
-        assert len(list((out / "skills").glob("*/SKILL.md"))) == 19
+        assert len(list((out / "skills").glob("*/SKILL.md"))) == 20
         assert (EXTENSION / "runtime" / "tools" / "map" / "explorer" / "app.js").is_file()
         assert (out / "skills" / "deliverable-templates" / "SKILL.md").is_file()
         assert (EXTENSION / "runtime" / "tools" / "templates" / "manage.py").is_file()
         assert (EXTENSION / "runtime" / "templates" / "deliverables" / "prd-v1.md").is_file()
         assert (EXTENSION / "runtime" / "evaluation" / "frontier.eval.json").is_file()
-        reviewer = (out / "com.github.copilot" / "agents" / "hve-evaluation-reviewer.agent.md").read_text(encoding="utf-8")
+        reviewer = (out / "com.github.copilot" / "agents" / "evaluation-reviewer.agent.md").read_text(encoding="utf-8")
         assert re.search(r"^user-invocable: false", reviewer, re.M) and "edit/" not in reviewer
         assert not (out / "skills" / "ux-flows").exists() and (EXTENSION / "runtime" / "skills" / "admitted" / "ux-flows" / "SKILL.md").is_file()
         assert (out / "scripts" / "guardrail.py").exists()
         restricted = {"council", "evaluation-reviewer", "minimal", "flow-architect", "flow-maintainer", "skill-judge", "skill-worker",
                       "uplift-judge", "research-minimal", "research-single"}
-        visible, pinned = {"e2e", "agile", "prototype", "creator"}, {"e2e", "agile", "prototype", "creator", "uplift-judge"}
+        visible, pinned = {"auto", "collab", "prototype-creator", "lite"}, {"auto", "collab", "prototype-creator", "lite", "uplift-judge"}
         for name in agents:
             text = (out / "com.github.copilot" / "agents" / name).read_text(encoding="utf-8")
-            short = name.removeprefix("hve-").removesuffix(".agent.md")
+            short = name.removesuffix(".agent.md")
             assert "{{RUNTIME}}" not in text and re.search(r"^name: ARIA ", text, re.M), name
             assert bool(re.search(r"^user-invocable: false", text, re.M)) == (short not in visible), f"{name}: only the ARIA lead agents show"
             assert bool(re.search(r"^model: \[.*'GPT-6 Astra \(copilot\)'", text, re.M)) == (short in pinned), f"{name}: model pin"
@@ -106,8 +106,8 @@ def test_rendered_plugin_shape() -> None:
                 f"{name}: only read-only, blind and baseline agents keep a fixed tool list"
             for script in re.findall(r'python "([^"]+\.py)"', text):
                 assert Path(script).is_file(), (name, script)
-        for name in ("creator", "creator-flow", "creator-github", "single", "product-manager", "e2e", "agile"):
-            text = (out / "com.github.copilot" / "agents" / f"hve-{name}.agent.md").read_text(encoding="utf-8")
+        for name in ("lite", "creator-flow", "creator-github", "single", "product-manager", "auto", "collab"):
+            text = (out / "com.github.copilot" / "agents" / f"{name}.agent.md").read_text(encoding="utf-8")
             assert "lifecycle.py" in text and "contract" in text and "lifecycle.py report" in text, name
             assert name == "single" or "lifecycle.py brief" in text, name
 
@@ -118,15 +118,15 @@ def test_render_for_python_launcher_and_fresh_workspace() -> None:
         out = Path(tmp) / "plugin"
         folder = out / "com.github.copilot" / "agents"
         render(out, python=None)
-        creator = (folder / "hve-creator.agent.md").read_text(encoding="utf-8")
+        creator = (folder / "lite.agent.md").read_text(encoding="utf-8")
         assert "hooks:" not in creator and "Python not found" in creator and "description: (Needs Python)" in creator
-        assert "Python not found" not in (folder / "hve-minimal.agent.md").read_text(encoding="utf-8")
+        assert "Python not found" not in (folder / "minimal.agent.md").read_text(encoding="utf-8")
         render(out, python="python3")
-        creator = (folder / "hve-creator.agent.md").read_text(encoding="utf-8")
+        creator = (folder / "lite.agent.md").read_text(encoding="utf-8")
         assert 'python "' not in creator and 'python3 "' in creator and "Session Target **Local**" in creator
-        assert "Session Target **Local**" not in (folder / "hve-flow-designer.agent.md").read_text(encoding="utf-8")
+        assert "Session Target **Local**" not in (folder / "flow-designer.agent.md").read_text(encoding="utf-8")
         render(out)
-        creator = (folder / "hve-creator.agent.md").read_text(encoding="utf-8")
+        creator = (folder / "lite.agent.md").read_text(encoding="utf-8")
         assert "Python on this machine" not in creator
         ws = Path(tmp) / "fresh"
         ws.mkdir()
@@ -156,11 +156,11 @@ def test_packaged_template_guard() -> None:
         render(out)
         ws = workspace(tmp)
         folder = out / "com.github.copilot" / "agents"
-        for name in ("creator", "creator-flow", "creator-github", "single", "product-manager"):
-            text = (folder / f"hve-{name}.agent.md").read_text(encoding="utf-8")
-            assert text.count("/hooks/template_guard.py") == 3, name
-        assert "template_guard.py" not in (folder / "hve-minimal.agent.md").read_text(encoding="utf-8")
-        creator = (folder / "hve-creator.agent.md").read_text(encoding="utf-8")
+        for name in ("lite", "creator-flow", "creator-github", "single", "product-manager"):
+            text = (folder / f"{name}.agent.md").read_text(encoding="utf-8")
+            assert text.count("vscode hooks/template_guard.py") == 3, name
+        assert "template_guard.py" not in (folder / "minimal.agent.md").read_text(encoding="utf-8")
+        creator = (folder / "lite.agent.md").read_text(encoding="utf-8")
         command = hook(creator, "template_guard.py")
         start = run(command, ws, {"hook_event_name": "SessionStart"})
         assert start and "deliverable-templates" in json.dumps(start)
@@ -181,7 +181,7 @@ def test_product_manager_agent() -> None:
         render(out)
         ws = workspace(tmp)
         folder = out / "com.github.copilot" / "agents"
-        pm = (folder / "hve-product-manager.agent.md").read_text(encoding="utf-8")
+        pm = (folder / "product-manager.agent.md").read_text(encoding="utf-8")
         assert pm.count("HVE_TEMPLATE_TYPES: prd") == 3, pm
         assert "HARNESS_REQUIRED_SKILLS: prd" in pm
         assert "`search_issues`" in pm and "scoped to that repository" in pm and "contract direct <slug> \"ARIA product-manager\"" in pm
@@ -189,7 +189,7 @@ def test_product_manager_agent() -> None:
         assert "host-selected; actual model unconfirmed" in pm and 'label it "session model"' not in pm
         assert "read `.aria/skills/prd/SKILL.md`" in pm and "skills/admitted/prd/SKILL.md" not in pm
         assert "register prd --slug" in pm and "Create parents and dependencies before" in pm and "`uncovered`" in pm
-        ado = (folder / "hve-azure-devops.agent.md").read_text(encoding="utf-8")
+        ado = (folder / "azure-devops.agent.md").read_text(encoding="utf-8")
         assert "Epic / Issue / Task (Basic" in ado and "Create parents and dependencies before" in ado
         loader = hook(pm, "skill_loader.py")
         for prompt, minimum in (("Create a PRD for an employee leave portal", 1), ("Revise the PRD to clarify goals", 1),
@@ -210,7 +210,7 @@ def test_product_manager_agent() -> None:
                 assert read is None or "permissionDecision" not in read["hookSpecificOutput"], read
         residue = [s for s in ("PRD-TEMPLATE", "12 sections", "12-section", "docs/artifacts", "Research Summary") if s in pm]
         assert not residue, residue
-        assert re.search(r"^user-invocable: false", (folder / "hve-council.agent.md").read_text(encoding="utf-8"), re.M)
+        assert re.search(r"^user-invocable: false", (folder / "council.agent.md").read_text(encoding="utf-8"), re.M)
         guard = hook(pm, "template_guard.py")
         run(guard, ws, {"hook_event_name": "UserPromptSubmit", "prompt": "Write a PRD and a technical design specification"},
             HVE_TEMPLATE_TYPES="prd")
@@ -231,7 +231,7 @@ def test_rendered_hooks_run_in_a_workspace() -> None:
         out = Path(tmp) / "plugin"
         render(out)
         ws = workspace(tmp)
-        creator = (out / "com.github.copilot" / "agents" / "hve-creator.agent.md").read_text(encoding="utf-8")
+        creator = (out / "com.github.copilot" / "agents" / "lite.agent.md").read_text(encoding="utf-8")
         start = {"hook_event_name": "SessionStart", "timestamp": "2026-10-06T08:00:00+00:00", "source": "new"}
         context = run(hook(creator, "profile_detector.py"), ws, start)
         assert context and "Explanation depth: balanced" in json.dumps(context), context
@@ -244,7 +244,9 @@ def test_rendered_hooks_run_in_a_workspace() -> None:
         assert load.returncode == 0 and json.loads(load.stdout)["total_tokens"] >= 0, load.stderr
         pre = {"hook_event_name": "PreToolUse", "timestamp": "2026-10-06T08:01:00+00:00", "tool_name": "read_file",
                "tool_input": {"filePath": "x"}, "tool_use_id": "t1"}
-        assert run(hook(creator, "loop_guard.py"), ws, pre, HARNESS_PROJECT=".", HARNESS_STOP_POLICY="once") is None
+        announced = run(hook(creator, "loop_guard.py"), ws, pre)
+        assert announced and "skim descriptions" in announced["hookSpecificOutput"]["additionalContext"], announced
+        assert run(hook(creator, "loop_guard.py"), ws, pre) is None
         post = pre | {"hook_event_name": "PostToolUse", "tool_name": "create_file", "tool_response": "ok"}
         assert run(hook(creator, "module_guard.py"), ws, post) is None
         assert run(hook(creator, "guardrail.py"), ws, post) is None
@@ -259,7 +261,7 @@ def test_rendered_flow_and_loop_tools_run() -> None:
         subprocess.run(["git", "init", "-q"], cwd=ws, check=True)
         subprocess.run(["git", "config", "user.name", "dev"], cwd=ws, check=True)
         subprocess.run(["git", "config", "user.email", "dev@example.com"], cwd=ws, check=True)
-        designer = (out / "com.github.copilot" / "agents" / "hve-flow-designer.agent.md").read_text(encoding="utf-8")
+        designer = (out / "com.github.copilot" / "agents" / "flow-designer.agent.md").read_text(encoding="utf-8")
         flow_py = re.search(r'python "([^"]+/tools/loop/flow\.py)"', designer)[1]  # type: ignore[index]
         subprocess.run([sys.executable, flow_py, "init", ".", "--profile", "product"], cwd=ws, check=True, capture_output=True)
         stop = {"hook_event_name": "SubagentStop", "agent_id": "a", "agent_type": "ARIA flow-designer", "stop_hook_active": False}
@@ -281,12 +283,12 @@ def test_delivery_agents_and_lifecycles() -> None:
         out = Path(tmp) / "plugin"
         render(out)
         folder = out / "com.github.copilot" / "agents"
-        prototype = (folder / "hve-prototype.agent.md").read_text(encoding="utf-8")
-        assert set(re.findall(r"/hooks/(\w+\.py)", prototype)) == {"loop_guard.py", "error_guard.py"}, prototype
-        assert re.search(r"^user-invocable: false", (folder / "hve-engineer.agent.md").read_text(encoding="utf-8"), re.M)
+        prototype = (folder / "prototype-creator.agent.md").read_text(encoding="utf-8")
+        assert set(re.findall(r" (?:vscode|\+) hooks/(\w+\.py)", prototype)) == {"loop_guard.py", "error_guard.py"}, prototype
+        assert re.search(r"^user-invocable: false", (folder / "engineer.agent.md").read_text(encoding="utf-8"), re.M)
         ws = workspace(tmp)
-        for name, overlay in (("e2e", "sdlc"), ("agile", "agile-scrum")):
-            text = (folder / f"hve-{name}.agent.md").read_text(encoding="utf-8")
+        for name, overlay in (("auto", "sdlc"), ("collab", "agile-scrum")):
+            text = (folder / f"{name}.agent.md").read_text(encoding="utf-8")
             lifecycle_py = re.search(r'python "([^"]+/tools/loop/lifecycle\.py)"', text)[1]  # type: ignore[index]
             (ws / "req.md").write_text("Build a leave portal", encoding="utf-8")
             made = subprocess.run([sys.executable, lifecycle_py, "contract", overlay, f"ask-{name}", f"HVE {name}", "req.md"],
@@ -294,6 +296,37 @@ def test_delivery_agents_and_lifecycles() -> None:
             assert made.returncode == 0, made.stderr
             active = json.loads((ws / ".aria" / "asks" / "active.json").read_text(encoding="utf-8"))["active"]
             assert active == json.loads(made.stdout)["ask"] and re.fullmatch(rf"\d{{8}}-\d{{4}}-ask-{name}", active), active
+
+
+def test_status_for_tools_without_mission_control() -> None:
+    """The packaged `lifecycle.py status` (behind the harness-status skill) shows the open ask, its stages, what is not finished, the
+    journal, guard events and hook errors, and the recent asks once the ask is closed."""
+    subprocess.run([sys.executable, str(EXTENSION / "build.py")], check=True, capture_output=True)
+    lifecycle_py = str(EXTENSION / "runtime" / "tools" / "loop" / "lifecycle.py")
+    skill = (EXTENSION / "skills" / "harness-status" / "SKILL.md").read_text(encoding="utf-8")
+    assert "lifecycle.py status" in skill and re.match(r"---\nname: harness-status\n", skill)
+    with tempfile.TemporaryDirectory() as tmp:
+        ws = workspace(tmp)
+        (ws / "req.md").write_text("Build a leave portal\nwith approvals", encoding="utf-8")
+        made = subprocess.run([sys.executable, lifecycle_py, "contract", "sdlc", "leave", "ARIA Auto", "req.md"], cwd=ws, capture_output=True,
+                              text=True)
+        assert made.returncode == 0, made.stderr
+        ask = json.loads(made.stdout)["ask"]
+        logged = subprocess.run([sys.executable, lifecycle_py, "log", "decision", "Use the existing HR API", "fewer systems"], cwd=ws,
+                                capture_output=True, text=True)
+        assert logged.returncode == 0, logged.stderr
+        (ws / ".aria" / "runs" / "s1.interventions.jsonl").write_text(json.dumps(
+            {"ts_ms": 1, "session_id": "s1", "hook": "loop_guard", "kind": "deny", "detail": "feature_list.json is locked"}) + "\n",
+            encoding="utf-8")
+        (ws / ".aria" / "runs" / "hook-errors.log").write_text("--- t copilot a.py PreToolUse x\npayload: {}\nboom\n", encoding="utf-8")
+        shown = subprocess.run([sys.executable, lifecycle_py, "status"], cwd=ws, capture_output=True, text=True)
+        assert shown.returncode == 0, shown.stderr
+        for needle in (f"**Open ask** `{ask}` (ARIA Auto): Build a leave portal", "**Current stage:**", "**Not finished:** milestones not done",
+                       "decision: Use the existing HR API", "loop_guard deny: feature_list.json is locked", "**Hook errors:** 1 in"):
+            assert needle in shown.stdout, (needle, shown.stdout)
+        subprocess.run([sys.executable, lifecycle_py, "close"], cwd=ws, check=True, capture_output=True)
+        closed = subprocess.run([sys.executable, lifecycle_py, "status"], cwd=ws, capture_output=True, text=True).stdout
+        assert "**No ask is open.** Recent asks:" in closed and f"`{ask}` (ARIA Auto)" in closed, closed
 
 
 if __name__ == "__main__":
@@ -306,4 +339,5 @@ if __name__ == "__main__":
     test_rendered_hooks_run_in_a_workspace()
     test_rendered_flow_and_loop_tools_run()
     test_delivery_agents_and_lifecycles()
+    test_status_for_tools_without_mission_control()
     print("test_extension: OK")

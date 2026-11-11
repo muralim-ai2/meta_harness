@@ -3,9 +3,12 @@
 
 const vscode = require('vscode');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { execFile } = require('child_process');
 const { renderPlugin } = require('./render');
+const { BRAND } = require('./brand');
+const STATE = BRAND.state_dir;
 const packs = require('./packs');
 const missionControl = require('./ui/mission-control');
 const { planDigest } = require('./ui/workspace-state');
@@ -22,13 +25,17 @@ const PREFERENCES = [
   { label: 'Pro', value: 'pro_code', description: 'Use AI to code and review continuously' },
 ];
 const HARNESSES = [
-  { label: 'Copilot', description: 'Copilot CLI and the VS Code Copilot harness (~/.copilot)', client: 'copilot' },
+  { label: 'Copilot CLI', description: `loads the ${BRAND.product} plugin VS Code already uses (copilot --plugin-dir); copies nothing to ~/.copilot`,
+    client: 'copilot', plugin: true },
   { label: 'Claude Code', description: '~/.claude', client: 'claude' },
-  { label: 'Codex', description: '~/.codex and ~/.agents', client: 'codex' },
+  { label: 'Codex', description: 'this workspace\'s .agents and .codex folders (VS Code also reads ~/.agents, so not user-wide)',
+    client: 'codex', project: true },
   { label: 'Cursor', description: '~/.cursor', client: 'cursor' },
-  { label: 'Copilot cloud agent', description: 'this repository\'s .github folder; you commit it', client: 'cloud' },
+  { label: 'Copilot cloud agent', description: 'this repository\'s .github folder; you commit it', client: 'cloud', project: true },
 ];
-const COPILOT_HOOK_FILE = '~/.copilot/hooks/hve.json';
+// The Local harness runs the agents' own hooks, so it must skip the hook files written for Copilot and the cloud agent (and their pre-brand names).
+const SKIPPED_HOOK_FILES = [`~/.copilot/hooks/${BRAND.prefix}.json`, `.github/hooks/${BRAND.prefix}.json`, '~/.copilot/hooks/hve.json',
+  '.github/hooks/hve.json'];
 const LEGACY_EXTENSION = 'muralim-ai2.frontier-hve';
 
 /**
@@ -103,11 +110,11 @@ async function warnNoPython() {
 }
 
 /**
- * Create <workspace>/.aria with runs/ and the user profile, ask how the user prefers to build, and optionally ignore .aria in git.
+ * Create the workspace's state folder with runs/ and the user profile, ask how the user prefers to build, and optionally ignore it in git.
  * @param {string} workspace
  */
 async function setUpWorkspace(workspace) {
-  const state = path.join(workspace, '.aria');
+  const state = path.join(workspace, STATE);
   fs.mkdirSync(path.join(state, 'runs'), { recursive: true });
   const profileFile = path.join(state, 'user_profile.json');
   const profile = fs.existsSync(profileFile) ? JSON.parse(fs.readFileSync(profileFile, 'utf8')) : { ...EMPTY_PROFILE };
@@ -119,9 +126,10 @@ async function setUpWorkspace(workspace) {
   }
   fs.writeFileSync(profileFile, JSON.stringify(profile, null, 2) + '\n');
   const gitignore = path.join(workspace, '.gitignore');
-  const ignored = fs.existsSync(gitignore) && fs.readFileSync(gitignore, 'utf8').split(/\r?\n/).includes('.aria/');
-  if (!ignored && await vscode.window.showQuickPick(['Yes', 'No'], { title: 'Add .aria/ (ARIA state) to .gitignore?' }) === 'Yes') {
-    fs.appendFileSync(gitignore, `${fs.existsSync(gitignore) ? '\n' : ''}.aria/\n`);
+  const rules = fs.existsSync(gitignore) ? fs.readFileSync(gitignore, 'utf8').split(/\r?\n/) : [];
+  const ignored = rules.includes(`${STATE}/`) || rules.includes(`${STATE}/*`);
+  if (!ignored && await vscode.window.showQuickPick(['Yes', 'No'], { title: `Add ${STATE}/ (${BRAND.product} state) to .gitignore?` }) === 'Yes') {
+    fs.appendFileSync(gitignore, `${fs.existsSync(gitignore) ? '\n' : ''}${STATE}/\n`);
   }
 }
 
@@ -136,7 +144,7 @@ async function enableResearchTelemetry(context) {
     return;
   }
   const choice = await vscode.window.showWarningMessage(
-    'Turn on the Copilot telemetry file export? It records full chat content into .aria/runs/copilot-otel.jsonl. Use it for benchmarks or an ask that opted in, then turn it off ("ARIA: Turn off research telemetry").',
+    `Turn on the Copilot telemetry file export? It records full chat content into ${STATE}/runs/copilot-otel.jsonl. Use it for benchmarks or an ask that opted in, then turn it off ("${BRAND.product}: Turn off research telemetry").`,
     { modal: true }, 'Turn on');
   if (choice !== 'Turn on') {
     return;
@@ -144,7 +152,7 @@ async function enableResearchTelemetry(context) {
   const otel = vscode.workspace.getConfiguration('github.copilot.chat.otel');
   await otel.update('enabled', true, vscode.ConfigurationTarget.Global);
   await otel.update('exporterType', 'file', vscode.ConfigurationTarget.Global);
-  await otel.update('outfile', path.join(folders[0].uri.fsPath, '.aria', 'runs', 'copilot-otel.jsonl'), vscode.ConfigurationTarget.Global);
+  await otel.update('outfile', path.join(folders[0].uri.fsPath, STATE, 'runs', 'copilot-otel.jsonl'), vscode.ConfigurationTarget.Global);
   const python = await findPython();
   if (python) {
     await trimTelemetry(context, folders[0].uri.fsPath, python);
@@ -166,7 +174,7 @@ async function trimTelemetry(context, workspace, python) {
       + `last ${report.keep_days} days up to ${report.cap_mb} MB`);
   }
   if (report.gitignore_added) {
-    notes.push('added .aria/runs/copilot-otel.jsonl to .gitignore (it holds full chat content)');
+    notes.push(`added ${STATE}/runs/copilot-otel.jsonl to .gitignore (it holds full chat content)`);
   }
   if (notes.length) {
     vscode.window.showInformationMessage(`ARIA ${notes.join(' and ')}.`);
@@ -178,7 +186,7 @@ async function trimTelemetry(context, workspace, python) {
  */
 async function disableResearchTelemetry() {
   await vscode.workspace.getConfiguration('github.copilot.chat.otel').update('enabled', false, vscode.ConfigurationTarget.Global);
-  vscode.window.showInformationMessage('Research telemetry is off. Chats are no longer recorded to .aria/runs/copilot-otel.jsonl.');
+  vscode.window.showInformationMessage(`Research telemetry is off. Chats are no longer recorded to ${STATE}/runs/copilot-otel.jsonl.`);
 }
 
 /**
@@ -229,13 +237,14 @@ async function reportContextLoad(context, workspace, python) {
   const warnings = report.warnings.length ? ` Warnings: ${report.warnings.join('; ')}. Run /check-context-load for fixes.` : '';
   const open = await vscode.window.showInformationMessage(summary + warnings, 'Show report');
   if (open) {
-    await vscode.window.showTextDocument(vscode.Uri.file(path.join(workspace, '.aria', 'context_load.json')));
+    await vscode.window.showTextDocument(vscode.Uri.file(path.join(workspace, STATE, 'context_load.json')));
   }
 }
 
 /**
- * Install the ARIA agents, skills and hooks for the harnesses the user picks (user scope; Cloud into this repository), and keep the
- * Local harness from running the Copilot hook file next to its own agent-scoped hooks.
+ * Install the agents, skills and hooks for the harnesses the user picks (user scope; Codex and the cloud agent into the open workspace;
+ * Copilot CLI loads the rendered plugin), remove older user-wide Codex and Copilot copies, which VS Code would list a second time, and keep
+ * the Local harness from running the cloud agent's hook file next to its own agent-scoped hooks.
  * @param {vscode.ExtensionContext} context
  */
 async function installHarnesses(context) {
@@ -252,27 +261,67 @@ async function installHarnesses(context) {
   }
   const folders = vscode.workspace.workspaceFolders;
   const cloud = picked.some((item) => item.client === 'cloud');
-  if (cloud && (!folders || folders.length === 0)) {
-    vscode.window.showErrorMessage('Open the repository first to install for the Copilot cloud agent.');
+  if (picked.some((item) => item.project) && (!folders || folders.length === 0)) {
+    vscode.window.showErrorMessage('Open the project folder first to install for Codex or the Copilot cloud agent.');
     return;
   }
   if (cloud && await vscode.window.showWarningMessage(
     'The Copilot cloud agent reads agents, skills and hooks from the repository: this writes .github/agents, .github/skills, '
-    + '.github/hooks/hve.json and .github/hve/runtime for you to review and commit.', { modal: true }, 'Write them') !== 'Write them') {
+    + `.github/hooks/${BRAND.prefix}.json, .github/${BRAND.prefix}/runtime and .github/workflows/copilot-setup-steps.yml (installs Python), and sets `
+    + `.gitignore to commit the ask records in ${BRAND.state_dir}/asks and ${BRAND.state_dir}/project. Review and commit them.`, { modal: true },
+    'Write them') !== 'Write them') {
     return;
   }
   const chat = vscode.workspace.getConfiguration('chat');
-  await chat.update('hookFilesLocations', { ...(chat.get('hookFilesLocations') || {}), [COPILOT_HOOK_FILE]: false, '.github/hooks/hve.json': false },
-    vscode.ConfigurationTarget.Global);
+  await chat.update('hookFilesLocations', { ...(chat.get('hookFilesLocations') || {}),
+    ...Object.fromEntries(SKIPPED_HOOK_FILES.map((file) => [file, false])) }, vscode.ConfigurationTarget.Global);
   const script = path.join(context.extensionPath, 'runtime', 'tools', 'adapters', 'export.py');
   const cwd = folders && folders.length > 0 ? folders[0].uri.fsPath : context.extensionPath;
-  const lines = [];
+  const checker = path.join(context.extensionPath, 'runtime', 'tools', 'adapters', 'check.py');
+  const pluginDir = path.join(context.globalStorageUri.fsPath, 'plugin');
+  const details = [];
+  const failed = [];
   for (const item of picked) {
-    const args = item.client === 'cloud' ? ['cloud', cwd] : [item.client, '--user', '--python', python];
-    const report = await runPythonJson(python, script, args, cwd);
-    lines.push(`${item.label}: ${report.invoke}.`);
+    const scope = item.project ? [cwd] : ['--user'];
+    const report = await runPythonJson(python, script, [item.client, ...scope, '--python', python, ...(item.plugin ? ['--remove'] : [])], cwd);
+    const result = await runPythonJson(python, checker,
+      item.plugin ? [item.client, '--plugin', pluginDir, '--python', python] : [item.client, ...scope, '--python', python], cwd);
+    if (!result.ok) {
+      failed.push(item.label);
+    }
+    details.push(`## ${item.label}`, ...result.checks.map((c) => `- ${c.ok ? 'passed' : 'FAILED'} ${c.name}: ${c.detail}`),
+      `- removed old copies: ${report.removed.length}`, 'First run:', ...result.next.map((step) => `- ${step}`), '');
   }
-  vscode.window.showInformationMessage(`ARIA installed. ${lines.join(' ')} Known gaps per harness: docs/wiki/Adapters.md.`);
+  for (const client of ['codex', 'copilot']) {
+    const leftovers = await runPythonJson(python, script, [client, '--user', '--remove'], cwd);
+    if (leftovers.removed.length > 0) {
+      details.push(`Removed ${leftovers.removed.length} files of an older user-wide ${client} install from your home folder.`);
+    }
+  }
+  const channel = installChannel();
+  channel.clear();
+  channel.appendLine(details.join('\n'));
+  const summary = failed.length === 0
+    ? `${BRAND.product} installed and checked for ${picked.map((item) => item.label).join(', ')}.`
+    : `${BRAND.product} installed, but the check failed for ${failed.join(', ')}.`;
+  const message = `${summary} The details list the first-run steps for each tool.`;
+  const choice = failed.length === 0 ? await vscode.window.showInformationMessage(message, 'Show details')
+    : await vscode.window.showWarningMessage(message, 'Show details');
+  if (choice === 'Show details') {
+    channel.show();
+  }
+}
+
+/** @type {vscode.OutputChannel | null} */
+let channelInstance = null;
+
+/**
+ * Return the output channel that holds the last install's checks and first-run steps.
+ * @returns {vscode.OutputChannel}
+ */
+function installChannel() {
+  channelInstance = channelInstance || vscode.window.createOutputChannel(`${BRAND.product} install`);
+  return channelInstance;
 }
 
 /**
@@ -302,7 +351,7 @@ async function setUp(context) {
  */
 async function offerReload(message) {
   const reload = await vscode.window.showInformationMessage(
-    `${message} Reload the window, then pick an ARIA agent (ARIA Auto, ARIA Collab or ARIA Prototype Creator) or ARIA Lite in a new chat with Session Target: Local.`,
+    `${message} Reload the window, then pick an ARIA agent (ARIA Auto, ARIA Collab or ARIA Prototype Creator) or ARIA Lite in a new chat with Session Target Local or Copilot.`,
     'Reload Window');
   if (reload) {
     vscode.commands.executeCommand('workbench.action.reloadWindow');
@@ -350,7 +399,7 @@ function rewriteStatePaths(state) {
       const file = path.join(entry.parentPath, entry.name);
       const text = entry.isFile() && /\.(json|md)$/.test(entry.name) ? fs.readFileSync(file, 'utf8') : '';
       if (text.includes('.hve/')) {
-        fs.writeFileSync(file, text.replaceAll('.hve/', '.aria/'));
+        fs.writeFileSync(file, text.replaceAll('.hve/', `${STATE}/`));
       }
     }
   }
@@ -372,17 +421,17 @@ function rewriteStatePaths(state) {
  */
 function migrateStateFolder(workspace) {
   const legacy = path.join(workspace, '.hve');
-  if (!fs.existsSync(legacy)) {
+  if (STATE === '.hve' || !fs.existsSync(legacy)) {
     return [];
   }
-  const state = path.join(workspace, '.aria');
+  const state = path.join(workspace, STATE);
   const clashes = mergeFolder(legacy, state);
   rewriteStatePaths(state);
   const gitignore = path.join(workspace, '.gitignore');
   if (fs.existsSync(gitignore)) {
     const text = fs.readFileSync(gitignore, 'utf8');
     const lines = text.split(/\r?\n/);
-    const added = [...new Set(lines.filter((line) => /^\/?\.hve(\/|$)/.test(line)).map((line) => line.replace('.hve', '.aria')))]
+    const added = [...new Set(lines.filter((line) => /^\/?\.hve(\/|$)/.test(line)).map((line) => line.replace('.hve', STATE)))]
       .filter((line) => !lines.includes(line));
     if (added.length) {
       fs.appendFileSync(gitignore, `${text === '' || text.endsWith('\n') ? '' : '\n'}${added.join('\n')}\n`);
@@ -398,19 +447,39 @@ function migrateWorkspaces() {
   const otel = vscode.workspace.getConfiguration('github.copilot.chat.otel');
   for (const folder of vscode.workspace.workspaceFolders || []) {
     const workspace = folder.uri.fsPath;
-    if (otel.get('outfile') === path.join(workspace, '.hve', 'runs', 'copilot-otel.jsonl')) {
-      otel.update('outfile', path.join(workspace, '.aria', 'runs', 'copilot-otel.jsonl'), vscode.ConfigurationTarget.Global)
+    if (STATE !== '.hve' && otel.get('outfile') === path.join(workspace, '.hve', 'runs', 'copilot-otel.jsonl')) {
+      otel.update('outfile', path.join(workspace, STATE, 'runs', 'copilot-otel.jsonl'), vscode.ConfigurationTarget.Global)
         .then(undefined, (error) => vscode.window.showErrorMessage(`ARIA could not repoint research telemetry: ${error.message}`));
     }
     try {
       const clashes = migrateStateFolder(workspace);
       if (clashes.length) {
-        vscode.window.showErrorMessage(`ARIA moved ${folder.name}/.hve into .aria except ${clashes.length} file(s) that exist in both, for `
-          + `example ${clashes.slice(0, 3).map((file) => path.relative(workspace, file)).join(', ')}. Keep the copy you need in .aria, then delete .hve.`);
+        vscode.window.showErrorMessage(`${BRAND.product} moved ${folder.name}/.hve into ${STATE} except ${clashes.length} file(s) that exist in both, for `
+          + `example ${clashes.slice(0, 3).map((file) => path.relative(workspace, file)).join(', ')}. Keep the copy you need in ${STATE}, then delete .hve.`);
       }
     } catch (error) {
-      vscode.window.showErrorMessage(`ARIA could not move ${folder.name}/.hve to .aria: ${error.message}`);
+      vscode.window.showErrorMessage(`${BRAND.product} could not move ${folder.name}/.hve to ${STATE}: ${error.message}`);
     }
+  }
+}
+
+/**
+ * Offer to remove the ARIA copies an older Copilot install left in ~/.copilot: VS Code lists them next to the plugin's agents.
+ * @param {vscode.ExtensionContext} context
+ * @param {string} python Python launcher.
+ */
+async function offerCopilotCleanup(context, python) {
+  const hooks = path.join(os.homedir(), '.copilot', 'hooks');
+  if (![`${BRAND.prefix}.json`, 'hve.json'].some((name) => fs.existsSync(path.join(hooks, name)))) {
+    return;
+  }
+  const choice = await vscode.window.showWarningMessage(`${BRAND.product} found its older copies in ~/.copilot, which make VS Code list every `
+    + `${BRAND.product} agent twice. Remove them? The plugin's agents work in the Local and Copilot harnesses, and Copilot CLI loads the `
+    + 'same plugin (Install for other tools > Copilot CLI shows how).', 'Remove copies');
+  if (choice) {
+    const script = path.join(context.extensionPath, 'runtime', 'tools', 'adapters', 'export.py');
+    const report = await runPythonJson(python, script, ['copilot', '--user', '--remove'], context.extensionPath);
+    await offerReload(`Removed ${report.removed.length} ${BRAND.product} files from ~/.copilot.`);
   }
 }
 
@@ -441,7 +510,7 @@ async function activate(context) {
   context.subscriptions.push(...missionControl.register(context, findPython));
   const telemetry = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
   telemetry.text = '$(record) Research telemetry on';
-  telemetry.tooltip = 'Copilot chats are recorded with full content to .aria/runs/copilot-otel.jsonl. Click to turn research telemetry off.';
+  telemetry.tooltip = `Copilot chats are recorded with full content to ${STATE}/runs/copilot-otel.jsonl. Click to turn research telemetry off.`;
   telemetry.command = 'frontierHve.researchTelemetryOff';
   showTelemetryReminder(telemetry);
   context.subscriptions.push(telemetry, vscode.workspace.onDidChangeConfiguration((event) => {
@@ -451,7 +520,7 @@ async function activate(context) {
   }));
   const python = await findPython();
   const folders = vscode.workspace.workspaceFolders;
-  if (python && folders && folders.length > 0 && fs.existsSync(path.join(folders[0].uri.fsPath, '.aria', 'runs', 'copilot-otel.jsonl'))) {
+  if (python && folders && folders.length > 0 && fs.existsSync(path.join(folders[0].uri.fsPath, STATE, 'runs', 'copilot-otel.jsonl'))) {
     // Not awaited: activation must not wait on a large file; a failure is shown, not swallowed.
     trimTelemetry(context, folders[0].uri.fsPath, python).catch((error) => vscode.window.showErrorMessage(`ARIA: ${error.message}`));
   }
@@ -473,6 +542,10 @@ async function activate(context) {
     return;
   }
   await registerPlugin(context, python);
+  if (python) {
+    // Not awaited: activation must not wait for the user's answer; a failure is shown, not swallowed.
+    offerCopilotCleanup(context, python).catch((error) => vscode.window.showErrorMessage(`ARIA: ${error.message}`));
+  }
   // Not awaited: activation must not wait for the user to dismiss a notification.
   void (python ? offerReload('ARIA agents are installed.') : warnNoPython());
 }

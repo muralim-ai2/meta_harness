@@ -1,13 +1,14 @@
 ---
 name: export-harness
-description: Install the Frontier HVE agents, skills and guard hooks for Copilot CLI, the Copilot cloud agent, Claude Code, Cursor or Codex, and connect Azure DevOps through Microsoft's Azure DevOps MCP server.
+description: Install the ARIA agents, skills and guard hooks for Copilot CLI, the Copilot cloud agent, Claude Code, Cursor or Codex, check each install, and connect Azure DevOps through Microsoft's Azure DevOps MCP server.
 ---
 
 # Export the harness
 
 Run from the workspace root; `<tools>` is the harness tools folder named in your agent instructions. The full guide (prerequisites, per-client start, Azure DevOps sign-in, guards per client, troubleshooting) is `<tools>/../docs/wiki/Adapters.md`; read it for any question this skill does not answer.
 
-1. Ask with the ask-questions tool which harnesses to install for (Copilot, Claude Code, Cursor, Codex, Copilot cloud agent), at which scope (user: every workspace, nothing committed; project: this repository only), and whether to connect Azure DevOps (organization name).
-2. For each harness run `python <tools>/adapters/export.py <copilot|claude|cursor|codex> --user` (user scope; `copilot` is user scope only) or `python <tools>/adapters/export.py <claude|cursor|codex|cloud> . [--ado <organization>]` (project scope; `cloud` writes `.github/` for the user to commit). To connect Azure DevOps in VS Code only, run `python <tools>/adapters/export.py vscode . --ado <organization>`.
-3. Show each printed `invoke` line and `gaps` list verbatim. Existing files that Frontier HVE did not write are never overwritten; if the script stops on one, show its message and stop.
-4. Tell the user the runtime is a copy of the harness (`~/.aria/runtime/` at user scope, `.aria/runtime/` or `.github/hve/runtime/` at project scope): rerun the export after updating the extension.
+1. Ask with the ask-questions tool which harnesses to install for (Copilot, Claude Code, Cursor, Codex, Copilot cloud agent), at which scope (user: every workspace, nothing committed; project: this repository only), and whether to connect Azure DevOps (organization name). Codex and the cloud agent install per project only.
+2. For each harness run `python <tools>/adapters/export.py <copilot|claude|cursor> --user` (user scope; `copilot` is user scope only, and only for machines without the ARIA extension: with it, Copilot CLI loads the extension's plugin through `copilot --plugin-dir`, and **ARIA: Install for other harnesses** > Copilot CLI shows the folder) or `python <tools>/adapters/export.py <claude|cursor|codex|cloud> . [--ado <organization>]` (project scope; `cloud` writes `.github/` for the user to commit). To connect Azure DevOps in VS Code only, run `python <tools>/adapters/export.py vscode . --ado <organization>`.
+3. Show each printed `invoke` line, `gaps` list and `removed` list verbatim. Existing files that ARIA did not write are never overwritten; if the script stops on one, show its message and stop.
+4. For each harness run `python <tools>/adapters/check.py <client> [--user | .]` and show each failed check and the `next` steps verbatim.
+5. Tell the user the runtime is a copy of the harness (`~/<state folder>/runtime/` at user scope, `<state folder>/runtime/` or `.github/<prefix>/runtime/` at project scope, as `invoke` names them): rerun the export after updating the extension.

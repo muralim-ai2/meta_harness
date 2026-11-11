@@ -38,4 +38,4 @@ These follow the same rules as the [Product Manager](Product-Manager.md) council
 
 ## Files
 
-`tools/evaluation/contract.py` (JSON contract validation), `tools/evaluation/workflow.py` (stages and decision), `tools/evaluation/reflection.py` (CLI), `extension/agents/hve-evaluation-reviewer.agent.md` and `.github/agents/evaluation-reviewer.agent.md` (read-only council member), `tests/test_evaluation.py`. `hooks/loop_guard.py` lets the agent write files to `.aria/evaluations/input/` that cite `.harness/` evidence; loop state stays locked.
+`tools/evaluation/contract.py` (JSON contract validation), `tools/evaluation/workflow.py` (stages and decision), `tools/evaluation/reflection.py` (CLI), `extension/agents/evaluation-reviewer.agent.md` and `.github/agents/evaluation-reviewer.agent.md` (read-only council member), `tests/test_evaluation.py`. `hooks/loop_guard.py` lets the agent write files to `.aria/evaluations/input/` that cite `.harness/` evidence; loop state stays locked.

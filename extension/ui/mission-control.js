@@ -9,6 +9,7 @@ const { snapshot } = require('./workspace-state');
 const { activity } = require('./activity');
 const { listAsks, askTree, projectTree } = require('./asks');
 const { chatList, shownChat, claimsFrom, pendingFrom, chatMeta } = require('./chats');
+const { companion } = require('./companion');
 const { Workflow } = require('./workflow');
 const { HarnessTree } = require('./harness-tree');
 const actions = require('./actions');
@@ -18,6 +19,8 @@ const extras = require('./extras');
 const { evaluationFiles } = require('./asks');
 const { insights } = require('./insights');
 const { record, text, message, errorText } = require('./validate');
+const { BRAND } = require('../brand');
+const STATE = BRAND.state_dir;
 const PAGES = ['live', 'plan', 'progress', 'files', 'others', 'telemetry', 'skills', 'settings'];
 const SCRIPTS = ['vnode.js', 'markdown.js', 'views.js', 'telemetry.js', 'pages.js', 'app.js'];
 const REFRESH_DELAY_MS = 400;
@@ -77,9 +80,9 @@ class MissionControl {
     this.treeTimer = null;
     this.tree = new HarnessTree(() => this.workspace?.uri.scheme === 'file' ? this.workspace.uri.fsPath : null);
     const version = text(record(context.extension.packageJSON, 'Extension manifest').version, 'Extension version');
-    /** @type {Omit<import('./types').Model, 'now' | 'surface' | 'workspace' | 'telemetry' | 'navigate' | 'transcripts'>} */
+    /** @type {Omit<import('./types').Model, 'brand' | 'now' | 'surface' | 'workspace' | 'telemetry' | 'navigate' | 'transcripts'>} */
     this.state = { busy: false, error: null, workspaceMessage: null, connection: { version, python: null, guard: guardMode(context.extensionPath) },
-      asks: null, asksError: null, snapshot: null, snapshotError: null, activity: null, activityError: null, pending: null, handoff: null, handoffError: null, insights: null, models: null, modelsError: null, analysis: null, map: null, evaluations: [], outputsError: null, files: null, filesError: null, project: null, projectError: null,
+      asks: null, asksError: null, snapshot: null, snapshotError: null, activity: null, activityError: null, pending: null, companion: null, handoff: null, handoffError: null, insights: null, models: null, modelsError: null, analysis: null, map: null, evaluations: [], outputsError: null, files: null, filesError: null, project: null, projectError: null,
       packs: null, packsError: null };
     this.restoreWorkspace();
   }
@@ -133,7 +136,7 @@ class MissionControl {
     this.watchers = [];
     this.tree.refresh();
     if (this.workspace?.uri.scheme !== 'file') return;
-    const patterns = [new vscode.RelativePattern(this.workspace, '.aria/**/*')];
+    const patterns = [new vscode.RelativePattern(this.workspace, `${STATE}/**/*`)];
     const storage = this.context.storageUri;
     if (storage) patterns.push(new vscode.RelativePattern(vscode.Uri.file(path.dirname(storage.fsPath)), 'GitHub.copilot-chat/transcripts/*.jsonl'));
     patterns.push(new vscode.RelativePattern(this.workspace, '.harness/**/*'));
@@ -252,7 +255,8 @@ class MissionControl {
     const project = await this.section('Project files', async () => projectTree(root));
     const outputs = await this.section('Maps and evaluations', async () => ({ map: extras.mapInfo(root), evaluations: evaluationFiles(root) }));
     const carried = await this.section('Ask carried over', async () => askFlow.handoff(this));
-    Object.assign(this.state, { asks: asks.value, asksError: asks.error, snapshot: state.value, snapshotError: state.error,
+    const other = await this.section('Other tools', async () => companion(root, live.value?.chats || [], now));
+    Object.assign(this.state, { asks: asks.value, asksError: asks.error, snapshot: state.value, snapshotError: state.error, companion: other.value,
       activity: live.value, activityError: live.error, files: files.value, filesError: files.error, project: project.value, projectError: project.error,
       handoff: carried.value, handoffError: carried.error, insights: live.value ? insights(live.value) : null,
       map: outputs.value?.map || null, evaluations: outputs.value?.evaluations || [], outputsError: outputs.error });
@@ -265,7 +269,7 @@ class MissionControl {
    * @returns {import('./types').Model}
    */
   model(surface) {
-    return { ...this.state, now: new Date().toISOString(), surface, navigate: this.navigate, telemetry: this.telemetry(), transcripts: this.transcripts(),
+    return { ...this.state, brand: BRAND, now: new Date().toISOString(), surface, navigate: this.navigate, telemetry: this.telemetry(), transcripts: this.transcripts(),
       workspace: this.workspace ? { name: this.workspace.name, path: this.workspace.uri.fsPath } : null };
   }
 
@@ -381,6 +385,7 @@ class MissionControl {
         case 'newChat': await askFlow.newChat(this); break;
         case 'startHandoff': await askFlow.startHandoff(this); break;
         case 'dismissHandoff': await askFlow.dismissHandoff(this); break;
+        case 'copyCompanionStart': await askFlow.copyCompanionStart(this); break;
         case 'attachReferences': await askFlow.attachReferences(this); break;
         case 'loadModels': await analysis.loadModels(this); break;
         case 'analyze': await analysis.analyze(this, data.model, data.question); break;

@@ -156,7 +156,14 @@ export interface Handoff {
   from: string;
   at: string;
 }
+export interface Companion {
+  client: 'claude' | 'codex' | 'cursor' | 'copilot';
+  label: string;
+  start: string;
+  at: string;
+}
 export interface Model {
+  brand: { product: string; prefix: string; state_dir: string };
   now: string;
   surface: 'sidebar' | 'editor';
   busy: boolean;
@@ -173,6 +180,7 @@ export interface Model {
   activity: Activity | null;
   activityError: string | null;
   pending: Pending | null;
+  companion: Companion | null;
   handoff: Handoff | null;
   handoffError: string | null;
   insights: Insights | null;

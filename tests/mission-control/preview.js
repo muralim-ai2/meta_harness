@@ -11,6 +11,7 @@ const { listAsks, askTree } = require('../../extension/ui/asks');
 const { chatList, shownChat, chatMeta } = require('../../extension/ui/chats');
 const { evaluationFiles } = require('../../extension/ui/asks');
 const { insights } = require('../../extension/ui/insights');
+const { BRAND } = require('../../extension/brand');
 
 const [workspace, transcripts, telemetry, at, selected] = process.argv.slice(2);
 if (!workspace || !transcripts) throw new Error('usage: node preview.js <workspace> <transcripts folder> [telemetry export or -] [ISO time to show or -] [ask on screen]');
@@ -23,7 +24,7 @@ const viewed = state.ask ? state.ask.id : null;
 const { chats } = chatList(transcripts, workspace, asks.map(ask => ask.id), {}, null, now);
 const shown = shownChat(chats, viewed, null, viewed === (asks.find(ask => ask.active)?.id ?? null));
 /** @type {import('../../extension/ui/types').Model} */
-const model = { now: new Date(now).toISOString(), surface: 'sidebar', busy: false, error: null, workspace: { name: path.basename(workspace), path: workspace },
+const model = { brand: BRAND, now: new Date(now).toISOString(), surface: 'sidebar', busy: false, error: null, workspace: { name: path.basename(workspace), path: workspace },
   workspaceMessage: null, connection: { version: manifest.version, python: 'python', guard: 'advise' }, telemetry: { enabled: !!file, file }, transcripts,
   asks, asksError: null, snapshot: state, snapshotError: null, activityError: null, pending: null, packs: [], packsError: null,
   activity: { ...activity(workspace, shown ? path.join(transcripts, `${shown.id}.jsonl`) : null, file, now), chats, meta: shown ? chatMeta(transcripts, shown.id) : null }, handoff: null, handoffError: null, evaluations: evaluationFiles(workspace), outputsError: null,
@@ -31,7 +32,7 @@ const model = { now: new Date(now).toISOString(), surface: 'sidebar', busy: fals
   models: [{ id: 'claude-haiku-5.5', name: 'Claude Haiku 5.5', family: 'claude-haiku' }, { id: 'gpt-6-astra', name: 'GPT-6 Astra', family: 'gpt-6' }], modelsError: null, analysis: null,
   files: viewed ? askTree(workspace, viewed) : null, filesError: null, navigate: { page: 'live', seq: 0 } };
 model.insights = model.activity.session ? insights(model.activity) : null;
-const out = fs.mkdtempSync(path.join(os.tmpdir(), 'hve-preview-'));
+const out = fs.mkdtempSync(path.join(os.tmpdir(), 'aria-preview-'));
 const media = name => pathToFileURL(path.join(EXTENSION, 'ui', 'media', name)).href;
 fs.writeFileSync(path.join(out, 'model.js'), `window.previewModel = ${JSON.stringify(model)};\nwindow.previewNow = ${now};\n`);
 fs.writeFileSync(path.join(out, 'bridge.js'), `const params = new URLSearchParams(location.search);

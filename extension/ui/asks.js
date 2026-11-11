@@ -5,6 +5,8 @@ const path = require('node:path');
 const { Reader, containedPath } = require('./file-access');
 const { record, text, list } = require('./validate');
 const { headline } = require('./activity');
+const { BRAND } = require('../brand');
+const STATE = BRAND.state_dir;
 const ASK = /^\d{8}-\d{4}-[a-z0-9][a-z0-9-]{0,40}$/;
 const ASK_LIMIT = 200;
 const TREE_LIMIT = 400;
@@ -32,7 +34,7 @@ function askTime(id) {
  */
 function listAsks(workspace) {
   const reader = new Reader(workspace);
-  const folder = path.join('.aria', 'asks');
+  const folder = path.join(STATE, 'asks');
   const absolute = containedPath(reader.root, folder);
   if (!fs.existsSync(absolute)) return [];
   const pointer = reader.json(path.join(folder, 'active.json'), true);
@@ -86,7 +88,7 @@ function folderTree(root, folder, skip, limit) {
 function askTree(workspace, ask) {
   if (!ASK.test(ask)) throw new Error(`Invalid ask identifier: ${ask}`);
   const root = fs.realpathSync(workspace);
-  const folder = path.join('.aria', 'asks', ask);
+  const folder = path.join(STATE, 'asks', ask);
   const absolute = containedPath(root, folder);
   if (!fs.existsSync(absolute) || !fs.statSync(absolute).isDirectory()) throw new Error(`No ask folder: ${folder}`);
   return { ask, path: folder.split(path.sep).join('/'), ...folderTree(root, folder, new Set(), TREE_DEPTH) };
@@ -141,7 +143,7 @@ function scopeText(brief) {
  * @returns {string}
  */
 function starterPrompt(kind, ask, brief) {
-  const use = `If you are an agent that uses .aria or .harness folders, work in the ask .aria/asks/${ask.id}/ (request and plan attached) and keep its records in that same folder; `
+  const use = `If you are an agent that uses ${STATE} or .harness folders, work in the ask ${STATE}/asks/${ask.id}/ (request and plan attached) and keep its records in that same folder; `
     + 'do not create another. Otherwise ignore this if it does not apply.';
   if (kind === 'resume') return [`Continue: ${ask.title}`, use, 'Say where it stands, then ask me what next.'].join('\n');
   if (!brief) throw new Error('A new ask or a follow-up needs a title.');
@@ -155,12 +157,12 @@ function starterPrompt(kind, ask, brief) {
  */
 function evaluationFiles(workspace) {
   const root = fs.realpathSync(workspace);
-  const folder = containedPath(root, path.join('.aria', 'evaluations'));
+  const folder = containedPath(root, path.join(STATE, 'evaluations'));
   if (!fs.existsSync(folder)) return [];
   return fs.readdirSync(folder, { withFileTypes: true }).filter(entry => entry.isDirectory() && entry.name !== 'input')
     .map(entry => ({ name: entry.name, mtime: fs.statSync(path.join(folder, entry.name)).mtimeMs })).sort((a, b) => b.mtime - a.mtime).slice(0, 8)
     .flatMap(run => fs.readdirSync(path.join(folder, run.name), { withFileTypes: true }).filter(entry => entry.isFile() && /\.(md|json)$/i.test(entry.name))
-      .slice(0, 6).map(entry => `.aria/evaluations/${run.name}/${entry.name}`));
+      .slice(0, 6).map(entry => `${STATE}/evaluations/${run.name}/${entry.name}`));
 }
 
 /** Return the asks the project still lists whose contract.json is gone, because their files were deleted.
@@ -169,10 +171,10 @@ function evaluationFiles(workspace) {
  */
 function deletedAsks(workspace) {
   const reader = new Reader(workspace);
-  const value = reader.json(path.join('.aria', 'project', 'project.json'), true);
+  const value = reader.json(path.join(STATE, 'project', 'project.json'), true);
   if (value === undefined) return [];
   return list(record(value, 'Project record').asks, 'Project asks').map(id => text(id, 'Project ask'))
-    .filter(id => ASK.test(id) && !fs.existsSync(path.join(reader.root, '.aria', 'asks', id, 'contract.json')));
+    .filter(id => ASK.test(id) && !fs.existsSync(path.join(reader.root, STATE, 'asks', id, 'contract.json')));
 }
 
 /** Return the brief carried over from another workspace when it was saved for this folder in the last day, or null.

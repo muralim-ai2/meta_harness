@@ -62,6 +62,8 @@ def run_session(main_model: str, canceled: bool) -> tuple[subprocess.CompletedPr
         (root / "hooks").mkdir()
         shutil.copy(REPO / "hooks" / "metrics.py", root / "hooks")
         shutil.copy(REPO / "hooks" / "hve_paths.py", root / "hooks")
+        shutil.copy(REPO / "hooks" / "brand.py", root / "hooks")
+        shutil.copy(REPO / "brand.json", root)
         (root / ".github" / "agents").mkdir(parents=True)
         (root / ".github" / "agents" / "single.agent.md").write_text(
             "---\nname: single\nmodel: Claude Opus 5.5 (copilot)\n---\nmodel: not-the-pin\n", encoding="utf-8")

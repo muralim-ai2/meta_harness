@@ -13,11 +13,12 @@ from recommend import stems  # noqa: E402
 from stage_evidence import validate_stage  # noqa: E402
 import store  # noqa: E402
 from route import candidates  # noqa: E402
+from loop_paths import STATE  # noqa: E402
 
 WORKSPACE = Path.cwd()
 SOURCES = [ROOT / "templates" / "lifecycles", *sorted(ROOT.glob("plugins/*/lifecycles")),
            *sorted(p for p in WORKSPACE.glob("plugins/*/lifecycles") if not (p.parent / "hve-plugin.json").is_file()),
-           WORKSPACE / ".aria" / "lifecycles"]
+           WORKSPACE / STATE / "lifecycles"]
 STAGE_FIELDS = {"name", "goal", "agent", "skills", "plugin_skills", "templates", "exit", "skip_when"}
 OPTIONAL_STAGE_FIELDS = {"evidence", "rework", "loop"}
 

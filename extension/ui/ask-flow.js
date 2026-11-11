@@ -6,6 +6,8 @@ const path = require('node:path');
 const { listAsks, slugFor, askRequest, scopeText, starterPrompt, deletedAsks, handoffFrom } = require('./asks');
 const { claimsFrom, chatSessionUri } = require('./chats');
 const { snapshot } = require('./workspace-state');
+const { BRAND } = require('../brand');
+const STATE = BRAND.state_dir;
 const NAME = /^[a-z0-9][a-z0-9-]{0,40}$/;
 const HANDOFF = 'askHandoff';
 const AGENT = 'ARIA Collab';
@@ -72,7 +74,7 @@ async function newAsk(mc, preset = {}) {
   for (;;) {
     const choice = await vscode.window.showWarningMessage(`Create ask “${brief.title}” in ${path.basename(root)}?`, { modal: true, detail: [
       scope.verdict === 'new-workspace' ? 'You chose to keep it in this project.' : `Where it lands: ${scope.why}.`,
-      `Folder: .aria/asks/<UTC date-time>-${slug}/ with your request, the contract, the plan and the loop records. Features and progress stay shared across the project.`,
+      `Folder: ${STATE}/asks/<UTC date-time>-${slug}/ with your request, the contract, the plan and the loop records. Features and progress stay shared across the project.`,
       open ? `The open ask “${open.title}” stays on disk, unfinished items included, but is no longer active.` : '',
       'A Copilot Chat then opens for it. No agent starts until you send a message.'].filter(Boolean).join('\n\n') }, 'Create ask', 'Change folder name…');
     if (choice === 'Create ask') break;
@@ -87,7 +89,7 @@ async function newAsk(mc, preset = {}) {
   await flow.createAsk(root, scope.activeAsk, slug, askRequest(brief));
   await mc.view(null);
   const created = listAsks(root).find(ask => ask.active);
-  if (!created) throw new Error('The new ask was created but is not active. Inspect .aria/asks/active.json.');
+  if (!created) throw new Error(`The new ask was created but is not active. Inspect ${STATE}/asks/active.json.`);
   await pickChat(mc, created, 'new', brief);
 }
 
@@ -159,6 +161,7 @@ async function chooseChat(mc, ask, kind, brief) {
  */
 async function startChat(mc, ask, kind, brief, choice) {
   await openChat(mc, ask, choice, starterPrompt(kind, ask, brief), AGENT);
+  if (mc.state.companion) return;
   mc.open('live');
   void vscode.window.showInformationMessage(`The chat for “${brief ? brief.title : ask.title}” has a starter message filled in, with the ask's request and plan attached. `
     + 'Add references (files, screenshots, links) or more detail, then send it.', 'Attach files…')
@@ -175,7 +178,14 @@ async function startChat(mc, ask, kind, brief, choice) {
  */
 async function openChat(mc, ask, choice, query, mode) {
   const root = mc.target().uri.fsPath;
-  const attachFiles = ['request.md', 'plan.md'].map(name => path.join(root, '.aria', 'asks', ask.id, name)).filter(file => fs.existsSync(file))
+  const other = mc.state.companion;
+  if (other) {
+    await vscode.env.clipboard.writeText(query);
+    void vscode.window.showInformationMessage(`The ask is being worked on in ${other.label}, so the message is copied instead of opened in Copilot Chat. `
+      + `Paste it there (start it with: ${other.start}).`);
+    return;
+  }
+  const attachFiles = ['request.md', 'plan.md'].map(name => path.join(root, STATE, 'asks', ask.id, name)).filter(file => fs.existsSync(file))
     .map(file => vscode.Uri.file(file));
   if (choice.target === 'new') {
     await mc.context.workspaceState.update('pendingChat', { ask: ask.id, at: new Date().toISOString() });
@@ -276,4 +286,16 @@ async function attachReferences(mc) {
   await vscode.commands.executeCommand('workbench.action.chat.open', { attachFiles: files });
 }
 
-module.exports = { AGENT, HANDOFF, askBrief, newAsk, newChat, chooseChat, startChat, messageInChat, attachReferences, startElsewhere, handoff, offerHandoff, startHandoff, dismissHandoff };
+/** Copy the command that starts the agent in the tool working on the open ask.
+ * @param {MissionControl} mc
+ * @returns {Promise<void>}
+ */
+async function copyCompanionStart(mc) {
+  const other = mc.state.companion;
+  if (!other) throw new Error('No other tool is working on the open ask.');
+  await vscode.env.clipboard.writeText(other.start);
+  void vscode.window.showInformationMessage(`Copied the ${other.label} start command: ${other.start}`);
+}
+
+module.exports = { AGENT, HANDOFF, askBrief, newAsk, newChat, chooseChat, startChat, messageInChat, attachReferences, startElsewhere, handoff, offerHandoff, startHandoff, dismissHandoff,
+  copyCompanionStart };

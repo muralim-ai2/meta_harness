@@ -6,7 +6,8 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
-RUNS_DIR = ROOT / ".aria" / "runs"
+STATE = json.loads((ROOT / "brand.json").read_text(encoding="utf-8"))["state_dir"]
+RUNS_DIR = ROOT / STATE / "runs"
 ROT_WINDOW = 10
 ROT_DROP = 0.2
 BAR_TOKENS = 5000

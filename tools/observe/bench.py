@@ -11,11 +11,12 @@ from typing import Any, Callable
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "hooks"))
+from brand import BRAND  # noqa: E402
 from metrics import request_effort  # noqa: E402
 from otel_prune import LOCK_FILE, prune  # noqa: E402
 from provenance import provenance  # noqa: E402
 
-RUNS_DIR = ROOT / ".aria" / "runs"
+RUNS_DIR = ROOT / BRAND["state_dir"] / "runs"
 OTEL_FILE = RUNS_DIR / "copilot-otel.jsonl"
 LOG_FILE = RUNS_DIR / "bench.log"
 PROMPT_FILE = ROOT / "tests" / "prompts" / "color-palette.md"
@@ -152,7 +153,7 @@ def guarded(work: Callable[[], str]) -> str:
 
 def watch(agent: str) -> str:
     """Put the prompt on the clipboard, wait for the user to start a new chat with the agent, follow it live, flush and collect; return the session id."""
-    current = ROOT / ".aria" / "outputs" / AGENT_MODES[agent] / "current"
+    current = ROOT / BRAND["state_dir"] / "outputs" / AGENT_MODES[agent] / "current"
     if current.exists():
         raise FileExistsError(f"{current} exists from an earlier run: run `python tools/observe/collect.py` or move it before a new run")
     bench = Bench(agent, OTEL_FILE.stat().st_size)

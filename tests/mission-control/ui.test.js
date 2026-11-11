@@ -14,6 +14,7 @@ const { chatList } = require('../../extension/ui/chats');
 const { text } = require('../../extension/ui/media/vnode');
 const { sidebar } = require('../../extension/ui/media/views');
 const { dashboard } = require('../../extension/ui/media/pages');
+const { BRAND } = require('../../extension/brand');
 const START = Date.parse('2026-10-28T20:07:35.000Z');
 const NOW = START + 60_000;
 
@@ -56,7 +57,7 @@ function model(t) {
   json(root, '.aria\\runs\\session-1.errors.json', { failures: [{ command: 'npm test', output: '1 failing' }], paused: false });
   const asks = listAsks(root);
   const { chats } = chatList(transcripts, root, asks.map(ask => ask.id), { 'session-1': { ask: ASK, how: 'started' } }, null, NOW);
-  return { now: new Date(NOW).toISOString(), surface: 'sidebar', busy: false, error: null, workspace: { name: 'policy', path: root }, workspaceMessage: null,
+  return { brand: BRAND, now: new Date(NOW).toISOString(), surface: 'sidebar', busy: false, error: null, workspace: { name: 'policy', path: root }, workspaceMessage: null,
     connection: { version: '0.20.0', python: 'python', guard: 'advise' }, telemetry: { enabled: false, file: null }, transcripts,
     asks, asksError: null, snapshot: snapshot(root), snapshotError: null, activity: { ...activity(root, path.join(transcripts, 'session-1.jsonl'), null, NOW), chats },
     activityError: null, pending: null, files: askTree(root, ASK), filesError: null, packs: null, packsError: null, evaluations: [], map: null, outputsError: null,

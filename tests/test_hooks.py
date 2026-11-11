@@ -18,8 +18,9 @@ def make_root(tmp: str, profile: dict[str, Any]) -> Path:
     """Return a temp workspace with the hooks, .aria/runs and the given .aria/user_profile.json."""
     root = Path(tmp)
     (root / "hooks").mkdir()
-    for hook in ("profile_detector.py", "compaction.py", "graph_refresh.py", "budget.py", "interventions.py", "hve_paths.py"):
+    for hook in ("profile_detector.py", "compaction.py", "graph_refresh.py", "budget.py", "interventions.py", "hve_paths.py", "brand.py"):
         shutil.copy(REPO / "hooks" / hook, root / "hooks")
+    shutil.copy(REPO / "brand.json", root)
     (root / ".aria" / "runs").mkdir(parents=True)
     (root / ".aria" / "user_profile.json").write_text(json.dumps(profile), encoding="utf-8")
     return root
@@ -182,6 +183,37 @@ def test_budget_asks_user_to_continue() -> None:
         assert state["extensions"] == 1 and state["budget_ms"] == 30 * 60_000, state
 
 
+def test_precompact_rehydrates_working_set_once() -> None:
+    """PreCompact marks the session pending and consume_rehydration returns the ask, journal and map anchor once."""
+    sys.path.insert(0, str(REPO / "hooks"))
+    import compaction
+    with tempfile.TemporaryDirectory() as tmp:
+        root = make_root(tmp, EMPTY_PROFILE)
+        ask = "20261110-1200-portal"
+        (root / ".aria" / "asks" / ask).mkdir(parents=True)
+        (root / ".aria" / "project").mkdir(parents=True)
+        (root / ".aria" / "map").mkdir(parents=True)
+        (root / ".aria" / "asks" / "active.json").write_text(json.dumps({"active": ask}), encoding="utf-8")
+        contract = {"current": "build", "stages": [{"name": "design", "status": "done"}, {"name": "build", "status": "active"}],
+                    "skills": {"selected": [{"name": "ux-flows", "description": "Design screen flows."}]},
+                    "paths": {"ask": f".aria/asks/{ask}", "plan": f".aria/asks/{ask}/plan.md",
+                              "evidence": f".aria/asks/{ask}/loop/evidence", "feature_list": ".aria/project/feature_list.json"}}
+        (root / ".aria" / "asks" / ask / "contract.json").write_text(json.dumps(contract), encoding="utf-8")
+        (root / ".aria" / "project" / "feature_list.json").write_text(
+            json.dumps([{"name": "auth", "passes": True}, {"name": "approvals", "passes": False}]), encoding="utf-8")
+        (root / ".aria" / "project" / "journal.jsonl").write_text(
+            json.dumps({"kind": "decision", "stage": "design", "text": "Use SQLite in local dev", "why": "fast checks"}) + "\n",
+            encoding="utf-8")
+        (root / ".aria" / "map" / "map.json").write_text(
+            json.dumps({"commit": "abc1234", "nodes": [{"id": "mod:api", "level": "module", "purpose": "REST endpoints"}]}),
+            encoding="utf-8")
+        res = fire(root, "compaction.py", {"hook_event_name": "PreCompact", "session_id": "s-comp", "trigger": "auto"})
+        assert res.returncode == 0 and res.stdout == "", res.stderr
+        anchor = compaction.consume_rehydration(root, "s-comp")
+        assert anchor and ask in anchor and "approvals" in anchor and "Use SQLite in local dev" in anchor and "abc1234" in anchor, anchor
+        assert compaction.consume_rehydration(root, "s-comp") is None
+
+
 if __name__ == "__main__":
     test_bloat_request_is_challenged_and_learned()
     test_preference_persists_into_next_session()
@@ -191,4 +223,5 @@ if __name__ == "__main__":
     test_graph_follows_project()
     test_budget_nudges_then_stops()
     test_budget_asks_user_to_continue()
+    test_precompact_rehydrates_working_set_once()
     print("test_hooks: OK")

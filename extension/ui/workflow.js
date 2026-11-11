@@ -6,6 +6,8 @@ const { lifecycle } = require('./lifecycle-cli');
 const { snapshot, askId } = require('./workspace-state');
 const { Reader } = require('./file-access');
 const { record, text, list, integer } = require('./validate');
+const { BRAND } = require('../brand');
+const STATE = BRAND.state_dir;
 
 /** @typedef {{ask: string, item: string, itemRevision: string, value: 'accepted' | 'changes'}} ReviewTicket */
 
@@ -171,7 +173,7 @@ class Workflow {
         ['tick-for', ticket.ask, coreRevision, ticket.item, ticket.value, note]), 'Recorded review');
       if (result.ask !== ticket.ask || result.item !== ticket.item || result.value !== ticket.value) throw new Error('Harness returned a different review result.');
       const reader = new Reader(workspace);
-      const saved = record(reader.json(path.join('.aria', 'asks', ticket.ask, 'contract.json')), 'Saved contract');
+      const saved = record(reader.json(path.join(STATE, 'asks', ticket.ask, 'contract.json')), 'Saved contract');
       const entry = record(record(saved.checklist, 'Saved checklist')[ticket.item], 'Saved review');
       if (entry.value !== ticket.value || entry.note !== note) throw new Error('Review response did not match the saved human decision.');
       if (ticket.value === 'changes' && ticket.item.startsWith('stage:') && review.status === 'done') {

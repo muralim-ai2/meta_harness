@@ -8,11 +8,12 @@ from pathlib import Path
 from typing import Any, TypedDict
 
 ROOT = Path(__file__).resolve().parents[2]
-RUNS_DIR = ROOT / ".aria" / "runs"
-OUTPUTS_DIR = ROOT / ".aria" / "outputs"
+STATE = json.loads((ROOT / "brand.json").read_text(encoding="utf-8"))["state_dir"]
+RUNS_DIR = ROOT / STATE / "runs"
+OUTPUTS_DIR = ROOT / STATE / "outputs"
 PROMPT_FILE = ROOT / "tests" / "prompts" / "color-palette.md"
 STOP_EVENTS = ("Stop", "SubagentStop")
-SKIP_DIRS = {"node_modules", ".next", ".git", ".aria"}
+SKIP_DIRS = {"node_modules", ".next", ".git", STATE}
 FILE_BLOCK = re.compile(r"^[ \t#*`]*(?P<path>[\w./-]+\.\w+)[ \t*`:]*\n```[^\n]*\n(?P<code>.*?)\n```", re.MULTILINE | re.DOTALL)
 PASTED_ATTACHMENT = re.compile(r"^#attachment:Pasted text #\d+$")
 TERMINAL_NOTIFICATION = re.compile(r"^\[Terminal [\w-]+ notification: ")

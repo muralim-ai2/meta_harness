@@ -8,8 +8,13 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Literal
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "hooks"))
+from brand import BRAND  # noqa: E402
+
+STATE = BRAND["state_dir"]
+
 SKILLS_DIR = Path(__file__).resolve().parents[2] / "skills"
-USER_REGISTRY = Path.cwd() / ".aria" / "skills-registry.json"
+USER_REGISTRY = Path.cwd() / STATE / "skills-registry.json"
 STATUS_ORDER = {"admitted": 0, "provisional": 1}
 STOP_WORDS = {"the", "and", "for", "then", "with", "from", "that", "this", "our", "your", "into", "each", "before", "after", "are",
               "was", "not", "can", "how", "what", "why", "all", "any", "one", "use", "make", "want", "need", "please"}

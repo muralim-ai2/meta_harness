@@ -234,8 +234,9 @@ def library_root(tmp: str) -> Path:
     (root / "tools" / "skills").mkdir(parents=True)
     (root / "tools" / "loop").mkdir()
     (root / ".aria" / "runs").mkdir(parents=True)
-    for hook in ("skill_loader.py", "interventions.py", "hve_paths.py", "guard_policy.py"):
+    for hook in ("skill_loader.py", "interventions.py", "hve_paths.py", "guard_policy.py", "brand.py"):
         shutil.copy(REPO / "hooks" / hook, root / "hooks")
+    shutil.copy(REPO / "brand.json", root)
     for script in ("recommend.py", "context_load.py", "scan.py"):
         shutil.copy(REPO / "tools" / "skills" / script, root / "tools" / "skills")
     for script in ("lifecycle.py", "lifecycle_catalog.py", "ask_packs.py", "ask_skills.py", "stage_evidence.py", "environment.py", "loop_paths.py",
@@ -432,6 +433,23 @@ def test_prd_skill_is_template_and_tracker_neutral() -> None:
     assert (REPO / "skills" / "imported" / "agentx" / "product" / "prd" / "SKILL.md").read_text(encoding="utf-8").count("PRD-TEMPLATE") > 0
 
 
+def test_skill_loader_catalog_descriptions_and_raw_map_guard() -> None:
+    """Announcements carry skill descriptions to skim instead of upfront reads, cold PreToolUse calls pass, and raw map.json reads are denied."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = library_root(tmp)
+        assert fire(root, {"session_id": "cold", "hook_event_name": "PreToolUse", "tool_name": "read_file",
+                           "tool_input": {"filePath": "README.md"}}) == ""
+        for raw_map in (".aria/map/map.json", "docs/architecture/solution-map.json"):
+            denied = json.loads(fire(root, {"session_id": "cold", "hook_event_name": "PreToolUse", "tool_name": "read_file",
+                                            "tool_input": {"filePath": raw_map}}))
+            assert denied["hookSpecificOutput"]["permissionDecision"] == "deny" and "overview.md" in json.dumps(denied), denied
+        fire(root, {"session_id": "cat1", "hook_event_name": "UserPromptSubmit", "prompt": "Build a color palette page."},
+             HARNESS_SKILLS_MIN_STATUS="provisional")
+        msg = json.loads(fire(root, {"session_id": "cat1", "hook_event_name": "PreToolUse",
+                                     "tool_input": {"filePath": "x.ts"}}))["hookSpecificOutput"]["additionalContext"]
+        assert "skim descriptions" in msg and "Design color palette pages." in msg and "read and follow" not in msg, msg
+
+
 if __name__ == "__main__":
     test_scan_passes_clean_and_flags_unsafe_skills()
     test_triage_maps_skills_to_user_categories()
@@ -450,4 +468,5 @@ if __name__ == "__main__":
     test_rank_suggests_most_relevant_per_token_within_guideline()
     test_required_skills_load_first_and_outside_categories()
     test_prd_skill_is_template_and_tracker_neutral()
+    test_skill_loader_catalog_descriptions_and_raw_map_guard()
     print("test_skills: OK")

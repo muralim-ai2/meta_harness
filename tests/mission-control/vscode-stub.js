@@ -66,7 +66,8 @@ function host(roots, storage, globalState = null) {
     ViewColumn: { Active: -1, Beside: -2 },
     StatusBarAlignment: { Left: 1, Right: 2 },
     ConfigurationTarget: { Global: 1 },
-    env: { openExternal: async target => { controls.calls.push(['external', target.toString()]); return true; } },
+    env: { openExternal: async target => { controls.calls.push(['external', target.toString()]); return true; },
+      clipboard: { writeText: async value => { controls.calls.push(['clipboard', value]); } } },
     extensions: { getExtension: id => controls.extensions.includes(id) ? { id, activate: async () => controls.exports[id] } : undefined },
     workspace: {
       isTrusted: true, workspaceFolders: folders,

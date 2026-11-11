@@ -40,7 +40,7 @@ def test_catalog_renders_every_persona_and_lifecycles_name_real_agents() -> None
     team = catalog()["team-delivery"]["stages"]
     assert [s["name"] for s in team if s.get("loop")] == ["data-build", "build", "ui-build", "test", "devops"]
     assert personas.match("design the oracle database schema and migration")[0]["id"] == "db-architect"
-    reviewer = (REPO / "extension" / "agents" / "hve-security-reviewer.agent.md").read_text(encoding="utf-8")
+    reviewer = (REPO / "extension" / "agents" / "security-reviewer.agent.md").read_text(encoding="utf-8")
     assert "user-invocable: false" in reviewer and "review.md" in reviewer and "Generated from templates/personas/catalog.json" in reviewer
 
 
@@ -86,6 +86,30 @@ def test_auto_pauses_only_at_ticked_gates() -> None:
         (ws / "req.md").write_text("Build a second service", encoding="utf-8")
         plain = json.loads(run(ws, "contract", "sdlc", "second", "ARIA Auto", "req.md"))
         assert plain["gates"] == "all" and not [i for i in json.loads(run(ws, "checklist"))["items"] if i.startswith("gate:")]
+
+
+def test_persona_brief_reduces_skills_and_cites_solution_map() -> None:
+    """Persona briefs carry a role-reduced skill list with descriptions to skim and include solution-map touchpoints and tests."""
+    with tempfile.TemporaryDirectory() as tmp:
+        ws = Path(tmp)
+        (ws / ".aria" / "runs").mkdir(parents=True)
+        (ws / "src").mkdir()
+        (ws / "tests").mkdir()
+        (ws / "src" / "leave.py").write_text('"""Leave approvals and schema."""\ndef approve() -> bool:\n    """Approve leave."""\n    return True\n',
+                                             encoding="utf-8")
+        (ws / "tests" / "test_leave.py").write_text('"""Tests of leave approvals."""\nfrom src import leave\ndef test_ok() -> None:\n    assert leave.approve()\n',
+                                                    encoding="utf-8")
+        subprocess.run([sys.executable, str(REPO / "tools" / "map" / "solution_map.py"), "build", "--root", str(ws)], check=True,
+                       capture_output=True)
+        (ws / "req.md").write_text("Build a leave web app with UI screens, API service, database schema and architecture", encoding="utf-8")
+        contract = json.loads(run(ws, "contract", "team-delivery", "leave-app", "ARIA Collab", "req.md"))
+        all_selected = [r["name"] for r in contract["skills"]["selected"]]
+        assert len(all_selected) >= 8, all_selected
+        brief_text = run(ws, "brief", "ARIA db-architect", "stage=data-architecture")
+        delegation = json.loads((ws / contract["paths"]["ask"] / "contract.json").read_text(encoding="utf-8"))["delegations"][-1]
+        assert len(delegation["skills"]) < len(all_selected) and len(delegation["skills"]) <= 6, (delegation["skills"], all_selected)
+        assert "skim descriptions" in brief_text and "Solution map touchpoints" in brief_text, brief_text
+        assert "src/leave.py" in brief_text and "tests/test_leave.py" in brief_text, brief_text
 
 
 if __name__ == "__main__":

@@ -324,6 +324,19 @@
       button('Not now', 'dismissHandoff', { disabled: model.busy }));
   }
 
+  /** Return the notice that another tool works on the open ask: Mission Control follows its files, and chat actions copy a message for it.
+   * @param {Model} model
+   * @returns {VNode | null}
+   */
+  function companionNotice(model) {
+    const other = model.companion;
+    if (!other) return null;
+    return h('div', { class: 'notice companion' }, icon('terminal'),
+      h('span', null, `Working in ${other.label} (last step ${ago(other.at, Date.parse(model.now))}). Plan, journal and guard events follow it here; `
+        + 'messages for the agent are copied for you to paste there.'),
+      button('Copy start command', 'copyCompanionStart', { title: other.start }));
+  }
+
   /** Return the dropdown of the project's asks; choosing one only changes what Mission Control shows.
    * @param {Model} model
    * @returns {VNode | null}
@@ -434,12 +447,12 @@
       model.workspaceMessage ? h('div', { class: 'notice' }, model.workspaceMessage, button('Choose folder', 'selectWorkspace')) : null,
       button('New ask', 'newAsk', { kind: 'primary new-ask', icon: 'plus', disabled: model.busy || !model.workspace,
         title: 'Start a new piece of work in this project; the harness first checks whether it continues the open ask' }),
-      handoffNotice(model), askPicker(model), viewing(model), askCard(model, now), attention(needs(model), true), nowSection(model, now), recent(model, now), pageLinks(model),
+      handoffNotice(model), companionNotice(model), askPicker(model), viewing(model), askCard(model, now), attention(needs(model), true), nowSection(model, now), recent(model, now), pageLinks(model),
       projectFiles(model, ui, now), h('footer', null, telemetrySwitch(model)));
   }
 
   const api = { ICONS, PAGES, icon, ago, count, plural, pretty, button, fileLinks, size, fileTree, chip, needs, attention, eventRow, todoList, bar, telemetrySwitch, sessionState,
-    askChats, noChat, askPicker, viewing, handoffNotice, sidebar };
+    askChats, noChat, askPicker, viewing, handoffNotice, companionNotice, sidebar };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.hveViews = api;
 })(globalThis);

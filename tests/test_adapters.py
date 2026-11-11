@@ -4,6 +4,7 @@ client's documented hook payloads through agent_compat.py."""
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -17,6 +18,12 @@ PROFILE = {"prompt_style": None, "wants_evidence": None, "verbosity": None, "out
            "depth_evidence": 0, "explanation_depth": None, "bloat_triggers": []}
 
 Json = dict[str, Any]
+# The agents users pick, the standalone Azure DevOps agent, and every agent they, the skills or the lifecycles name.
+EXPORTED_AGENTS = {f"aria-{name}" for name in (
+    "lite", "auto", "collab", "prototype-creator", "azure-devops", "engineer", "product-manager", "council", "evaluation-reviewer",
+    "uplift-judge", "skill-evaluator", "skill-judge", "skill-worker", "architecture-reviewer", "code-reviewer", "data-scientist",
+    "db-architect", "db-engineer", "devops-engineer", "product-reviewer", "security-architect", "security-reviewer", "solution-architect",
+    "test-architect", "test-engineer", "test-reviewer", "ui-engineer", "ux-designer", "ux-reviewer")}
 
 
 def export(ws: Path, client: str, *extra: str) -> Json:
@@ -44,9 +51,9 @@ def exported_workspace(tmp: str) -> Path:
 
 
 def claude_hooks(ws: Path) -> dict[str, list[list[str]]]:
-    """Return the exec-form argument vectors per event from the exported hve-creator subagent, with the project dir filled in."""
+    """Return the exec-form argument vectors per event from the exported aria-lite subagent, with the project dir filled in."""
     hooks: dict[str, list[list[str]]] = {}
-    front = (ws / ".claude" / "agents" / "hve-creator.md").read_text(encoding="utf-8").split("---\n")[1]
+    front = (ws / ".claude" / "agents" / "aria-lite.md").read_text(encoding="utf-8").split("---\n")[1]
     for line in front.splitlines():
         if match := re.match(r"^  (\w+):$", line):
             event = match[1]
@@ -98,23 +105,30 @@ def test_export_structure() -> None:
             for skill in (ws / skills).glob("*/SKILL.md"):
                 assert re.search(rf"^name: \"?{skill.parent.name}\"?$", skill.read_text(encoding="utf-8"), re.M), skill
         agents = {p.stem for p in (ws / ".claude" / "agents").glob("*.md")}
-        assert agents == {p.name.removesuffix(".agent.md") for p in (EXTENSION / "agents").glob("hve-*.agent.md")}, agents
-        argv = [a for args in claude_hooks(ws).values() for a in args]
-        assert {a[2] for a in argv} == {"hooks/profile_detector.py", "hooks/skill_loader.py", "hooks/compaction.py", "hooks/loop_guard.py",
-                                        "hooks/module_guard.py", "hooks/template_guard.py", "hooks/agent_ledger.py", "hooks/error_guard.py",
-                                        "scripts/choice_recorder.py", "scripts/guardrail.py"}
-        assert all((runtime / a[2]).is_file() for a in argv)
-        single = (ws / ".claude" / "agents" / "hve-single.md").read_text(encoding="utf-8")
-        assert "hooks:" in single and single.count("hooks/template_guard.py") == 3
-        assert any(a[2] == "scripts/guardrail.py" and a[-2:] == ["--", "--hook"] for a in argv), argv
-        creator = (ws / ".claude" / "agents" / "hve-creator.md").read_text(encoding="utf-8")
+        assert agents == EXPORTED_AGENTS, sorted(agents ^ EXPORTED_AGENTS)
+        auto = (ws / ".claude" / "agents" / "aria-auto.md").read_text(encoding="utf-8")
+        assert "## ARIA agent names in this tool" in auto and "- `ARIA engineer` is `aria-engineer`" in auto, auto[-800:]
+        assert "`ARIA research-single`" not in auto
+        sys.path.insert(0, str(REPO / "hooks"))
+        import agent_compat
+        hooks_by_event = claude_hooks(ws)
+        assert len(hooks_by_event["PreToolUse"]) == 1 and len(hooks_by_event["PostToolUse"]) == 1, hooks_by_event
+        specs = [spec for args in hooks_by_event.values() for a in args for spec in agent_compat.parse_specs(a[2:])]
+        assert {s[0] for s in specs} == {"hooks/profile_detector.py", "hooks/skill_loader.py", "hooks/compaction.py", "hooks/loop_guard.py",
+                                         "hooks/module_guard.py", "hooks/template_guard.py", "hooks/agent_ledger.py", "hooks/error_guard.py",
+                                         "scripts/choice_recorder.py", "scripts/guardrail.py"}
+        assert all((runtime / s[0]).is_file() for s in specs)
+        manager = (ws / ".claude" / "agents" / "aria-product-manager.md").read_text(encoding="utf-8")
+        assert "hooks:" in manager and manager.count("hooks/template_guard.py") == 3
+        assert ("scripts/guardrail.py", {}, ["--hook"]) in specs, specs
+        creator = (ws / ".claude" / "agents" / "aria-lite.md").read_text(encoding="utf-8")
         assert "{{RUNTIME}}" not in creator and ".aria/runtime/tools/loop/loop.py" in creator
         cursor = json.loads((ws / ".cursor" / "hooks.json").read_text())
         assert cursor["version"] == 1 and set(cursor["hooks"]) == {"sessionStart", "beforeSubmitPrompt", "preToolUse", "postToolUse", "stop"}
-        assert "disable-model-invocation: true" in (ws / ".cursor" / "skills" / "hve-creator" / "SKILL.md").read_text(encoding="utf-8")
+        assert "disable-model-invocation: true" in (ws / ".cursor" / "skills" / "aria-lite" / "SKILL.md").read_text(encoding="utf-8")
         codex = json.loads((ws / ".codex" / "hooks.json").read_text())
         assert set(codex["hooks"]) == {"SessionStart", "UserPromptSubmit", "SubagentStart", "PreToolUse", "PostToolUse", "Stop"}
-        assert "allow_implicit_invocation: false" in (ws / ".agents" / "skills" / "hve-creator" / "agents" / "openai.yaml").read_text()
+        assert "allow_implicit_invocation: false" in (ws / ".agents" / "skills" / "aria-lite" / "agents" / "openai.yaml").read_text()
         for path, key in ((".mcp.json", "mcpServers"), (".cursor/mcp.json", "mcpServers"), (".vscode/mcp.json", "servers")):
             server = json.loads((ws / path).read_text())[key]["ado"]
             assert "@azure-devops/mcp" in server["args"] and server["args"][-5:] == ["core", "work", "work-items", "repositories", "pipelines"]
@@ -129,10 +143,92 @@ def test_export_refuses_foreign_files_and_bad_organizations() -> None:
         assert (ws / ".codex" / "config.toml").read_text().count("[mcp_servers.ado]") == 1
         (ws / ".cursor" / "hooks.json").write_text('{"version": 1, "hooks": {"stop": [{"command": "./mine.sh"}]}}')
         result = subprocess.run([sys.executable, str(EXPORT), "cursor", str(ws)], capture_output=True, text=True)
-        assert result.returncode != 0 and "not written by Frontier HVE" in result.stderr
+        assert result.returncode != 0 and "not written by ARIA" in result.stderr
         assert "mine.sh" in (ws / ".cursor" / "hooks.json").read_text()
         result = subprocess.run([sys.executable, str(EXPORT), "vscode", str(ws), "--ado", "x; rm -rf /"], capture_output=True, text=True)
         assert result.returncode != 0 and "organization name" in result.stderr
+
+
+def test_reexport_removes_stale_and_pre_brand_copies() -> None:
+    """A re-export removes the hve-* agents, skills, hook file and cloud runtime an earlier export wrote, and what the last export wrote
+    that this one does not; files the harness did not write and paths outside the client's folders are kept."""
+    with tempfile.TemporaryDirectory() as tmp:
+        ws = Path(tmp) / "ws"
+        (ws / ".claude" / "agents").mkdir(parents=True)
+        lite = (EXTENSION / "agents" / "lite.agent.md").read_text(encoding="utf-8")
+        description = re.search(r"^description: (.+)$", lite, re.M)[1]  # type: ignore[index]
+        (ws / ".claude" / "agents" / "hve-creator.md").write_text(f'---\nname: hve-creator\ndescription: {json.dumps(description)}\n---\n')
+        (ws / ".claude" / "agents" / "hve-mine.md").write_text("---\nname: hve-mine\ndescription: my own agent\n---\n")
+        (ws / ".claude" / "agents" / "hve-single.md").write_text("---\nname: something-else\ndescription: not ours\n---\n")
+        (ws / ".cursor" / "skills" / "hve-e2e").mkdir(parents=True)
+        (ws / ".cursor" / "skills" / "hve-e2e" / "SKILL.md").write_text('---\nname: "hve-e2e"\n---\nRun python ".aria/runtime/tools/loop/x.py"\n')
+        (ws / ".github" / "hve" / "runtime" / "hooks").mkdir(parents=True)
+        (ws / ".github" / "hve" / "runtime" / "hooks" / "agent_compat.py").write_text("")
+        (ws / ".github" / "hooks").mkdir(parents=True)
+        (ws / ".github" / "hooks" / "hve.json").write_text('{"hooks": {"Stop": [{"bash": "python3 agent_compat.py"}]}}')
+        (ws / ".github" / "agents").mkdir(parents=True)
+        (ws / ".github" / "agents" / "hve-collab-notes.agent.md").write_text("my notes")
+        assert set(export(ws, "claude")["removed"]) == {".claude/agents/hve-creator.md"}
+        assert (ws / ".claude" / "agents" / "hve-mine.md").is_file() and (ws / ".claude" / "agents" / "hve-single.md").is_file()
+        assert set(export(ws, "cursor")["removed"]) == {".cursor/skills/hve-e2e"}
+        assert set(export(ws, "cloud")["removed"]) == {".github/hve", ".github/hooks/hve.json"}
+        assert (ws / ".github" / "agents" / "hve-collab-notes.agent.md").is_file()
+        manifest = ws / ".aria" / "exports" / "claude.json"
+        listed = json.loads(manifest.read_text(encoding="utf-8"))
+        assert ".claude/agents/aria-lite.md" in listed
+        (ws / ".claude" / "agents" / "aria-retired.md").write_text("old")
+        (ws / "README.md").write_text("keep me")
+        manifest.write_text(json.dumps(listed + [".claude/agents/aria-retired.md", "README.md", "../outside.txt"]), encoding="utf-8")
+        (Path(tmp) / "outside.txt").write_text("keep me")
+        assert export(ws, "claude")["removed"] == [".claude/agents/aria-retired.md"]
+        assert (ws / "README.md").is_file() and (Path(tmp) / "outside.txt").is_file()
+
+
+def test_install_check_catches_a_bad_launcher_and_a_crashing_guard() -> None:
+    """check.py passes a fresh install, names the first-run steps, and fails when the hooks' Python launcher does not start or a guard
+    crashes on a harmless read."""
+    with tempfile.TemporaryDirectory() as tmp:
+        ws = exported_workspace(tmp)
+        checker = EXTENSION / "runtime" / "tools" / "adapters" / "check.py"
+
+        def run(*args: str) -> Json:
+            return json.loads(subprocess.run([sys.executable, str(checker), *args], capture_output=True, text=True, check=True).stdout)
+
+        for client in ("claude", "cursor", "codex"):
+            report = run(client, str(ws))
+            assert report["ok"] and [c["name"] for c in report["checks"]] == ["python", "runtime", "hook run"], report
+        assert any("claude --agent aria-lite" in step for step in run("claude", str(ws))["next"])
+        missing = run("cursor", str(ws), "--python", "no-such-python-launcher")
+        assert not missing["ok"] and missing["checks"][0]["name"] == "python" and len(missing["checks"]) == 2, missing
+        (ws / ".aria" / "runtime" / "hooks" / "error_guard.py").write_text("raise RuntimeError('guard broke')\n", encoding="utf-8")
+        crashed = run("claude", str(ws))
+        assert not crashed["ok"] and "guard broke" in crashed["checks"][-1]["detail"], crashed
+
+
+def test_codex_user_scope_is_removed_not_installed() -> None:
+    """Codex installs per project only, because VS Code and Copilot also read ~/.agents/skills; --remove deletes the agents, harness skills
+    and hook file an older user-scope Codex export left there, and keeps the shared runtime and the user's own skills."""
+    with tempfile.TemporaryDirectory() as tmp:
+        home = Path(tmp) / "home"
+        env = os.environ | {"HOME": str(home), "USERPROFILE": str(home)}
+        skills = home / ".agents" / "skills"
+        (skills / "hve-creator").mkdir(parents=True)
+        (skills / "hve-creator" / "SKILL.md").write_text('---\nname: "hve-creator"\n---\nbody\n', encoding="utf-8")
+        shutil.copytree(EXTENSION / "skills" / "delivery-coach", skills / "delivery-coach")
+        (skills / "my-skill").mkdir()
+        (skills / "my-skill" / "SKILL.md").write_text("---\nname: my-skill\n---\n", encoding="utf-8")
+        (home / ".codex").mkdir()
+        (home / ".codex" / "hooks.json").write_text('{"hooks": {"Stop": [{"command": "python agent_compat.py"}]}}', encoding="utf-8")
+        (home / ".aria" / "runtime" / "hooks").mkdir(parents=True)
+        (home / ".aria" / "runtime" / "hooks" / "agent_compat.py").write_text("", encoding="utf-8")
+        refused = subprocess.run([sys.executable, str(EXPORT), "codex", "--user"], capture_output=True, text=True, env=env)
+        assert refused.returncode != 0 and "has no user scope" in refused.stderr, refused.stderr
+        removed = subprocess.run([sys.executable, str(EXPORT), "codex", "--user", "--remove"], capture_output=True, text=True, env=env)
+        assert removed.returncode == 0, removed.stderr
+        report = json.loads(removed.stdout)
+        assert set(report["removed"]) == {".agents/skills/hve-creator", ".agents/skills/delivery-coach", ".codex/hooks.json"}, report
+        assert report["written"] == [] and (skills / "my-skill" / "SKILL.md").is_file()
+        assert (home / ".aria" / "runtime" / "hooks" / "agent_compat.py").is_file()
 
 
 def test_claude_code_hooks() -> None:
@@ -270,14 +366,14 @@ def test_copilot_user_scope_and_cloud_exports() -> None:
         assert json.loads(result.stdout)["scope"] == "user"
         guard_mode(home / ".aria" / "runtime", "enforce")
         agents = home / ".copilot" / "agents"
-        assert {p.name for p in agents.glob("*.agent.md")} == {p.name for p in (EXTENSION / "agents").glob("hve-*.agent.md")}
-        creator = (agents / "hve-creator.agent.md").read_text(encoding="utf-8")
+        assert {p.name.removesuffix(".agent.md") for p in agents.glob("*.agent.md")} == EXPORTED_AGENTS
+        creator = (agents / "aria-lite.agent.md").read_text(encoding="utf-8")
         front = creator.split("---\n")[1]
         assert "hooks:" not in front and "{{RUNTIME}}" not in creator and "tools:" not in front, front
         assert f"{(home / '.aria' / 'runtime').as_posix()}/tools/loop/lifecycle.py" in creator
-        assert 'tools: ["read", "search"]' in (agents / "hve-evaluation-reviewer.agent.md").read_text(encoding="utf-8")
-        assert "handoffs" not in (agents / "hve-product-manager.agent.md").read_text(encoding="utf-8").split("---\n")[1]
-        hooks = json.loads((home / ".copilot" / "hooks" / "hve.json").read_text(encoding="utf-8"))
+        assert 'tools: ["read", "search"]' in (agents / "aria-evaluation-reviewer.agent.md").read_text(encoding="utf-8")
+        assert "handoffs" not in (agents / "aria-product-manager.agent.md").read_text(encoding="utf-8").split("---\n")[1]
+        hooks = json.loads((home / ".copilot" / "hooks" / "aria.json").read_text(encoding="utf-8"))
         commands = [h["command"] for entries in hooks["hooks"].values() for h in entries]
         assert hooks["version"] == 1 and "SubagentStart" in hooks["hooks"] and all("--ask-only copilot" in c for c in commands), commands
         ws = Path(tmp) / "ws"
@@ -286,6 +382,7 @@ def test_copilot_user_scope_and_cloud_exports() -> None:
         write = {"hook_event_name": "PreToolUse", "session_id": "p1", "timestamp": "2026-10-19T08:00:00Z", "cwd": str(ws),
                  "tool_name": "Write", "tool_input": {"file_path": str(ws / "feature_list.json"), "content": "[]"}}
         assert fire_copilot(hooks, ws, write, env) == [], "no open ask: the user-level hooks stay out of the way"
+        assert not (ws / ".aria" / "runs" / "client.json").exists(), "no open ask: nothing records the tool"
         (ws / "req.md").write_text("Build a login page", encoding="utf-8")
         lifecycle = home / ".aria" / "runtime" / "tools" / "loop" / "lifecycle.py"
         made = subprocess.run([sys.executable, str(lifecycle), "contract", "direct", "login", "ARIA Lite", "req.md"], cwd=ws,
@@ -296,6 +393,8 @@ def test_copilot_user_scope_and_cloud_exports() -> None:
         write["tool_input"]["file_path"] = str(ws / paths["feature_list"])  # type: ignore[index]
         denied = fire_copilot(hooks, ws, write, env)
         assert any(o.get("permissionDecision") == "deny" and "loop scripts" in o["permissionDecisionReason"] for o in denied), denied
+        recorded = json.loads((ws / ".aria" / "runs" / "client.json").read_text(encoding="utf-8"))
+        assert (recorded["client"], recorded["session"]) == ("copilot", "p1"), recorded
         assert (ws / ".aria" / "runs" / "p1.skills.json").is_file(), "the loadout comes from the ask when the prompt hook did not run"
         stop = {"hook_event_name": "Stop", "session_id": "p1", "timestamp": "2026-10-19T08:01:00Z", "cwd": str(ws),
                 "transcript_path": "t", "stop_reason": "end_turn", "stop_hook_active": False}
@@ -315,12 +414,25 @@ def test_copilot_user_scope_and_cloud_exports() -> None:
         assert (alert["hook"], alert["kind"]) == ("loop_guard", "hook_error") and "Nothing was blocked" in alert["detail"], alert
         cloud = Path(tmp) / "repo"
         cloud.mkdir()
+        (cloud / ".gitignore").write_text("node_modules/\n.aria/\n", encoding="utf-8")
         report = export(cloud, "cloud")
-        assert (cloud / ".github" / "hve" / "runtime" / "hooks" / "agent_compat.py").is_file() and report["scope"] == "project"
-        assert ".github/hve/runtime/tools/loop/lifecycle.py" in (cloud / ".github" / "agents" / "hve-creator.agent.md").read_text(encoding="utf-8")
-        cloud_hooks = json.loads((cloud / ".github" / "hooks" / "hve.json").read_text(encoding="utf-8"))
-        assert all(h["command"].startswith('python3 ".github/hve/runtime/hooks/agent_compat.py" --ask-only copilot')
-                   for entries in cloud_hooks["hooks"].values() for h in entries), cloud_hooks
+        assert (cloud / ".github" / "aria" / "runtime" / "hooks" / "agent_compat.py").is_file() and report["scope"] == "project"
+        setup = (cloud / ".github" / "workflows" / "copilot-setup-steps.yml").read_text(encoding="utf-8")
+        assert "  copilot-setup-steps:" in setup and "actions/setup-python" in setup and ".github/aria/runtime/hooks/agent_compat.py" in setup
+        assert (cloud / ".gitignore").read_text(encoding="utf-8").splitlines() == ["node_modules/", ".aria/*", "!.aria/asks/", "!.aria/project/"]
+        subprocess.run(["git", "init", "-q"], cwd=cloud, check=True)
+        ignored = subprocess.run(["git", "check-ignore", ".aria/asks/login/contract.json", ".aria/project/journal.jsonl", ".aria/runs/p1.jsonl"],
+                                 cwd=cloud, capture_output=True, text=True)
+        assert ignored.stdout.split() == [".aria/runs/p1.jsonl"], "ask and project records are committed; hook run state is not"
+        assert {".github/workflows/copilot-setup-steps.yml", ".gitignore"} <= set(report["written"]), report["written"]
+        assert export(cloud, "cloud")["written"] == report["written"], "running the cloud export again is safe"
+        (cloud / ".github" / "workflows" / "copilot-setup-steps.yml").write_text("name: mine\n", encoding="utf-8")
+        mine = subprocess.run([sys.executable, str(EXPORT), "cloud", str(cloud)], capture_output=True, text=True, env=env)
+        assert mine.returncode != 0 and "not written by ARIA" in mine.stderr, "a setup workflow the user wrote is never overwritten"
+        assert ".github/aria/runtime/tools/loop/lifecycle.py" in (cloud / ".github" / "agents" / "aria-lite.agent.md").read_text(encoding="utf-8")
+        cloud_hooks = json.loads((cloud / ".github" / "hooks" / "aria.json").read_text(encoding="utf-8"))
+        assert all(h["bash"].startswith('python3 ".github/aria/runtime/hooks/agent_compat.py" --ask-only copilot') and h["powershell"] == "exit 0"
+                   and "command" not in h for entries in cloud_hooks["hooks"].values() for h in entries), cloud_hooks
         for args, needle in ((["cloud", "--user"], "has no user scope"), (["copilot", str(cloud)], "user scope only")):
             refused = subprocess.run([sys.executable, str(EXPORT), *args], capture_output=True, text=True, env=env)
             assert refused.returncode != 0 and needle in refused.stderr, refused.stderr
@@ -332,13 +444,13 @@ def test_wiki_is_shipped_and_linked() -> None:
         for link in re.findall(r"\]\(([^)#:]+)\)", page.read_text(encoding="utf-8")):
             assert (page.parent / link).is_file(), (page.name, link)
     skill = (REPO / "plugins" / "harness-assist" / "skills" / "export-harness" / "SKILL.md").read_text(encoding="utf-8")
-    agent = (EXTENSION / "agents" / "hve-azure-devops.agent.md").read_text(encoding="utf-8")
+    agent = (EXTENSION / "agents" / "azure-devops.agent.md").read_text(encoding="utf-8")
     assert "<tools>/../docs/wiki/Adapters.md" in skill and "{{RUNTIME}}/docs/wiki/Adapters.md" in agent
     with tempfile.TemporaryDirectory() as tmp:
         ws = exported_workspace(tmp)
         report = export(ws, "claude")
         assert (ws / report["guide"]).is_file() and (ws / ".aria" / "runtime" / "tools" / ".." / "docs" / "wiki" / "Adapters.md").is_file()
-        assert ".aria/runtime/docs/wiki/Adapters.md" in (ws / ".claude" / "agents" / "hve-azure-devops.md").read_text(encoding="utf-8")
+        assert ".aria/runtime/docs/wiki/Adapters.md" in (ws / ".claude" / "agents" / "aria-azure-devops.md").read_text(encoding="utf-8")
         assert Path(export(ws, "vscode", "--ado", "contoso")["guide"]).is_file()
 
 
@@ -374,13 +486,80 @@ def test_copilot_apply_patch_text_becomes_vscode_input() -> None:
     assert edited_paths(out["tool_input"]) == ["a.py", "b.md", "docs/b.md", "c.txt"]
 
 
+def test_plugin_agent_hooks_answer_the_local_and_copilot_harness() -> None:
+    """VS Code also runs a plugin agent's own hooks in its Copilot harness, with Copilot's payload (no tool call id, arguments as JSON
+    text): the rendered hooks allow a harmless read there instead of crashing (which Copilot turns into a deny of every tool), and deny a
+    locked file in each harness's own format."""
+    subprocess.run([sys.executable, str(EXTENSION / "build.py")], check=True, capture_output=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        extension = Path(tmp) / "extension"
+        for part in ("agents", "skills", "runtime"):
+            shutil.copytree(EXTENSION / part, extension / part)
+        guard_mode(extension / "runtime", "enforce")
+        plugin = Path(tmp) / "plugin"
+        script = (f"require({json.dumps(str(EXTENSION / 'render.js'))}).renderPlugin({json.dumps(str(extension))}, "
+                  f"{json.dumps(str(plugin))}, '0.0.0-test', 'python')")
+        subprocess.run(["node", "-e", script], check=True, capture_output=True)
+        front = (plugin / "com.github.copilot" / "agents" / "lite.agent.md").read_text(encoding="utf-8").split("---\n")[1]
+        commands: dict[str, list[str]] = {}
+        for line in front.splitlines():
+            if match := re.match(r"^  (\w+):$", line):
+                event = match[1]
+                commands[event] = []
+            elif match := re.match(r"^ {6}command: '(.+)'$", line):
+                commands[event].append(match[1])
+        assert all("agent_compat.py\" vscode " in c for cs in commands.values() for c in cs), commands
+        ws = Path(tmp) / "ws"
+        (ws / ".aria" / "runs").mkdir(parents=True)
+        start_loop(ws)
+        env = os.environ | {"HARNESS_PROJECT": ".", "HARNESS_STOP_POLICY": "once", "HARNESS_SKILLS_MIN_STATUS": "provisional"}
+
+        def fire_plugin(payload: Json) -> list[Json]:
+            outputs = []
+            for command in commands[payload["hook_event_name"]]:
+                result = subprocess.run(command, shell=True, cwd=ws, input=json.dumps(payload), capture_output=True, text=True, env=env)
+                assert result.returncode == 0, (command, result.stderr)
+                outputs += [json.loads(result.stdout)] if result.stdout.strip() else []
+            return outputs
+
+        copilot = {"hook_event_name": "PreToolUse", "session_id": "p1", "timestamp": "2026-11-10T10:00:00Z", "cwd": str(ws)}
+        fire_plugin(copilot | {"hook_event_name": "UserPromptSubmit", "prompt": "Build a login page"})
+        read = fire_plugin(copilot | {"tool_name": "view", "tool_input": json.dumps({"path": str(ws / "README.md")})})
+        assert not any("deny" in json.dumps(o) for o in read), read
+        errors = ws / ".aria" / "runs" / "hook-errors.log"
+        assert not errors.exists(), errors.read_text(encoding="utf-8")
+        write = {"tool_name": "Write", "tool_input": {"file_path": str(ws / "feature_list.json"), "content": "[]"}}
+        denied = fire_plugin(copilot | write)
+        assert any(o.get("permissionDecision") == "deny" and "hookSpecificOutput" not in o for o in denied), denied
+        local = {"hook_event_name": "PreToolUse", "session_id": "l1", "timestamp": "2026-11-10T10:01:00Z", "cwd": str(ws),
+                 "tool_name": "create_file", "tool_input": {"filePath": str(ws / "feature_list.json"), "content": "[]"}, "tool_use_id": "t1"}
+        fire_plugin({"hook_event_name": "UserPromptSubmit", "session_id": "l1", "timestamp": "2026-11-10T10:01:00Z", "cwd": str(ws),
+                     "prompt": "Build a login page"})
+        denied = fire_plugin(local)
+        assert any(o.get("hookSpecificOutput", {}).get("permissionDecision") == "deny" and "permissionDecision" not in o for o in denied), denied
+        stop = fire_plugin({"hook_event_name": "Stop", "session_id": "l1", "timestamp": "2026-11-10T10:02:00Z", "cwd": str(ws),
+                            "stop_hook_active": False})
+        assert any(o.get("decision") == "block" and o["hookSpecificOutput"]["decision"] == "block" for o in stop), stop
+        assert not errors.exists(), errors.read_text(encoding="utf-8")
+        assert not (ws / ".aria" / "runs" / "client.json").exists(), "VS Code's own harnesses are not another tool"
+        checker = extension / "runtime" / "tools" / "adapters" / "check.py"
+        checked = subprocess.run([sys.executable, str(checker), "copilot", "--plugin", str(plugin)], capture_output=True, text=True)
+        report = json.loads(checked.stdout)
+        assert report["ok"] and [c["name"] for c in report["checks"]] == ["python", "plugin", "hook run"], report
+        assert any(f'copilot --plugin-dir "{plugin.resolve().as_posix()}"' in step for step in report["next"]), report["next"]
+
+
 if __name__ == "__main__":
     test_export_structure()
     test_export_refuses_foreign_files_and_bad_organizations()
+    test_reexport_removes_stale_and_pre_brand_copies()
+    test_codex_user_scope_is_removed_not_installed()
+    test_install_check_catches_a_bad_launcher_and_a_crashing_guard()
     test_claude_code_hooks()
     test_cursor_hooks()
     test_exported_template_stop_gate()
     test_codex_hooks()
     test_copilot_user_scope_and_cloud_exports()
     test_wiki_is_shipped_and_linked()
+    test_plugin_agent_hooks_answer_the_local_and_copilot_harness()
     print("test_adapters: OK")

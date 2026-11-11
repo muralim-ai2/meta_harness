@@ -223,8 +223,8 @@
         : h('p', { class: 'muted' }, 'No decisions recorded yet.')),
       card('Evaluations', model.evaluations.length ? fileList(model.evaluations)
         : h('p', { class: 'muted' }, 'No output evaluation has run yet. Ask the agent for one, or tick the evaluation option in the plan.')),
-      card('Contract and provenance', fileList([`.aria/asks/${snap.ask.id}/contract.json`, `.aria/asks/${snap.ask.id}/provenance.md`, `.aria/asks/${snap.ask.id}/plan.md`,
-        `.aria/asks/${snap.ask.id}/request.md`].filter(file => model.files?.entries.some(node => node.path === file))), h('span', { class: 'muted' }, 'provenance.md appears when the agent writes the ask report')),
+      card('Contract and provenance', fileList([`${model.brand.state_dir}/asks/${snap.ask.id}/contract.json`, `${model.brand.state_dir}/asks/${snap.ask.id}/provenance.md`, `${model.brand.state_dir}/asks/${snap.ask.id}/plan.md`,
+        `${model.brand.state_dir}/asks/${snap.ask.id}/request.md`].filter(file => model.files?.entries.some(node => node.path === file))), h('span', { class: 'muted' }, 'provenance.md appears when the agent writes the ask report')),
       summary(model, ui, now),
     ];
   }
@@ -310,7 +310,7 @@
   function files(model, ui, now) {
     const tree = model.files;
     if (model.filesError) return [h('div', { class: 'notice error' }, model.filesError)];
-    if (!tree) return [empty('No ask yet', 'Each ask keeps its request, contract, plan and evidence in its own folder under .aria/asks/.',
+    if (!tree) return [empty('No ask yet', `Each ask keeps its request, contract, plan and evidence in its own folder under ${model.brand.state_dir}/asks/.`,
       button('New ask', 'newAsk', { kind: 'primary', icon: 'plus', disabled: model.busy }))];
     return [card(`${tree.path}/`, [fileTree(tree.entries, ui, now, { about: ABOUT, key: 'dir:', openTop: true, compact: false }),
       tree.truncated ? h('p', { class: 'muted' }, `Showing ${tree.count} entries, up to 6 folders deep. Show the folder in the Explorer to see everything.`) : null],
@@ -360,7 +360,7 @@
       card('Skills for this ask', snap?.skills.length && load ? [
         h('div', { class: 'load' }, bar(load.tokens, Math.max(load.maxTokens, load.tokens), 'Skill tokens against the guideline'),
           h('span', { class: load.overBudget ? 'warn-text' : 'muted' }, `${plural(snap.skills.length, 'skill')}, ${count(load.tokens)} tokens of a ${count(load.maxTokens)}-token guideline${load.choice ? ` (you chose: ${load.choice})` : ''}`)),
-        h('ul', { class: 'skills' }, ...snap.skills.map(skill => h('li', null, h('button', { class: 'skill', type: 'button', 'data-action': 'openFile', 'data-path': `.aria/skills/${skill.name}/SKILL.md`, title: 'Open SKILL.md' },
+        h('ul', { class: 'skills' }, ...snap.skills.map(skill => h('li', null, h('button', { class: 'skill', type: 'button', 'data-action': 'openFile', 'data-path': `${model.brand.state_dir}/skills/${skill.name}/SKILL.md`, title: 'Open SKILL.md' },
           h('span', { class: 'skill-head' }, h('strong', null, skill.name), read.includes(skill.name) ? h('span', { class: 'pill good' }, 'read in this chat') : null,
             h('span', { class: 'pill' }, skill.status)),
           h('span', { class: 'muted' }, `${skill.why || REASON[skill.reason] || skill.reason} · ${count(skill.tokens)} tokens`))))), add]
@@ -406,8 +406,8 @@
         stat('Live activity from', model.transcripts || 'no workspace storage')),
       button('Change folder', 'selectWorkspace', { icon: 'folder', disabled: model.busy })),
       card('Research telemetry', [telemetrySwitch(model), h('p', { class: 'muted' }, 'When on, Copilot writes every new chat, with its full content, tokens and cost, to '
-        + `${model.telemetry.file || '.aria/runs/copilot-otel.jsonl'}. Mission Control and the ask report use it for token and cost figures. Turn it off when you are done.`)]),
-      card('Set-up', h('div', { class: 'actions' }, action('Set up this workspace', 'setup', 'Choose assisted or pro mode, add .aria/ to .gitignore, and see how many tokens load into every request.', model),
+        + `${model.telemetry.file || `${model.brand.state_dir}/runs/copilot-otel.jsonl`}. Mission Control and the ask report use it for token and cost figures. Turn it off when you are done.`)]),
+      card('Set-up', h('div', { class: 'actions' }, action('Set up this workspace', 'setup', `Choose assisted or pro mode, add ${model.brand.state_dir}/ to .gitignore, and see how many tokens load into every request.`, model),
         action('Install for other tools', 'installHarnesses', 'Make the ARIA agents, skills and guards available in Copilot CLI, Claude Code, Codex, Cursor or the Copilot cloud agent.', model))),
     ];
   }

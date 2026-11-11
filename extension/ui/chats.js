@@ -5,6 +5,8 @@ const path = require('node:path');
 const { record, text } = require('./validate');
 const { describe, headline, status, stillRunning, requested, awaiting } = require('./activity');
 const { ASK, askTime } = require('./asks');
+const { BRAND } = require('../brand');
+const STATE = BRAND.state_dir;
 const CHAT_LIMIT = 30;
 const CHUNK_BYTES = 4 * 1024 * 1024;
 const CREATED_WITHIN_MS = 15 * 60 * 1000;
@@ -12,7 +14,7 @@ const PENDING_MS = 60 * 60 * 1000;
 const SESSION = /^[\w-]+$/;
 const CONTRACT = /\bcontract\s+["']?[\w.-]+["']?\s+["']?([a-z0-9][a-z0-9-]{0,40})(?=["'\s;|]|$)/g;
 const OPEN = /\bopen\s+["']?(\d{8}-\d{4}-[a-z0-9][a-z0-9-]{0,40})(?=["'\s;|]|$)/g;
-const ASK_PATH = /(?:^|[\\/])\.aria[\\/]asks[\\/](\d{8}-\d{4}-[a-z0-9][a-z0-9-]{0,40})[\\/]/;
+const ASK_PATH = new RegExp(`(?:^|[\\\\/])${STATE.replace('.', '\\.')}[\\\\/]asks[\\\\/](\\d{8}-\\d{4}-[a-z0-9][a-z0-9-]{0,40})[\\\\/]`);
 const HOW = ['started', 'linked', 'continued'];
 
 /** @typedef {{offset: number, size: number, mtime: number, lines: number, id: string, title: string | null, started: string, lastAt: string,

@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / "tools" / "git"), str(ROOT / "hooks")]
 from branch_workflow import read_json, write_json  # noqa: E402
 from loop import TRIVIAL_VERIFY, run_check  # noqa: E402
-from loop_paths import loop_dir, state_dir, state_file  # noqa: E402
+from loop_paths import STATE, loop_dir, state_dir, state_file  # noqa: E402
 from no_fallback import scan_file  # noqa: E402
 
 EDGES = {
@@ -29,7 +29,7 @@ EDGES = {
 BACK_EDGES = ("direction-invalidated", "rework-required", "new-opportunity-found")
 BACK_EDGE_CAP = 2
 CODE_SUFFIXES = {".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".css", ".scss", ".html", ".vue", ".svelte"}
-SKIP_DIRS = {"node_modules", ".next", ".git", ".harness", ".aria", "dist", "build", "coverage"}
+SKIP_DIRS = {"node_modules", ".next", ".git", ".harness", STATE, "dist", "build", "coverage"}
 MAX_FILE_LINES = 500
 Profile = Literal["benchmark", "product"]
 

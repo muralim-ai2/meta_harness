@@ -4,6 +4,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { Reader, containedPath } = require('./file-access');
 const { record, text, list, flag, integer } = require('./validate');
+const { BRAND } = require('../brand');
+const STATE = BRAND.state_dir;
 const TAIL_BYTES = 8 * 1024 * 1024;
 const TELEMETRY_TAIL_BYTES = 4 * 1024 * 1024;
 const IDLE_AFTER_MS = 5 * 60 * 1000;
@@ -392,7 +394,7 @@ function session(s, now) {
  */
 function runFiles(workspace, id) {
   const reader = new Reader(workspace);
-  const runs = path.join('.aria', 'runs');
+  const runs = path.join(STATE, 'runs');
   const errorsValue = reader.json(path.join(runs, `${id}.errors.json`), true);
   const errors = errorsValue === undefined ? null : (() => {
     const value = record(errorsValue, 'Error guard state');

@@ -3,15 +3,65 @@
 
 const fs = require('fs');
 const path = require('path');
+const { BRAND } = require('./brand');
 
 const PLACEHOLDER = /\{\{RUNTIME\}\}/g;
+// Templates name the default state folder; a brand with another folder gets its own.
+const STATE_PATHS = /\.aria\//g;
 const PYTHON_CALL = /\bpython "\{\{RUNTIME\}\}/g;
+// Hooks run through agent_compat.py, which reads the Local and the Copilot harness payloads and answers in the harness's own format.
+const HOOK_CALL = /python "\{\{RUNTIME\}\}\/((?:hooks|scripts)\/[\w.-]+\.py)"((?: [\w-]+)*)'/g;
+const COMMAND_SPEC = /^ {6}command: 'python "\{\{RUNTIME\}\}\/((?:hooks|scripts)\/[\w.-]+\.py)"((?: [\w-]+)*)'$/;
 const FRONTMATTER = /^---\r?\n[\s\S]*?\r?\n---\r?\n/;
-const HOOKS_BLOCK = /^hooks:\r?\n(?:[ \t]+.*\n)*/m;
+const HOOKS_BLOCK = /^hooks:\r?\n(?:[ \t]+.*\r?\n)*/m;
+const BATCH_EVENTS = new Set(['PreToolUse', 'PostToolUse']);
 const LOCAL_CHECK = '\nHarness check: the session hooks add a line starting `Frontier HVE deliverable templates: session` to your context. '
-  + 'If it is missing, the guards are not running: tell the user to start a new chat with Session Target **Local** before you continue.\n';
+  + 'If it is missing, the guards are not running: tell the user to start a new chat with Session Target **Local** or **Copilot** before you continue.\n';
 const NO_PYTHON = '\n> **Python not found.** ARIA found no Python 3.11+ when it set up this agent, so its guard hooks are off and its '
   + 'harness commands will fail. Before anything else, tell the user to install Python 3.11+, run **ARIA: Set up** and reload the window.\n';
+
+/**
+ * Rewrite an agent's frontmatter hooks through agent_compat.py, batching multiple PreToolUse or PostToolUse hooks into one process.
+ * @param {string} front Agent YAML frontmatter including fences.
+ * @returns {string}
+ */
+function renderHooks(front) {
+  const match = HOOKS_BLOCK.exec(front);
+  if (!match) return front;
+  const lines = match[0].replace(/\r\n/g, '\n').trimEnd().split('\n');
+  /** @type {{event: string, items: {raw: string[], script: string, args: string, env: string[], timeout: number | null}[]}[]} */
+  const sections = [];
+  for (const line of lines.slice(1)) {
+    const ev = /^  (\w+):$/.exec(line);
+    if (ev) sections.push({ event: ev[1], items: [] });
+    else if (line === '    - type: command') sections.at(-1).items.push({ raw: [line], script: '', args: '', env: [], timeout: null });
+    else {
+      const item = sections.at(-1).items.at(-1);
+      item.raw.push(line);
+      const cmd = COMMAND_SPEC.exec(line);
+      const timeout = /^ {6}timeout: (\d+)$/.exec(line);
+      const envVar = /^ {8}(\w+): (\S+)$/.exec(line);
+      if (cmd) { item.script = cmd[1]; item.args = cmd[2].trim(); }
+      else if (timeout) item.timeout = Number(timeout[1]);
+      else if (envVar) item.env.push(`${envVar[1]}=${envVar[2]}`);
+    }
+  }
+  const rendered = ['hooks:'];
+  for (const { event, items } of sections) {
+    rendered.push(`  ${event}:`);
+    if (BATCH_EVENTS.has(event) && items.length > 1) {
+      const specs = items.map((i) => [i.script, ...i.env, ...(i.args ? ['--', ...i.args.split(/\s+/)] : [])].join(' ')).join(' + ');
+      const maxTimeout = Math.max(0, ...items.map((i) => i.timeout || 0));
+      rendered.push('    - type: command', `      command: 'python "{{RUNTIME}}/hooks/agent_compat.py" vscode ${specs}'`);
+      if (maxTimeout > 0) rendered.push(`      timeout: ${maxTimeout}`);
+    } else {
+      for (const item of items) {
+        rendered.push(...item.raw.map((row) => row.replace(HOOK_CALL, (_, s, a) => `python "{{RUNTIME}}/hooks/agent_compat.py" vscode ${s}${a ? ` --${a}` : ''}'`)));
+      }
+    }
+  }
+  return front.replace(HOOKS_BLOCK, `${rendered.join('\n')}\n`);
+}
 
 /**
  * Return one agent rendered for this machine: runtime path and Python launcher filled in, or, without Python, no hooks and a warning.
@@ -21,6 +71,7 @@ const NO_PYTHON = '\n> **Python not found.** ARIA found no Python 3.11+ when it 
  * @returns {string}
  */
 function renderAgent(text, runtime, python) {
+  text = text.replace(STATE_PATHS, `${BRAND.state_dir}/`);
   if (!text.includes('python "{{RUNTIME}}')) {
     return text.replace(PLACEHOLDER, runtime);
   }
@@ -31,7 +82,8 @@ function renderAgent(text, runtime, python) {
       .replace(PLACEHOLDER, runtime);
   }
   const launcher = python === 'python' ? '' : `\nPython on this machine is \`${python}\`: use it wherever a skill or tool says \`python\`.\n`;
-  return (front + (front.includes('SessionStart:') ? LOCAL_CHECK : '') + launcher + body)
+  const hooked = renderHooks(front);
+  return (hooked + (front.includes('SessionStart:') ? LOCAL_CHECK : '') + launcher + body)
     .replace(PYTHON_CALL, `${python} "{{RUNTIME}}`).replace(PLACEHOLDER, runtime);
 }
 
@@ -60,14 +112,18 @@ function renderPlugin(extensionDir, pluginDir, version, python) {
   fs.mkdirSync(agentsOut, { recursive: true });
   fs.writeFileSync(path.join(pluginDir, 'plugin.json'), JSON.stringify({
     $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json',
-    name: 'aria',
+    name: BRAND.prefix,
     version,
-    description: 'ARIA agents and skills, rendered by the ARIA extension.',
+    description: `${BRAND.product} agents and skills, rendered by the ${BRAND.product} extension.`,
   }, null, 2) + '\n');
   for (const part of ['skills', 'scripts']) {
     const source = part === 'skills' ? path.join(extensionDir, 'skills') : path.join(extensionDir, 'runtime', 'scripts');
     fs.cpSync(source, path.join(pluginDir, part), { recursive: true });
     removeStale(path.join(pluginDir, part), fs.readdirSync(source));
+  }
+  for (const entry of BRAND.state_dir === '.aria' ? [] : fs.readdirSync(path.join(pluginDir, 'skills'), { recursive: true, withFileTypes: true })) {
+    const file = path.join(entry.parentPath, entry.name);
+    if (entry.isFile() && entry.name.endsWith('.md')) fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(STATE_PATHS, `${BRAND.state_dir}/`));
   }
   const agents = fs.readdirSync(path.join(extensionDir, 'agents')).filter((name) => name.endsWith('.agent.md'));
   for (const name of agents) {

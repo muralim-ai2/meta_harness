@@ -5,6 +5,8 @@ const path = require('node:path');
 const { promisify } = require('node:util');
 const { execFile } = require('node:child_process');
 const { record, text, list, integer, errorText } = require('./validate');
+const { BRAND } = require('../brand');
+const STATE = BRAND.state_dir;
 const execute = promisify(execFile);
 const BASE_COMMANDS = Object.freeze({
   setup: 'frontierHve.setup',
@@ -108,7 +110,7 @@ async function buildMap(connection, workspace) {
   const result = record(await runTool(connection, workspace, script, ['build']), 'Solution map build');
   const size = record(result.size, 'Map size');
   return { sizeClass: text(size.class, 'Map size class'), files: integer(size.files, 'Map files'), concepts: integer(result.concepts, 'Map concepts'),
-    page: path.join(workspace, '.aria', 'map', 'explorer.html') };
+    page: path.join(workspace, STATE, 'map', 'explorer.html') };
 }
 
 /** Return the title of the bundled direct lifecycle after checking the catalogue runs.

@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT / "tools" / "skills"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from recommend import rank, skill_dir  # noqa: E402
 from environment import environment  # noqa: E402
-from loop_paths import ASK_ID, append_journal, loop_dir, project_folder, state_file  # noqa: E402
+from loop_paths import ASK_ID, STATE, append_journal, loop_dir, project_folder, state_file  # noqa: E402
 from ask_plan import CHECKLIST_BLOCK, SKILLS_BLOCK, items, plugin_skills, record, refresh, ticked, unfinished  # noqa: E402
 from lifecycle_catalog import catalog, pick, route  # noqa: E402
 from ask_project import (CREATE, SCOPE_NOTE, SHIFT_OVERLAP, deliverable, ledger, overlap, project_status, project_text,  # noqa: E402,F401
@@ -25,7 +25,7 @@ import personas  # noqa: E402
 import stage_evidence  # noqa: E402
 
 WORKSPACE = Path.cwd()
-ASKS = WORKSPACE / ".aria" / "asks"
+ASKS = WORKSPACE / STATE / "asks"
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")
 SUBAGENT_RULES = ("Do not edit the loop files (feature_list.json, progress.txt, tracker.json) or loop state (.harness/ or the ask's loop/ "
                   "folder). Checks save screenshots and logs to $HVE_EVIDENCE/<feature>/. No file over 500 lines, no hidden errors, no TODO "
@@ -44,7 +44,7 @@ def ask_dir(ask: str) -> Path:
 
 def active(workspace: Path = WORKSPACE) -> tuple[Path, Json]:
     """Return the active ask's contract path and contract."""
-    asks = workspace / ".aria" / "asks"
+    asks = workspace / STATE / "asks"
     ask = json.loads((asks / "active.json").read_text(encoding="utf-8"))["active"]
     if not ASK_ID.match(ask):
         raise ValueError(f"ask id {ask!r} must match {ASK_ID.pattern}")
@@ -141,7 +141,7 @@ def contract(name: str, slug: str, agent: str, request: str, skips: dict[str, st
                        "suggested": ranked["suggested"], "suggested_tokens": ranked["suggested_tokens"], "choice": None,
                        "plugin": plugin_skills(stages, request)},
             "personas": [{"agent": a, "stages": names} for a, names in personas.items()], "tasks": [],
-            "environment": environment(WORKSPACE), "delegations": [], "reported": [],
+            "map": ask_skills.ensure_map(WORKSPACE), "environment": environment(WORKSPACE), "delegations": [], "reported": [],
             "plan": {"sha256": None, "revisions": []}, "checklist": {}, "checklist_rendered": {}, "decisions": decisions}
     (folder / "loop").mkdir(parents=True)
     (folder / "request.md").write_text(request + "\n", encoding="utf-8")
@@ -313,7 +313,7 @@ def plan_sync(note: str) -> Json:
 
 def plan_status(workspace: Path = WORKSPACE) -> Json | None:
     """Return whether the active ask's plan.md changed since its last sync, or None when there is no active ask or plan."""
-    if not (workspace / ".aria" / "asks" / "active.json").is_file():
+    if not (workspace / STATE / "asks" / "active.json").is_file():
         return None
     path, data = active(workspace)
     digest = plan_hash(path)
@@ -350,16 +350,19 @@ def tasks_sync(project: Path) -> list[Json]:
 
 
 def brief(stage: str | None, task: str | None, persona: str) -> str:
-    """Return the delegation brief for a sub-agent (skills, plugin skills, MCP servers, rules, reply format) and log the delegation."""
+    """Return the delegation brief for a sub-agent (reduced skills with descriptions, map touchpoints, rules) and log the delegation."""
     path, data = active()
     row = stage_row(data, stage)
     task_row = next((t for t in data["tasks"] if t["name"] == task), None) if task else None
     if task and task_row is None:
         raise ValueError(f"task {task!r} is not in the contract; run `lifecycle.py tasks-sync` after loop.py init or amend")
-    skills = task_row["skills"] if task_row else list(dict.fromkeys([*row["skills"], *(r["name"] for r in data["skills"]["selected"])]))
+    role = personas.by_agent().get(persona)
+    fl_path = WORKSPACE / data["paths"]["feature_list"]
+    feat_desc = next((f.get("description", "") for f in json.loads(fl_path.read_text(encoding="utf-8")) if f["name"] == task), "") if task and fl_path.is_file() else ""
+    query = " ".join(filter(None, [data["request"], persona, row["name"], row["goal"], task or "", feat_desc]))
+    skills = ask_skills.brief_skills(data, row, task_row, role, f"{task or ''} {feat_desc}")
     install([r for r in data["skills"]["selected"] if r["name"] in skills])
     servers = sorted({s["name"] for s in data["environment"]["mcp_servers"]})
-    role = personas.by_agent().get(persona)
     data["delegations"].append({"ts": datetime.now(timezone.utc).isoformat(timespec="seconds"), "persona": persona, "stage": row["name"],
                                 "task": task, "skills": skills})
     path.write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -368,8 +371,9 @@ def brief(stage: str | None, task: str | None, persona: str) -> str:
         *([f"- Your role: {role['title']}. {role['goal']}"] if role else []),
         f"- Stage goal: {row['goal']} Gate: {row['exit']}",
         f"- Ask folder: {data['paths']['ask']}/ (prototypes and drafts go there, never in the workspace root)",
-        "- Read and follow before you start: " + (", ".join(f".aria/skills/{skill_dir(s)}/SKILL.md" for s in skills) or "no library skills"),
-        "- Plugin skills you may use: " + (", ".join(dict.fromkeys([*row["plugin_skills"], *data["skills"]["plugin"]])) or "none"),
+        ask_skills.format_brief_skills(WORKSPACE, skills, data),
+        "- Plugin skills available (skim descriptions, invoke or read only if needed): " + (", ".join(dict.fromkeys([*row["plugin_skills"], *data["skills"]["plugin"]])) or "none"),
+        *ask_skills.map_brief_lines(WORKSPACE, query),
         *ask_packs.brief_lines(data, row),
         "- MCP servers available: " + (", ".join(servers) or "none"),
         f"- Rules: {SUBAGENT_RULES}",
@@ -394,7 +398,7 @@ def main() -> None:
     | skills suggested|all|<skill,...> | skills score <scores.json> | skills available | skills add <skill> | shift <prompt>
     | where [request-file]
     | plan-sync <note> | plan-status | tasks-sync [project] | brief <persona> [stage=<s>] [task=<t>] | used <persona> <task|-> <skill,...|none>
-    | report <session> | close | open <ask-id> | forget <ask-id>."""
+    | report <session> | status | close | open <ask-id> | forget <ask-id>."""
     args = sys.argv[1:]
     sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]  # Windows pipes default to cp1252
     if args[:1] == ["list"]:
@@ -465,6 +469,10 @@ def main() -> None:
     elif args[:1] == ["report"] and len(args) == 2:
         from ask_report import report  # ask_report imports this module
         print(report(args[1]))
+        return
+    elif args[:1] == ["status"] and len(args) == 1:
+        from ask_status import status  # ask_status imports this module
+        print(status())
         return
     else:
         raise SystemExit(main.__doc__)

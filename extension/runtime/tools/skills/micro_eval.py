@@ -14,10 +14,14 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "hooks"))
+from brand import BRAND  # noqa: E402
+
+STATE = BRAND["state_dir"]
 TASKS_DIR = ROOT / "tests" / "skill_tasks"
 SKILLS_DIR = ROOT / "skills"
 EVALS_DIR = SKILLS_DIR / "evals"
-CACHE_DIR = Path.cwd() / ".aria" / "evals" / "micro"
+CACHE_DIR = Path.cwd() / STATE / "evals" / "micro"
 SCORE_MAX = 5
 SYSTEM = "You are a senior software engineer. Answer the task directly and concretely in at most 250 words."
 JUDGE_SYSTEM = ("You are a strict, impartial evaluator. You see a task, its checks, and two anonymous answers A and B. "

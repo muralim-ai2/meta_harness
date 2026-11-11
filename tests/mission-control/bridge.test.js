@@ -25,7 +25,7 @@ test('requires a launcher and the bundled lifecycle entry point', () => {
 test('an unusable Python launcher surfaces the failing operation', async t => {
   const folder = workspace();
   t.after(() => removeWorkspace(folder));
-  await assert.rejects(lifecycle(runtime(EXTENSION, ['hve-no-such-python']), folder, ['list']), /Harness lifecycle\.py list failed/);
+  await assert.rejects(lifecycle(runtime(EXTENSION, ['aria-no-such-python']), folder, ['list']), /Harness lifecycle\.py list failed/);
 });
 
 test('only allowlisted lifecycle operations can execute', () => {

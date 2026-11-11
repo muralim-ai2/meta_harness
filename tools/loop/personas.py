@@ -61,7 +61,7 @@ def write(folder: Path = AGENTS, path: Path = CATALOG) -> list[str]:
     for p in load(path):
         if p["kind"] == "existing":
             continue
-        name = f"hve-{p['id']}.agent.md"
+        name = f"{p['id']}.agent.md"
         (folder / name).write_text(render(p), encoding="utf-8")
         names.append(name)
     return names
@@ -69,9 +69,9 @@ def write(folder: Path = AGENTS, path: Path = CATALOG) -> list[str]:
 
 def stale(folder: Path = AGENTS, path: Path = CATALOG) -> list[str]:
     """Return the rendered persona files that are missing or differ from the catalog."""
-    return [f"hve-{p['id']}.agent.md" for p in load(path) if p["kind"] != "existing"
-            and (not (folder / f"hve-{p['id']}.agent.md").is_file()
-                 or (folder / f"hve-{p['id']}.agent.md").read_text(encoding="utf-8") != render(p))]
+    return [f"{p['id']}.agent.md" for p in load(path) if p["kind"] != "existing"
+            and (not (folder / f"{p['id']}.agent.md").is_file()
+                 or (folder / f"{p['id']}.agent.md").read_text(encoding="utf-8") != render(p))]
 
 
 def match(text: str, path: Path = CATALOG) -> list[Json]:

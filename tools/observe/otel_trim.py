@@ -7,11 +7,16 @@ import time
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "hooks"))
+from brand import BRAND  # noqa: E402
+
+STATE = BRAND["state_dir"]
+
 KEEP_DAYS = 3
 MAX_BYTES = 200 * 1024 * 1024
-EXPORT = ".aria/runs/copilot-otel.jsonl"
-LOCK = ".aria/runs/bench.lock"
-IGNORED_BY = {".aria/", "/.aria/", ".aria", ".aria/runs/", EXPORT}
+EXPORT = f"{STATE}/runs/copilot-otel.jsonl"
+LOCK = f"{STATE}/runs/bench.lock"
+IGNORED_BY = {f"{STATE}/", f"/{STATE}/", STATE, f"{STATE}/*", f"{STATE}/runs/", EXPORT}
 
 Json = dict[str, Any]
 

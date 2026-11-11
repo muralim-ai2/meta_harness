@@ -9,7 +9,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "hooks"))
 from lifecycle import WORKSPACE, active, plan_status  # noqa: E402
-from loop_paths import loop_dir, state_dir, state_file  # noqa: E402
+from loop_paths import STATE, loop_dir, state_dir, state_file  # noqa: E402
 from ask_plan import OPTIONS, items, refresh, ticked  # noqa: E402
 import ask_packs  # noqa: E402
 
@@ -18,7 +18,7 @@ Json = dict[str, Any]
 
 def guard_summary(workspace: Path, session: str) -> Json:
     """Return the session's guard trips per hook and kind, waiver answers, and guards laid down, from the intervention and waiver logs."""
-    runs = workspace / ".aria" / "runs"
+    runs = workspace / STATE / "runs"
     log = runs / f"{session}.interventions.jsonl"
     entries = [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()] if log.is_file() else []
     trips: dict[str, int] = {}
@@ -51,7 +51,7 @@ def usage(data: Json, used: set[str], workspace: Path, session: str) -> Json:
     servers = sorted({s["name"] for s in data["environment"]["mcp_servers"]})
     mcp = [{"server": s, "called": any(t.startswith((f"mcp_{s}_", f"{s}/")) for t in tools)} for s in servers]
     fired = sorted({key.split("/")[0] for key in guard_summary(workspace, session)["trips"]}
-                   | ({"skill_loader"} if (workspace / ".aria" / "runs" / f"{session}.skills.json").is_file() else set()))
+                   | ({"skill_loader"} if (workspace / STATE / "runs" / f"{session}.skills.json").is_file() else set()))
     return {"skills": skills, "personas": personas, "tasks": tasks, "mcp": mcp,
             "hooks": {"configured_files": data["environment"]["hook_files"], "fired": fired},
             "unused_skills": [s["name"] for s in skills if not s["read"] and not s["reported_by"]]}
@@ -59,7 +59,7 @@ def usage(data: Json, used: set[str], workspace: Path, session: str) -> Json:
 
 def otel_spans(workspace: Path, session: str) -> list[Json] | None:
     """Return the session's and its sub-agents' chat spans from the Copilot OTel export, or None when research telemetry wrote no export."""
-    export = workspace / ".aria" / "runs" / "copilot-otel.jsonl"
+    export = workspace / STATE / "runs" / "copilot-otel.jsonl"
     if not export.is_file():
         return None
     import metrics  # imported only when the export exists: its hve_paths resolves .aria/ from the working directory
@@ -71,7 +71,7 @@ def otel_spans(workspace: Path, session: str) -> list[Json] | None:
 def measures(workspace: Path, session: str) -> Json | None:
     """Return the session's model calls, tokens, cost, cache reads and wall clock from its metrics rows (research arms) or from the
     Copilot OTel export (research telemetry on), or None when the session was not measured."""
-    rows = workspace / ".aria" / "runs" / f"{session}.jsonl"
+    rows = workspace / STATE / "runs" / f"{session}.jsonl"
     spans = None if rows.is_file() else otel_spans(workspace, session)
     if rows.is_file():
         calls = list({r["turn_id"]: r for r in map(json.loads, rows.read_text(encoding="utf-8").splitlines())}.values())
@@ -103,7 +103,7 @@ def ms(ts: str) -> float:
 def agent_runs(workspace: Path, data: Json) -> list[Json]:
     """Return the ask's sub-agent runs from every session's agent ledger, each matched to the brief logged just before it (by time), the
     skills its role reported, and its models (from the client, or from OTel spans of sub-agents inside its start-stop window)."""
-    rows = [r for p in sorted((workspace / ".aria" / "runs").glob("*.agents.jsonl"))
+    rows = [r for p in sorted((workspace / STATE / "runs").glob("*.agents.jsonl"))
             for r in map(json.loads, p.read_text(encoding="utf-8").splitlines()) if r["ask"] == data["ask"]]
     stops = {r["agent_id"]: r for r in rows if r["event"] == "stop"}
     briefs = sorted(data["delegations"], key=lambda d: d["ts"])
@@ -146,7 +146,7 @@ def quality(workspace: Path, data: Json) -> Json:
     lock = json.loads(state_file(workspace).read_text(encoding="utf-8"))["lock"] if state_file(workspace).is_file() else None
     features = [f for f in features if lock is None or lock[f["name"]].get("ask") == data["ask"]]
     created = datetime.fromisoformat(data["created"]).timestamp()
-    reports = sorted((p for p in (workspace / ".aria" / "evaluations").glob("*/report.json") if p.stat().st_mtime >= created),
+    reports = sorted((p for p in (workspace / STATE / "evaluations").glob("*/report.json") if p.stat().st_mtime >= created),
                      key=lambda p: p.stat().st_mtime)
     report = json.loads(reports[-1].read_text(encoding="utf-8")) if reports else None
     signable = [i for i in items(data) if not i.startswith("opt:")]
@@ -157,10 +157,10 @@ def quality(workspace: Path, data: Json) -> Json:
 def facts(workspace: Path, session: str) -> Json:
     """Return the active contract against the session's facts: skills used, templates authored, gaps of done stages, plan sync and guards."""
     path, data = active(workspace)
-    runs = workspace / ".aria" / "runs"
+    runs = workspace / STATE / "runs"
     loadout = runs / f"{session}.skills.json"
     used = {Path(s).name for s in json.loads(loadout.read_text(encoding="utf-8"))["used"]} if loadout.is_file() else set()
-    deliverables = workspace / ".aria" / "deliverables" / f"{session}.json"
+    deliverables = workspace / STATE / "deliverables" / f"{session}.json"
     authored = {d["kind"] for d in json.loads(deliverables.read_text(encoding="utf-8"))["documents"]} if deliverables.is_file() else set()
     observed = used
     used = observed | {s for e in data["reported"] for s in e["skills"]}
@@ -231,7 +231,7 @@ def pillar_rows(q: Json, m: Json | None, skills: Json, created: str) -> list[str
         cache = f"{m['share']:.0%} of prompt tokens read from cache"
     return ["| Pillar | This ask | Source |", "|---|---|---|",
             f"| Quality | {checks}; {signed}/{signable} milestones and tasks signed off; evaluation: {q['evaluation'] or 'not run'} | "
-            "loop, checklist, `.aria/evaluations/` |",
+            f"loop, checklist, `{STATE}/evaluations/` |",
             f"| Cost | {cost} | {source} |",
             f"| Token efficiency | {tokens}; skill load {skills['tokens']:,} tokens | {source}, contract |",
             f"| Latency | {latency}ask open {opened} min | {source}, contract |",

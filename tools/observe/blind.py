@@ -7,7 +7,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-RUNS_DIR = ROOT / ".aria" / "runs"
+STATE = json.loads((ROOT / "brand.json").read_text(encoding="utf-8"))["state_dir"]
+RUNS_DIR = ROOT / STATE / "runs"
 BLIND_DIR = ROOT / "research" / "blind"
 RUBRIC_FILE = ROOT / "tests" / "prompts" / "color-palette.rubric.json"
 LABELS = "ABCDEFGHJKLMNPQRSTUVWXYZ"

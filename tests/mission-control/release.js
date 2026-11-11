@@ -120,7 +120,7 @@ async function hostCheck(root, release) {
  * @returns {Promise<void>}
  */
 async function main() {
-  const root = fs.mkdtempSync(path.join(fs.realpathSync.native(os.tmpdir()), 'hve-release-'));
+  const root = fs.mkdtempSync(path.join(fs.realpathSync.native(os.tmpdir()), 'aria-release-'));
   console.log(`Release check folder (kept for inspection; delete when done): ${root}`);
   const release = packageAndInspect(root);
   const report = await hostCheck(root, release);

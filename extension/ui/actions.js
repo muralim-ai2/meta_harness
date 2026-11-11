@@ -12,6 +12,8 @@ const { listAsks, askTree, projectTree, evaluationFiles } = require('./asks');
 const { claimsFrom, chatSessionUri } = require('./chats');
 const { containedPath } = require('./file-access');
 const askFlow = require('./ask-flow');
+const { BRAND } = require('../brand');
+const STATE = BRAND.state_dir;
 const IMAGES = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
 
 /** @typedef {import('./mission-control').MissionControl} MissionControl */
@@ -105,7 +107,7 @@ async function editPlan(mc) {
 async function revealAsk(mc) {
   const state = snapshot(mc.target().uri.fsPath, mc.selected);
   if (!state.ask) throw new Error('There is no ask to show.');
-  await vscode.commands.executeCommand('revealInExplorer', vscode.Uri.file(containedPath(state.workspace, path.join('.aria', 'asks', state.ask.id))));
+  await vscode.commands.executeCommand('revealInExplorer', vscode.Uri.file(containedPath(state.workspace, path.join(STATE, 'asks', state.ask.id))));
 }
 
 /** Return the chat message that hands a change request to the ask's agent.
@@ -200,7 +202,7 @@ async function addSkill(mc, ask) {
   const load = state.skillLoad;
   const tokens = (load ? load.tokens : 0) + (offered.find(skill => skill.name === picked.label)?.tokens || 0);
   const confirm = await vscode.window.showWarningMessage(`Add ${picked.label} to this ask?`, { modal: true,
-    detail: `${state.ask.id}\n\nThe skill is installed into .aria/skills/ and listed in the ask's plan. Agents load it from the next message you send; `
+    detail: `${state.ask.id}\n\nThe skill is installed into ${STATE}/skills/ and listed in the ask's plan. Agents load it from the next message you send; `
       + `the ask's skills then come to ${tokens.toLocaleString('en-US')} tokens${load ? ` against a ${load.maxTokens.toLocaleString('en-US')}-token guideline` : ''}.` }, 'Add skill');
   if (confirm !== 'Add skill') return;
   await flow.addSkill(target.uri.fsPath, ask, picked.label);
@@ -282,7 +284,7 @@ async function openFile(mc, relative) {
   const session = mc.state.activity?.session;
   const named = [...(session?.events || []), ...(session?.current ? [session.current] : [])].filter(event => ['ask', 'guard'].includes(event.kind));
   const listed = [...state.files, ...(session?.files.map(file => file.path) || []), ...named.flatMap(event => event.files), ...state.reviews.flatMap(review => review.files),
-    ...state.skills.map(skill => path.join('.aria', 'skills', skill.name, 'SKILL.md')), ...(state.ask ? treeFiles(askTree(root, state.ask.id).entries) : []), ...evaluationFiles(root),
+    ...state.skills.map(skill => path.join(STATE, 'skills', skill.name, 'SKILL.md')), ...(state.ask ? treeFiles(askTree(root, state.ask.id).entries) : []), ...evaluationFiles(root),
     ...treeFiles(projectTree(root).entries)]
     .map(file => path.normalize(file));
   if (!listed.includes(path.normalize(relative))) throw new Error('That file is not listed in Mission Control.');

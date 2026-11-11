@@ -10,7 +10,7 @@ from itertools import combinations
 from pathlib import Path
 from typing import Any
 
-from recommend import stems
+from recommend import STATE, stems
 from scan import CHARS_PER_TOKEN, frontmatter
 
 SKILLS_DIR = Path(__file__).resolve().parents[2] / "skills"
@@ -150,7 +150,7 @@ def mcp_entries(workspace: Path, user_dir: Path, per_server: int) -> list[Json]:
 def measured_names(workspace: Path) -> set[str]:
     """Return skill names with a paired evaluation in the harness library or the workspace's own registry."""
     names = set()
-    for registry in (SKILLS_DIR / "registry.json", workspace / ".aria" / "skills-registry.json"):
+    for registry in (SKILLS_DIR / "registry.json", workspace / STATE / "skills-registry.json"):
         if registry.is_file():
             data = json.loads(registry.read_text(encoding="utf-8"))
             names |= {e["name"] for e in data["admitted"] + data["rejected"] if e.get("eval_method")}
@@ -181,7 +181,7 @@ def measure(workspace: Path, agent: str | None, context_tokens: int | None) -> J
     total = sum(i["tokens"] for i in items)
     windows = [context_tokens] if context_tokens else config["reference_windows"]
     shares = {str(w): round(total / w * 100, 1) for w in windows}
-    history_file = workspace / ".aria" / "context_load.json"
+    history_file = workspace / STATE / "context_load.json"
     previous = json.loads(history_file.read_text(encoding="utf-8"))["total_tokens"] if history_file.is_file() else None
     measured = measured_names(workspace)
     report: Json = {"checked": datetime.now(timezone.utc).isoformat(timespec="seconds"), "total_tokens": total, "share_pct": shares,

@@ -12,10 +12,10 @@ RUNTIME = EXTENSION / "runtime"
 SKILLS = EXTENSION / "skills"
 PLUGIN_SRC = REPO / "plugins" / "harness-assist"
 FILES = {
-    "hooks": ["hve_paths.py", "interventions.py", "profile_detector.py", "compaction.py", "loop_guard.py", "flow_guard.py",
+    "hooks": ["brand.py", "hve_paths.py", "interventions.py", "profile_detector.py", "compaction.py", "loop_guard.py", "flow_guard.py",
               "module_guard.py", "no_fallback.py", "skill_loader.py", "agent_compat.py", "template_guard.py", "guard_policy.py",
               "plan_check.py", "metrics.py", "agent_ledger.py", "error_guard.py", "guard_mode.json"],
-    "tools/adapters": ["export.py"],
+    "tools/adapters": ["export.py", "check.py"],
     "tools/templates": ["manage.py"],
     "tools/backlog": ["backlog.py"],
     "tools/evaluation": ["contract.py", "workflow.py", "reflection.py", "compose.py"],
@@ -24,7 +24,7 @@ FILES = {
     "schemas": ["hve-plugin.schema.json"],
     "evaluation": ["frontier.eval.json"],
     "tools/loop": ["loop.py", "diagnose.py", "flow.py", "lifecycle.py", "lifecycle_catalog.py", "ask_plan.py", "ask_packs.py", "ask_report.py",
-                   "ask_project.py", "ask_skills.py", "personas.py", "stage_evidence.py", "loop_paths.py", "environment.py"],
+                   "ask_status.py", "ask_project.py", "ask_skills.py", "personas.py", "stage_evidence.py", "loop_paths.py", "environment.py"],
     "tools/git": ["branch_workflow.py", "parallel_options.py"],
     "tools/prototype": ["check.py"],
     "tools/skills": ["recommend.py", "scan.py", "triage.py", "onboard.py", "micro_eval.py", "evaluate.py", "context_load.py"],
@@ -45,6 +45,7 @@ def build() -> list[str]:
         (RUNTIME / folder).mkdir(parents=True)
         for name in names:
             shutil.copy2(REPO / folder / name, RUNTIME / folder / name)
+    shutil.copy2(REPO / "brand.json", RUNTIME / "brand.json")
     (RUNTIME / "scripts").mkdir()
     for name in SCRIPTS:
         shutil.copy2(PLUGIN_SRC / "scripts" / name, RUNTIME / "scripts" / name)

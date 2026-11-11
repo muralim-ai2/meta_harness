@@ -75,7 +75,9 @@ def test_init_in_existing_repo() -> None:
         hook.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
         assert "already exists" in raises(FileExistsError, loop.init, project, "local")
         hook.unlink()
+        (project / ".gitignore").write_text(".aria/*\n!.aria/asks/\n", encoding="utf-8")
         loop.init(project, "local")  # type: ignore[arg-type]
+        assert ".aria/" not in (project / ".gitignore").read_text(encoding="utf-8").splitlines(), "committed ask records stay committed"
         assert git(project, "config", "user.name").strip() == "dev"
         assert git(project, "log", "-1", "--format=%an %s").strip() == "dev [init] scaffold"
         assert "already initialized" in raises(FileExistsError, loop.init, project, "local")
@@ -299,8 +301,10 @@ def make_root(tmp: str, guard_mode: str = "enforce") -> Path:
     project folder."""
     root = Path(tmp)
     (root / "hooks").mkdir()
-    for hook in ("loop_guard.py", "module_guard.py", "flow_guard.py", "interventions.py", "hve_paths.py", "guard_policy.py", "error_guard.py"):
+    for hook in ("loop_guard.py", "module_guard.py", "flow_guard.py", "interventions.py", "hve_paths.py", "guard_policy.py", "error_guard.py",
+                 "brand.py"):
         shutil.copy(REPO / "hooks" / hook, root / "hooks")
+    shutil.copy(REPO / "brand.json", root)
     (root / "hooks" / "guard_mode.json").write_text(json.dumps({"loop_guard": guard_mode}), encoding="utf-8")
     (root / "tools" / "loop").mkdir(parents=True)
     shutil.copy(REPO / "tools" / "loop" / "loop_paths.py", root / "tools" / "loop")

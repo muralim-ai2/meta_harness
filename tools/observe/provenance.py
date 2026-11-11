@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "template
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "loop"))
 from manage import check_session, resolve  # noqa: E402
 from ask_report import facts, guard_summary  # noqa: E402
-from loop_paths import loop_dir, state_file  # noqa: E402
+from loop_paths import STATE, loop_dir, state_file  # noqa: E402
 
 Status = Literal["verified", "not-exercised", "failed"]
 Json = dict[str, Any]
@@ -30,16 +30,16 @@ class Finding(TypedDict):
 
 def latest_session(workspace: Path) -> str:
     """Return the id of the newest session with a skill loadout or hook event log in the workspace."""
-    logs = sorted([*(workspace / ".aria" / "runs").glob("*.skills.json"), *(workspace / ".aria" / "runs").glob("*.events.jsonl")],
+    logs = sorted([*(workspace / STATE / "runs").glob("*.skills.json"), *(workspace / STATE / "runs").glob("*.events.jsonl")],
                   key=lambda p: p.stat().st_mtime)
     if not logs:
-        raise FileNotFoundError(f"no session logs in {workspace / '.aria' / 'runs'}: no harness hook has run in this workspace")
+        raise FileNotFoundError(f"no session logs in {workspace / STATE / 'runs'}: no harness hook has run in this workspace")
     return logs[-1].name.split(".")[0]
 
 
 def _templates(workspace: Path, session: str) -> Finding:
     """Return whether requested deliverables were created from their configured templates and validate."""
-    registry = workspace / ".aria" / "deliverables" / f"{session}.json"
+    registry = workspace / STATE / "deliverables" / f"{session}.json"
     if not registry.is_file():
         return {"status": "not-exercised", "detail": "no deliverable was requested in this session"}
     errors = check_session(workspace, session)
@@ -64,7 +64,7 @@ def _loop(project: Path) -> tuple[Finding, bool]:
 
 def _reflection(project: Path, finished: bool) -> Finding:
     """Return the latest output evaluation's five layers and decision, or a failure when a finished loop has none."""
-    reports = sorted((project / ".aria" / "evaluations").glob("*/report.json"))
+    reports = sorted((project / STATE / "evaluations").glob("*/report.json"))
     if reports:
         folder = reports[-1].parent
         report = json.loads(reports[-1].read_text(encoding="utf-8"))
@@ -81,7 +81,7 @@ def _reflection(project: Path, finished: bool) -> Finding:
 
 def _contract(workspace: Path, session: str) -> tuple[Finding, Json | None]:
     """Return whether the active ask's done stages used their expected skills and templates and its plan is in sync, with the facts."""
-    if not (workspace / ".aria" / "asks" / "active.json").is_file():
+    if not (workspace / STATE / "asks" / "active.json").is_file():
         return {"status": "not-exercised", "detail": "no lifecycle contract in this workspace"}, None
     found = facts(workspace, session)
     stale = [f"{found['plan']['plan']} changed since its last sync"] if found["plan"] and found["plan"]["changed"] else []
@@ -120,9 +120,9 @@ def _trace(runs: Path, session: str) -> Json | None:
 def provenance(agent_file: Path, workspace: Path, project: Path, session: str, required: list[str]) -> Json:
     """Return and save to .aria/runs/<session>.provenance.json each declared component's evidence status and whether all is ok."""
     agent = agent_file.read_text(encoding="utf-8")
-    runs = workspace / ".aria" / "runs"
+    runs = workspace / STATE / "runs"
     found: dict[str, Finding] = {}
-    exists = {"skills": runs / f"{session}.skills.json", "profile": workspace / ".aria" / "user_profile.json",
+    exists = {"skills": runs / f"{session}.skills.json", "profile": workspace / STATE / "user_profile.json",
               "metrics": runs / f"{session}.events.jsonl"}
     for name, path in exists.items():
         relative = path.relative_to(workspace).as_posix()
