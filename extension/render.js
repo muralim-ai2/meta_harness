@@ -6,6 +6,7 @@ const path = require('path');
 const { BRAND } = require('./brand');
 
 const PLACEHOLDER = /\{\{RUNTIME\}\}/g;
+const MAIN_AGENTS = ['auto.agent.md', 'collab.agent.md', 'lite.agent.md', 'prototype-creator.agent.md'];
 // Templates name the default state folder; a brand with another folder gets its own.
 const STATE_PATHS = /\.aria\//g;
 const PYTHON_CALL = /\bpython "\{\{RUNTIME\}\}/g;
@@ -125,13 +126,12 @@ function renderPlugin(extensionDir, pluginDir, version, python) {
     const file = path.join(entry.parentPath, entry.name);
     if (entry.isFile() && entry.name.endsWith('.md')) fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(STATE_PATHS, `${BRAND.state_dir}/`));
   }
-  const agents = fs.readdirSync(path.join(extensionDir, 'agents')).filter((name) => name.endsWith('.agent.md'));
-  for (const name of agents) {
+  for (const name of MAIN_AGENTS) {
     const text = fs.readFileSync(path.join(extensionDir, 'agents', name), 'utf8');
     fs.writeFileSync(path.join(agentsOut, name), renderAgent(text, runtime, python));
   }
-  removeStale(agentsOut, agents);
-  return agents;
+  removeStale(agentsOut, MAIN_AGENTS);
+  return [...MAIN_AGENTS];
 }
 
 /**
@@ -186,4 +186,4 @@ function renderPacks(extensionDir, python, renderedRoot, packs) {
   return folders;
 }
 
-module.exports = { renderPlugin, renderPacks };
+module.exports = { MAIN_AGENTS, renderAgent, renderPlugin, renderPacks };

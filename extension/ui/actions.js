@@ -9,7 +9,7 @@ const { BASE_COMMANDS } = require('./lifecycle-cli');
 const { snapshot } = require('./workspace-state');
 const { sameAsk } = require('./workflow');
 const { listAsks, askTree, projectTree, evaluationFiles } = require('./asks');
-const { claimsFrom, chatSessionUri } = require('./chats');
+const { claimsFrom, chatSessionUri, isLocalChat } = require('./chats');
 const { containedPath } = require('./file-access');
 const askFlow = require('./ask-flow');
 const { BRAND } = require('../brand');
@@ -75,7 +75,8 @@ function selectChat(mc, chat) {
  */
 async function openChat(mc, chat) {
   if (!mc.state.activity?.chats.some(row => row.id === chat)) throw new Error('That chat is not listed in Mission Control.');
-  await vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(chatSessionUri(chat)));
+  if (isLocalChat(mc.transcripts(), chat)) await vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(chatSessionUri(chat)));
+  else await vscode.commands.executeCommand('workbench.action.chat.open');
 }
 
 /** Link a listed chat to the ask on screen; the link lives in this window's Mission Control state only.

@@ -15,11 +15,11 @@ const APPROVAL_LAPSE_MS = 60 * 60 * 1000;
 const IMAGE_BYTES = 6000;
 /** @type {Record<string, string>} */
 const CONTEXT_GROUP = { read: 'reads', edit: 'edits', run: 'commands', search: 'searches', delegate: 'subagents', ask: 'questions', todo: 'other', tool: 'other' };
-const LONG_TOOLS = new Set(['run_in_terminal', 'get_terminal_output', 'runSubagent', 'execution_subagent', 'search_subagent', 'explore_subagent',
-  'run_playwright_code', 'vscode_askQuestions', 'ask_user']);
-const EVENT_LIMIT = 80;
-const SESSION = /^[\w-]+$/;
-const ASK_TOOLS = new Set(['vscode_askQuestions', 'ask_user']);
+const LONG_TOOLS = new Set(['run_in_terminal', 'powershell', 'bash', 'shell', 'exec_command', 'get_terminal_output', 'read_powershell', 'read_bash',
+  'runSubagent', 'task', 'execution_subagent', 'search_subagent', 'explore_subagent', 'run_playwright_code', 'vscode_askQuestions', 'ask_user']);
+const SHELL_TOOLS = new Set(['run_in_terminal', 'powershell', 'bash', 'shell', 'exec_command']);
+const READ_FILE_TOOLS = new Set(['read_file', 'view']);
+const EVENT_LIMIT = 80, SESSION = /^[\w-]+$/, ASK_TOOLS = new Set(['vscode_askQuestions', 'ask_user']);
 const TODO_STATES = ['not-started', 'in-progress', 'completed'];
 const NAMED_FILES = [/\]\(([^)\s]+?)(?:#[^)\s]*)?\)/g, /`([^`\s]+\.[A-Za-z0-9]{1,8})`/g, /(?<![\w/\\.`(-])((?:[\w.-]+[\\/])+[\w.-]+\.[A-Za-z0-9]{1,8})\b/g];
 /** @type {Map<string, {size: number, mtime: number, parsed: Parsed}>} */
@@ -31,7 +31,7 @@ const cache = new Map();
  *   turns: number, tools: number, failures: number, commands: number, todos: import('./types').Todo[], events: ActivityEvent[],
  *   files: Map<string, {count: number, last: string}>, chars: {user: number, agent: number, args: number}, skills: Map<string, number>,
  *   calls: Map<string, {title: string, count: number}>, gap: {from: string, to: string} | null,
- *   context: Map<string, {count: number, bytes: number, items: string[]}>}} Parsed */
+ *   context: Map<string, {count: number, bytes: number, items: string[]}>, tokens: import('./types').Activity['tokens']}} Parsed */
 
 /** Return the end of a file, starting at a line boundary when it was cut.
  * @param {string} file
@@ -149,7 +149,7 @@ function editedFiles(tool, args) {
     return [...new Set(list(args.replacements, 'Replacements').map(row => text(record(row, 'Replacement').filePath, 'Replacement file')))];
   }
   if (tool === 'apply_patch') return [...text(args.input, 'Patch').matchAll(/^\*\*\* (?:(?:Add|Update|Delete) File|Move to): (.+)$/gm)].map(match => match[1].trim());
-  const file = arg(args, 'filePath');
+  const file = arg(args, 'filePath') || arg(args, 'path');
   return file ? [file] : [];
 }
 
@@ -163,32 +163,38 @@ function editedFiles(tool, args) {
 function describe(tool, args, workspace, at) {
   /** @type {(kind: ActivityEvent['kind'], title: string, detail?: string, files?: string[]) => ActivityEvent} */
   const event = (kind, title, detail = '', files = []) => ({ at, kind, title, detail, files, state: 'running' });
-  const file = arg(args, 'filePath');
+  const file = arg(args, 'filePath') || arg(args, 'path');
   switch (tool) {
-    case 'read_file': case 'view_image': return event('read', file ? `Read ${shown(file, workspace)}` : 'Read a file');
-    case 'create_file': return event('edit', file ? `Created ${shown(file, workspace)}` : 'Created a file', '', file ? [file] : []);
-    case 'replace_string_in_file': case 'insert_edit_into_file': case 'edit_notebook_file': case 'multi_replace_string_in_file': case 'apply_patch': {
+    case 'read_file': case 'view_image': case 'view': return event('read', file ? `Read ${shown(file, workspace)}` : 'Read a file');
+    case 'skill': { const sk = arg(args, 'skill'); return event('read', sk ? `Loaded skill ${sk}` : 'Loaded a skill'); }
+    case 'create_file': case 'create': return event('edit', file ? `Created ${shown(file, workspace)}` : 'Created a file', '', file ? [file] : []);
+    case 'replace_string_in_file': case 'insert_edit_into_file': case 'edit_notebook_file': case 'multi_replace_string_in_file': case 'apply_patch': case 'edit': {
       const files = editedFiles(tool, args);
       return event('edit', files.length === 1 ? `Edited ${shown(files[0], workspace)}` : `Edited ${files.length} files`,
         files.length > 1 ? files.map(name => shown(name, workspace)).join(', ') : arg(args, 'explanation') || '', files);
     }
     case 'create_directory': return event('edit', `Created folder ${shown(arg(args, 'dirPath') || '.', workspace)}`);
-    case 'run_in_terminal': {
+    case 'run_in_terminal': case 'powershell': case 'bash': case 'shell': case 'exec_command': {
       const command = shortCommand(arg(args, 'command') || '');
-      const explanation = arg(args, 'explanation');
+      const explanation = arg(args, 'explanation') || arg(args, 'description');
       return event('run', explanation ? clip(explanation.replace(/\.$/, ''), 90) : command ? `Ran ${clip(command, 90)}` : 'Ran a command', clip(command, 200));
     }
-    case 'get_terminal_output': return event('run', 'Checked terminal output');
+    case 'get_terminal_output': case 'read_powershell': case 'read_bash': return event('run', 'Checked terminal output');
     case 'list_dir': return event('read', `Listed ${shown(arg(args, 'path') || '.', workspace)}`);
-    case 'grep_search': case 'file_search': case 'semantic_search': return event('search', `Searched for “${clip(arg(args, 'query') || '', 60)}”`);
+    case 'grep_search': case 'file_search': case 'semantic_search': case 'grep': case 'glob':
+      return event('search', `Searched for “${clip(arg(args, 'query') || arg(args, 'pattern') || '', 60)}”`);
     case 'manage_todo_list': return event('todo', 'Updated its to-do list');
     case 'vscode_askQuestions': case 'ask_user': {
+      if (!Array.isArray(args.questions) && typeof args.message === 'string') {
+        return event('ask', 'Asked you a question', clip(args.message, 120), referenced(args.message, workspace));
+      }
       const questions = Array.isArray(args.questions) ? args.questions.map(row => record(row, 'Question')) : [];
       return event('ask', `Asked you ${questions.length || 'a'} question${questions.length === 1 ? '' : 's'}`,
         questions.map(row => arg(row, 'header') || arg(row, 'question') || '').filter(Boolean).join(' · '),
         referenced(questions.flatMap(row => ['question', 'message'].map(key => arg(row, key) || '')).join('\n'), workspace));
     }
-    case 'runSubagent': return event('delegate', `Handed off to ${arg(args, 'agentName') || 'a sub-agent'}`, arg(args, 'description') || '');
+    case 'runSubagent': case 'task':
+      return event('delegate', `Handed off to ${arg(args, 'agentName') || arg(args, 'name') || arg(args, 'agent_type') || 'a sub-agent'}`, arg(args, 'description') || '');
     case 'execution_subagent': case 'search_subagent': case 'explore_subagent': return event('delegate', 'Started a helper agent', arg(args, 'description') || '');
     case 'fetch_webpage': return event('search', 'Fetched a web page', Array.isArray(args.urls) ? args.urls.join(', ') : '');
     case 'get_errors': return event('read', 'Checked problems');
@@ -251,11 +257,15 @@ function awaiting(calls, now) {
  * @returns {Parsed}
  */
 function parse(file, workspace) {
-  const id = path.basename(file, '.jsonl');
+  const base = path.basename(file, '.jsonl');
+  const id = base === 'events' ? path.basename(path.dirname(file)) : base;
   if (!SESSION.test(id)) throw new Error(`Unexpected chat session file name: ${path.basename(file)}`);
   /** @type {Parsed} */
   const s = { id, title: null, started: '', lastAt: '', turnOpen: false, open: null, requested: new Map(), turns: 0, tools: 0, failures: 0, commands: 0, todos: [],
-    events: [], files: new Map(), chars: { user: 0, agent: 0, args: 0 }, skills: new Map(), calls: new Map(), gap: null, context: new Map() };
+    events: [], files: new Map(), chars: { user: 0, agent: 0, args: 0 }, skills: new Map(), calls: new Map(), gap: null, context: new Map(), tokens: null };
+  /** @type {Map<string, import('./types').TokenUse>} */
+  const models = new Map();
+  let nano = 0;
   /** @type {Map<string, {event: ActivityEvent, tool: string}>} */
   const running = new Map();
   for (const row of jsonLines(tail(file, TAIL_BYTES), path.basename(file))) {
@@ -277,7 +287,23 @@ function parse(file, workspace) {
       }
     } else if (type === 'assistant.turn_start') { s.turnOpen = true; s.turns += 1; }
     else if (type === 'assistant.turn_end') s.turnOpen = false;
-    else if (type === 'assistant.message') {
+    else if (type === 'abort') { s.turnOpen = false; settle(running); s.requested.clear(); }
+    else if (type === 'skill.invoked' && typeof data.name === 'string') {
+      const skPath = typeof data.path === 'string' && fs.existsSync(data.path) ? fs.statSync(data.path).size : 0;
+      if (!s.skills.has(data.name)) s.skills.set(data.name, skPath);
+    } else if (type === 'session.usage_record' && data.usage && typeof data.usage === 'object') {
+      const u = record(data.usage, 'Session usage');
+      const m = text(u.responseModel ?? u.modelDisplayName ?? u.model, 'Usage model');
+      const use = models.get(m) || { model: m, calls: 0, failed: 0, input: 0, output: 0, cached: 0, reasoning: 0 };
+      use.calls += 1;
+      use.input += u.inputTokens === undefined ? 0 : integer(u.inputTokens, 'Input tokens');
+      use.output += u.outputTokens === undefined ? 0 : integer(u.outputTokens, 'Output tokens');
+      use.cached += u.cacheReadTokens === undefined ? 0 : integer(u.cacheReadTokens, 'Cached tokens');
+      use.reasoning += u.reasoningTokens === undefined ? 0 : integer(u.reasoningTokens, 'Thinking tokens');
+      models.set(m, use);
+      const cu = u.copilotUsage && typeof u.copilotUsage === 'object' ? /** @type {Record<string, unknown>} */ (u.copilotUsage) : null;
+      nano += cu && cu.totalNanoAiu !== undefined ? integer(cu.totalNanoAiu, 'AI units') : 0;
+    } else if (type === 'assistant.message') {
       settle(running);
       s.requested = requested(data, workspace, at);
       const content = text(data.content, 'Agent message', true);
@@ -286,27 +312,25 @@ function parse(file, workspace) {
     } else if (type === 'tool.execution_start') {
       const tool = text(data.toolName, 'Tool name');
       s.requested.delete(text(data.toolCallId, 'Tool call id'));
-      const args = data.arguments === undefined ? {} : record(data.arguments, `${tool} arguments`);
+      const rawArgs = typeof data.arguments === 'string' ? JSON.parse(data.arguments) : data.arguments;
+      const args = rawArgs === undefined ? {} : record(rawArgs, `${tool} arguments`);
       const event = describe(tool, args, workspace, at);
       const key = `${tool} ${JSON.stringify(args)}`;
       s.chars.args += key.length;
       s.calls.set(key, { title: event.title, count: (s.calls.get(key)?.count || 0) + 1 });
-      const skill = tool === 'read_file' && /[\\/]([^\\/]+)[\\/]SKILL\.md$/i.exec(arg(args, 'filePath') || '');
-      if (skill && !s.skills.has(skill[1])) {
-        const file = /** @type {string} */ (arg(args, 'filePath'));
-        s.skills.set(skill[1], fs.existsSync(file) ? fs.statSync(file).size : 0);
-      }
-      const read = tool === 'read_file' ? arg(args, 'filePath') : null;
-      const group = skill ? 'skills' : tool === 'view_image' ? 'images' : tool === 'fetch_webpage' ? 'web' : CONTEXT_GROUP[event.kind] || 'other';
+      const readTarget = READ_FILE_TOOLS.has(tool) ? (arg(args, 'filePath') || arg(args, 'path')) : null;
+      const skill = readTarget && /[\\/]([^\\/]+)[\\/]SKILL\.md$/i.exec(readTarget);
+      if (skill && !s.skills.has(skill[1])) s.skills.set(skill[1], fs.existsSync(readTarget) ? fs.statSync(readTarget).size : 0);
+      const group = (skill || tool === 'skill') ? 'skills' : tool === 'view_image' ? 'images' : tool === 'fetch_webpage' ? 'web' : CONTEXT_GROUP[event.kind] || 'other';
       const bytes = tool === 'view_image' ? IMAGE_BYTES
-        : read && path.isAbsolute(read) && fs.existsSync(read) && fs.statSync(read).isFile() ? fs.statSync(read).size : key.length;
+        : readTarget && path.isAbsolute(readTarget) && fs.existsSync(readTarget) && fs.statSync(readTarget).isFile() ? fs.statSync(readTarget).size : key.length;
       const row = s.context.get(group) || { count: 0, bytes: 0, items: [] };
       row.count += 1;
       row.bytes += bytes;
       if (row.items.length < 4 && !row.items.includes(event.title)) row.items.push(event.title);
       s.context.set(group, row);
       s.tools += 1;
-      if (tool === 'run_in_terminal') s.commands += 1;
+      if (SHELL_TOOLS.has(tool)) s.commands += 1;
       if (tool === 'manage_todo_list') s.todos = todoList(args);
       for (const name of event.kind === 'edit' ? event.files : []) {
         const relative = inside(name, workspace);
@@ -324,6 +348,7 @@ function parse(file, workspace) {
     }
   }
   s.open = [...running.values()].at(-1) || null;
+  s.tokens = models.size ? { models: [...models.values()].sort((a, b) => b.input - a.input), aiu: nano / 1e9 } : null;
   return s;
 }
 
@@ -461,10 +486,12 @@ function usage(workspace, file, id) {
  */
 function activity(workspace, file, telemetryFile, now) {
   if (!file) return { session: null, errors: null, loadout: null, tokens: null };
-  const current = session(parsed(file, workspace), now);
+  const raw = parsed(file, workspace);
+  const current = session(raw, now);
   const run = runFiles(workspace, current.id);
   current.events = [...current.events, ...run.guards].sort((a, b) => b.at.localeCompare(a.at)).slice(0, EVENT_LIMIT);
-  return { session: current, errors: run.errors, loadout: run.loadout, tokens: telemetryFile ? usage(workspace, telemetryFile, current.id) : null };
+  const otel = telemetryFile ? usage(workspace, telemetryFile, current.id) : null;
+  return { session: current, errors: run.errors, loadout: run.loadout, tokens: otel || raw.tokens };
 }
 
 module.exports = { activity, describe, status, stillRunning, requested, awaiting, headline, clip, jsonLines };

@@ -2,13 +2,14 @@
 /** Mission Control: the ARIA sidebar and dashboard, kept live from the harness files and this window's chat transcripts. */
 const vscode = require('vscode');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { randomBytes } = require('node:crypto');
 const { runtime, inspect, guardMode, packs } = require('./lifecycle-cli');
 const { snapshot } = require('./workspace-state');
 const { activity } = require('./activity');
 const { listAsks, askTree, projectTree } = require('./asks');
-const { chatList, shownChat, claimsFrom, pendingFrom, chatMeta } = require('./chats');
+const { chatList, shownChat, claimsFrom, pendingFrom, chatMeta, transcriptPath, copilotDigest } = require('./chats');
 const { companion } = require('./companion');
 const { Workflow } = require('./workflow');
 const { HarnessTree } = require('./harness-tree');
@@ -78,6 +79,13 @@ class MissionControl {
     this.mapPanel = null;
     /** @type {NodeJS.Timeout | null} */
     this.treeTimer = null;
+    this.copilotStamp = '';
+    this.copilotTimer = setInterval(() => {
+      if (this.disposed || !(this.sidebar?.visible || this.panel?.visible) || this.state.busy || this.workspace?.uri.scheme !== 'file') return;
+      const stamp = copilotDigest(this.workspace.uri.fsPath, this.copilotSessions());
+      if (stamp !== this.copilotStamp) { this.copilotStamp = stamp; this.scheduleRefresh(); }
+    }, 1500);
+    this.copilotTimer.unref?.();
     this.tree = new HarnessTree(() => this.workspace?.uri.scheme === 'file' ? this.workspace.uri.fsPath : null);
     const version = text(record(context.extension.packageJSON, 'Extension manifest').version, 'Extension version');
     /** @type {Omit<import('./types').Model, 'brand' | 'now' | 'surface' | 'workspace' | 'telemetry' | 'navigate' | 'transcripts'>} */
@@ -116,6 +124,13 @@ class MissionControl {
   transcripts() {
     const storage = this.context.storageUri;
     return storage ? path.join(path.dirname(storage.fsPath), 'GitHub.copilot-chat', 'transcripts') : null;
+  }
+
+  /** Return the user's Copilot session-state directory (~/.copilot/session-state) for VS Code Copilot mode and Copilot CLI.
+   * @returns {string | null}
+   */
+  copilotSessions() {
+    return process.env.HVE_COPILOT_SESSIONS || (this.context.globalStorageUri ? path.join(os.homedir(), '.copilot', 'session-state') : null);
   }
 
   /** Return the research telemetry switch and its export file.
@@ -239,17 +254,20 @@ class MissionControl {
     const viewed = state.value?.ask?.id ?? this.selected ?? asks.value?.find(ask => ask.active)?.id ?? null;
     const live = await this.section('Live activity', async () => {
       const transcripts = this.transcripts();
+      const copilotRoot = this.copilotSessions();
+      this.copilotStamp = copilotDigest(root, copilotRoot);
       const claims = claimsFrom(this.context.workspaceState.get('chatAsks'));
       const pending = pendingFrom(this.context.workspaceState.get('pendingChat'), now);
-      const { chats, claimed } = chatList(transcripts, root, (asks.value || []).map(ask => ask.id), claims, pending, now);
+      const { chats, claimed } = chatList(transcripts, root, (asks.value || []).map(ask => ask.id), claims, pending, now, copilotRoot);
       if (claimed) {
         await this.context.workspaceState.update('chatAsks', { ...claims, [claimed.chat]: { ask: claimed.ask, how: 'started' } });
         await this.context.workspaceState.update('pendingChat', null);
       }
       this.state.pending = claimed ? null : pending;
       const shown = shownChat(chats, viewed, this.chat, viewed === (asks.value?.find(ask => ask.active)?.id ?? null));
-      return { ...activity(root, shown && transcripts ? path.join(transcripts, `${shown.id}.jsonl`) : null, this.telemetry().file, now), chats,
-        meta: shown && transcripts ? chatMeta(transcripts, shown.id) : null };
+      const linkedAsk = shown?.asks[0]?.ask ? (asks.value || []).find(ask => ask.id === shown.asks[0].ask) : null;
+      return { ...activity(root, shown ? transcriptPath(transcripts, copilotRoot, shown.id) : null, this.telemetry().file, now), chats,
+        meta: shown ? chatMeta(transcripts, shown.id, copilotRoot, linkedAsk?.agent || state.value?.ask?.agent || null) : null };
     });
     const files = await this.section('Ask files', async () => viewed ? askTree(root, viewed) : null);
     const project = await this.section('Project files', async () => projectTree(root));
@@ -430,6 +448,7 @@ class MissionControl {
     this.disposed = true;
     if (this.timer) clearTimeout(this.timer);
     if (this.treeTimer) clearTimeout(this.treeTimer);
+    if (this.copilotTimer) clearInterval(this.copilotTimer);
     this.watchers.forEach(watcher => watcher.dispose());
     this.tree.dispose();
     this.panel?.dispose();

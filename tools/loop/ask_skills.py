@@ -114,6 +114,20 @@ def add(path: Path, data: Json, name: str) -> Json:
             "over_budget": s["over_budget"]}
 
 
+def role_lines(role: Json | None, ask_path: str, stage_name: str) -> list[str]:
+    """Return the persona's role, focus, expected deliverable and reviewer output path for a general sub-agent brief."""
+    if not role:
+        return []
+    lines = [f"- Your role: {role['title']}. {role['goal']}"]
+    if role.get("produces"):
+        lines.append(f"- Deliverable: produce {role['produces']} under {ask_path}/{stage_name}/.")
+    if role.get("focus"):
+        lines.append(f"- Focus: {role['focus']}.")
+    if role.get("kind") == "reviewer":
+        lines.append(f"- Review output: write {ask_path}/{stage_name}/review.md (verdict: approve | approve with changes | reject, findings table with blocker/major/minor, file:line, fix); edit nothing else.")
+    return lines
+
+
 def brief_skills(data: Json, stage: Json, task_row: Json | None, role: Json | None, context_text: str) -> list[str]:
     """Return a role- and stage-reduced candidate skill list for a sub-agent brief while keeping generic task delegations intact."""
     selected = {r["name"]: r for r in data["skills"]["selected"]}

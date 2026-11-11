@@ -303,7 +303,7 @@ export interface TokenUse {
 export interface ChatMeta {
   agent: string | null;
   model: string | null;
-  mode: 'Local' | null;
+  mode: 'Local' | 'Copilot' | 'Copilot CLI' | null;
 }
 export interface Activity {
   session: Session | null;

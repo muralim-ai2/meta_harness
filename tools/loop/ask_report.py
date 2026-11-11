@@ -68,9 +68,28 @@ def otel_spans(workspace: Path, session: str) -> list[Json] | None:
     return metrics.load_chat_spans(session)[0]
 
 
+def copilot_measures(session: str) -> tuple[list[float], list[tuple[int, int, int, int]]] | None:
+    """Read usage records and timestamps for a Copilot mode or Copilot CLI session from ~/.copilot/session-state/<session>/events.jsonl."""
+    events = Path.home() / ".copilot" / "session-state" / session / "events.jsonl"
+    if not events.is_file():
+        return None
+    times: list[float] = []
+    usage_rows: list[tuple[int, int, int, int]] = []
+    for line in events.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        if "timestamp" in row:
+            times.append(datetime.fromisoformat(str(row["timestamp"]).replace("Z", "+00:00")).timestamp() * 1000)
+        if row.get("type") == "session.usage_record" and isinstance(row.get("data", {}).get("usage"), dict):
+            u = row["data"]["usage"]
+            nano = int((u.get("copilotUsage") or {}).get("totalNanoAiu") or 0)
+            usage_rows.append((int(u.get("inputTokens") or 0), int(u.get("outputTokens") or 0), nano, int(u.get("cacheReadTokens") or 0)))
+    return (times, usage_rows) if usage_rows else None
+
+
 def measures(workspace: Path, session: str) -> Json | None:
-    """Return the session's model calls, tokens, cost, cache reads and wall clock from its metrics rows (research arms) or from the
-    Copilot OTel export (research telemetry on), or None when the session was not measured."""
+    """Return the session's model calls, tokens, cost, cache reads and wall clock from metrics rows, Copilot OTel, or Copilot session state."""
     rows = workspace / STATE / "runs" / f"{session}.jsonl"
     spans = None if rows.is_file() else otel_spans(workspace, session)
     if rows.is_file():
@@ -83,7 +102,11 @@ def measures(workspace: Path, session: str) -> Json | None:
         source = "Copilot OTel export (research telemetry)"
         usage_rows = [(s["input_tokens"], s["output_tokens"], s["cost_nano_aiu"], s["cache_read_tokens"] or 0) for s in spans]
     else:
-        return None
+        cop = copilot_measures(session)
+        if cop is None:
+            return None
+        times, usage_rows = cop
+        source = "Copilot session state"
     if not usage_rows:
         return None
     prompts = [u[0] for u in usage_rows]

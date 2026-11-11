@@ -2,7 +2,7 @@
 
 Use the ARIA agents, skills and guard hooks outside VS Code's Local harness. Connect Azure DevOps through Microsoft's Azure DevOps MCP server.
 
-> **Status:** built and protocol-tested (`tests/test_adapters.py`). First live runs: Copilot in VS Code (10 Nov). Claude Code, Cursor, Codex and the cloud agent have not been run live yet, and the Azure DevOps server has not been started from this setup. Report what fails under tracker issue `N27`. Decisions: `D-042`, `D-050`. Research note: `research/findings/phase-10-adapters.md`.
+> **Status:** built and protocol-tested (`tests/test_adapters.py`). Live runs verified: VS Code Local, VS Code Copilot mode (10–11 Nov, including Mission Control Live and Telemetry), and Claude Code / Claude mode (11 Nov). Cursor, Codex and the cloud agent have not been run live yet, and the Azure DevOps server has not been started from this setup. Report what fails under tracker issue `N27`. Decisions: `D-042`, `D-050`. Research note: `research/findings/phase-10-adapters.md`.
 
 ## Names and folders come from brand.json
 

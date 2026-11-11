@@ -44,7 +44,8 @@ async function run() {
   const locations = Object.keys(vscode.workspace.getConfiguration('chat').get('pluginLocations') || {});
   const plugin = locations.find(dir => dir.endsWith(path.join('pwc.frontier-hve', 'plugin')));
   assert.ok(plugin, 'Activation must still render and register the HVE agent plugin.');
-  assert.equal(fs.readdirSync(path.join(plugin, 'com.github.copilot', 'agents')).filter(name => name.endsWith('.agent.md')).length, 41);
+  assert.deepEqual(fs.readdirSync(path.join(plugin, 'com.github.copilot', 'agents')).filter(name => name.endsWith('.agent.md')).sort(),
+    ['auto.agent.md', 'collab.agent.md', 'lite.agent.md', 'prototype-creator.agent.md']);
   assert.equal(fs.readFileSync(path.join(plugin, 'skills', 'wow-uplift', 'SKILL.md'), 'utf8'), fs.readFileSync(setting('HVE_HOST_UPLIFT'), 'utf8'),
     'The rendered wow-uplift skill must be the current source.');
   assert.ok(!available.includes('frontierHve.continueInChat'), 'Continue in Chat must be gone.');
@@ -87,7 +88,7 @@ async function run() {
   fs.writeFileSync(setting('HVE_HOST_REPORT'), JSON.stringify({
     status: 'passed', vscode: vscode.version, extension: extension.packageJSON.version, ask: state.ask.id,
     checks: ['installed from VSIX', 'Copilot Chat disabled', 'activated on startup without a manual activate call', 'all contributed commands registered',
-      'HVE agent plugin rendered and registered (41 agents)', 'current wow-uplift skill rendered', 'no Continue in Chat command',
+      'HVE agent plugin rendered and registered (4 main agents)', 'current wow-uplift skill rendered', 'no Continue in Chat command',
       'Activity Bar container opened', 'Mission Control editor opened with live ask', 'no passive project mutation',
       'ask dropdown lists the active ask and the Files page shows its folder', 'chat, folder and Explorer commands used by New ask, the new-workspace handoff and Show in Explorer exist',
       'Harness files pane contributed, focused, and lists .aria/ with the active ask titled and files that open on click',

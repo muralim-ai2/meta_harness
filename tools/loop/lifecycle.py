@@ -368,7 +368,7 @@ def brief(stage: str | None, task: str | None, persona: str) -> str:
     path.write_text(json.dumps(data, indent=2), encoding="utf-8")
     return "\n".join([
         f"Frontier HVE brief: ask {data['ask']}, stage {row['name']}" + (f", task {task}" if task else ""),
-        *([f"- Your role: {role['title']}. {role['goal']}"] if role else []),
+        *ask_skills.role_lines(role, data["paths"]["ask"], row["name"]),
         f"- Stage goal: {row['goal']} Gate: {row['exit']}",
         f"- Ask folder: {data['paths']['ask']}/ (prototypes and drafts go there, never in the workspace root)",
         ask_skills.format_brief_skills(WORKSPACE, skills, data),

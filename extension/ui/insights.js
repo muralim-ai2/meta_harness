@@ -55,7 +55,7 @@ function insights(run) {
     chatTokens: tokens(chars.user + chars.agent), argTokens: tokens(chars.args), thinkingTokens: reasoning || null,
     cachedTokens: cached, cachePercent: cached === null || !input ? null : Math.round(cached / input * 100),
     input, output, total: input + output, aiu: measured ? measured.aiu : estimatedInput / 1000 * AIU_PER_1K_INPUT, signals,
-    method: measured ? 'Measured by research telemetry for this chat.'
+    method: measured ? (run.meta?.mode?.startsWith('Copilot') ? 'Measured from this Copilot session.' : 'Measured by research telemetry for this chat.')
       : `Estimated (research telemetry is off): ${BASE_CONTEXT_TOKENS.toLocaleString('en-US')} tokens of instructions and tool definitions plus the skills read, per turn, `
         + `the conversation growing over ${s.turns} turns, 4 characters per token, and ${AIU_PER_1K_INPUT} AI units per 1,000 input tokens `
         + '(measured on a Claude Opus 5.5 session). Tool results are not in the transcript, so the real figure is higher.',

@@ -73,14 +73,23 @@ def test_extension_js_parses() -> None:
         subprocess.run(["node", "--check", str(EXTENSION / name)], check=True)
 
 
+def render_template(name: str, python: str | None = "python") -> str:
+    """Render one source agent template in extension/agents/<name>.agent.md through renderAgent()."""
+    runtime = (EXTENSION / "runtime").as_posix()
+    source = str(EXTENSION / "agents" / f"{name}.agent.md")
+    script = (f"const fs = require('fs'); const {{ renderAgent }} = require({json.dumps(str(EXTENSION / 'render.js'))}); "
+              f"process.stdout.write(renderAgent(fs.readFileSync({json.dumps(source)}, 'utf8'), {json.dumps(runtime)}, {json.dumps(python)}));")
+    return subprocess.run(["node", "-e", script], capture_output=True, text=True, check=True).stdout
+
+
 def test_rendered_plugin_shape() -> None:
-    """The plugin has its manifest, 19 skills, guardrail scripts and 41 ARIA agents (16 rendered from the persona catalog, 2 benchmark
-    research arms) with every runtime path filled in; only the three
-    ARIA lead agents are user-invocable and they, with the uplift judge, pin top models."""
+    """The rendered plugin installs ONLY the 4 main user-invocable ARIA agents (auto, collab, lite, prototype-creator), 20 skills and
+    guardrail scripts; source templates keep their restrictions."""
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "plugin"
         agents = render(out)
-        assert len(agents) == 41, agents
+        assert agents == ["auto.agent.md", "collab.agent.md", "lite.agent.md", "prototype-creator.agent.md"], agents
+        assert sorted(p.name for p in (out / "com.github.copilot" / "agents").glob("*.agent.md")) == agents
         assert json.loads((out / "plugin.json").read_text(encoding="utf-8"))["name"] == "aria"
         assert len(list((out / "skills").glob("*/SKILL.md"))) == 20
         assert (EXTENSION / "runtime" / "tools" / "map" / "explorer" / "app.js").is_file()
@@ -88,26 +97,21 @@ def test_rendered_plugin_shape() -> None:
         assert (EXTENSION / "runtime" / "tools" / "templates" / "manage.py").is_file()
         assert (EXTENSION / "runtime" / "templates" / "deliverables" / "prd-v1.md").is_file()
         assert (EXTENSION / "runtime" / "evaluation" / "frontier.eval.json").is_file()
-        reviewer = (out / "com.github.copilot" / "agents" / "evaluation-reviewer.agent.md").read_text(encoding="utf-8")
+        reviewer = render_template("evaluation-reviewer")
         assert re.search(r"^user-invocable: false", reviewer, re.M) and "edit/" not in reviewer
         assert not (out / "skills" / "ux-flows").exists() and (EXTENSION / "runtime" / "skills" / "admitted" / "ux-flows" / "SKILL.md").is_file()
         assert (out / "scripts" / "guardrail.py").exists()
-        restricted = {"council", "evaluation-reviewer", "minimal", "flow-architect", "flow-maintainer", "skill-judge", "skill-worker",
-                      "uplift-judge", "research-minimal", "research-single"}
-        visible, pinned = {"auto", "collab", "prototype-creator", "lite"}, {"auto", "collab", "prototype-creator", "lite", "uplift-judge"}
         for name in agents:
             text = (out / "com.github.copilot" / "agents" / name).read_text(encoding="utf-8")
-            short = name.removesuffix(".agent.md")
             assert "{{RUNTIME}}" not in text and re.search(r"^name: ARIA ", text, re.M), name
-            assert bool(re.search(r"^user-invocable: false", text, re.M)) == (short not in visible), f"{name}: only the ARIA lead agents show"
-            assert bool(re.search(r"^model: \[.*'GPT-6 Astra \(copilot\)'", text, re.M)) == (short in pinned), f"{name}: model pin"
+            assert not re.search(r"^user-invocable: false", text, re.M), f"{name}: all 4 rendered plugin agents are user-invocable"
+            assert re.search(r"^model: \[.*'GPT-6 Astra \(copilot\)'", text, re.M), f"{name}: model pin"
             assert not re.search(r"budget\.py|HARNESS_BUDGET", text), f"{name}: product agents have no time budget"
-            assert bool(re.search(r"^tools:", text, re.M)) == (short in restricted), \
-                f"{name}: only read-only, blind and baseline agents keep a fixed tool list"
+            assert not re.search(r"^tools:", text, re.M), f"{name}: main working agents expose all workspace tools"
             for script in re.findall(r'python "([^"]+\.py)"', text):
                 assert Path(script).is_file(), (name, script)
         for name in ("lite", "creator-flow", "creator-github", "single", "product-manager", "auto", "collab"):
-            text = (out / "com.github.copilot" / "agents" / f"{name}.agent.md").read_text(encoding="utf-8")
+            text = render_template(name)
             assert "lifecycle.py" in text and "contract" in text and "lifecycle.py report" in text, name
             assert name == "single" or "lifecycle.py brief" in text, name
 
@@ -120,11 +124,11 @@ def test_render_for_python_launcher_and_fresh_workspace() -> None:
         render(out, python=None)
         creator = (folder / "lite.agent.md").read_text(encoding="utf-8")
         assert "hooks:" not in creator and "Python not found" in creator and "description: (Needs Python)" in creator
-        assert "Python not found" not in (folder / "minimal.agent.md").read_text(encoding="utf-8")
+        assert "Python not found" not in render_template("minimal", python=None)
         render(out, python="python3")
         creator = (folder / "lite.agent.md").read_text(encoding="utf-8")
         assert 'python "' not in creator and 'python3 "' in creator and "Session Target **Local**" in creator
-        assert "Session Target **Local**" not in (folder / "flow-designer.agent.md").read_text(encoding="utf-8")
+        assert "Session Target **Local**" not in render_template("flow-designer", python="python3")
         render(out)
         creator = (folder / "lite.agent.md").read_text(encoding="utf-8")
         assert "Python on this machine" not in creator
@@ -137,14 +141,14 @@ def test_render_for_python_launcher_and_fresh_workspace() -> None:
 
 
 def test_rerender_updates_in_place() -> None:
-    """Rendering over an existing plugin (held open by VS Code) updates the version and agents and removes stale files."""
+    """Rendering over an existing plugin updates the version, keeps only the 4 main agents, and removes stale/legacy agent files."""
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "plugin"
         render(out, "0.1.0")
-        stale = out / "com.github.copilot" / "agents" / "old.agent.md"
-        stale.write_text("old", encoding="utf-8")
+        stale = out / "com.github.copilot" / "agents" / "engineer.agent.md"
+        stale.write_text("old-persona", encoding="utf-8")
         (out / "skills" / "old-skill").mkdir()
-        assert len(render(out, "0.1.1")) == 41
+        assert len(render(out, "0.1.1")) == 4
         assert json.loads((out / "plugin.json").read_text(encoding="utf-8"))["version"] == "0.1.1"
         assert not stale.exists() and not (out / "skills" / "old-skill").exists()
 
@@ -157,9 +161,9 @@ def test_packaged_template_guard() -> None:
         ws = workspace(tmp)
         folder = out / "com.github.copilot" / "agents"
         for name in ("lite", "creator-flow", "creator-github", "single", "product-manager"):
-            text = (folder / f"{name}.agent.md").read_text(encoding="utf-8")
+            text = (folder / f"{name}.agent.md").read_text(encoding="utf-8") if (folder / f"{name}.agent.md").is_file() else render_template(name)
             assert text.count("vscode hooks/template_guard.py") == 3, name
-        assert "template_guard.py" not in (folder / "minimal.agent.md").read_text(encoding="utf-8")
+        assert "template_guard.py" not in render_template("minimal")
         creator = (folder / "lite.agent.md").read_text(encoding="utf-8")
         command = hook(creator, "template_guard.py")
         start = run(command, ws, {"hook_event_name": "SessionStart"})
@@ -180,8 +184,7 @@ def test_product_manager_agent() -> None:
         out = Path(tmp) / "plugin"
         render(out)
         ws = workspace(tmp)
-        folder = out / "com.github.copilot" / "agents"
-        pm = (folder / "product-manager.agent.md").read_text(encoding="utf-8")
+        pm = render_template("product-manager")
         assert pm.count("HVE_TEMPLATE_TYPES: prd") == 3, pm
         assert "HARNESS_REQUIRED_SKILLS: prd" in pm
         assert "`search_issues`" in pm and "scoped to that repository" in pm and "contract direct <slug> \"ARIA product-manager\"" in pm
@@ -189,7 +192,7 @@ def test_product_manager_agent() -> None:
         assert "host-selected; actual model unconfirmed" in pm and 'label it "session model"' not in pm
         assert "read `.aria/skills/prd/SKILL.md`" in pm and "skills/admitted/prd/SKILL.md" not in pm
         assert "register prd --slug" in pm and "Create parents and dependencies before" in pm and "`uncovered`" in pm
-        ado = (folder / "azure-devops.agent.md").read_text(encoding="utf-8")
+        ado = render_template("azure-devops")
         assert "Epic / Issue / Task (Basic" in ado and "Create parents and dependencies before" in ado
         loader = hook(pm, "skill_loader.py")
         for prompt, minimum in (("Create a PRD for an employee leave portal", 1), ("Revise the PRD to clarify goals", 1),
@@ -210,7 +213,7 @@ def test_product_manager_agent() -> None:
                 assert read is None or "permissionDecision" not in read["hookSpecificOutput"], read
         residue = [s for s in ("PRD-TEMPLATE", "12 sections", "12-section", "docs/artifacts", "Research Summary") if s in pm]
         assert not residue, residue
-        assert re.search(r"^user-invocable: false", (folder / "council.agent.md").read_text(encoding="utf-8"), re.M)
+        assert re.search(r"^user-invocable: false", render_template("council"), re.M)
         guard = hook(pm, "template_guard.py")
         run(guard, ws, {"hook_event_name": "UserPromptSubmit", "prompt": "Write a PRD and a technical design specification"},
             HVE_TEMPLATE_TYPES="prd")
@@ -261,7 +264,7 @@ def test_rendered_flow_and_loop_tools_run() -> None:
         subprocess.run(["git", "init", "-q"], cwd=ws, check=True)
         subprocess.run(["git", "config", "user.name", "dev"], cwd=ws, check=True)
         subprocess.run(["git", "config", "user.email", "dev@example.com"], cwd=ws, check=True)
-        designer = (out / "com.github.copilot" / "agents" / "flow-designer.agent.md").read_text(encoding="utf-8")
+        designer = render_template("flow-designer")
         flow_py = re.search(r'python "([^"]+/tools/loop/flow\.py)"', designer)[1]  # type: ignore[index]
         subprocess.run([sys.executable, flow_py, "init", ".", "--profile", "product"], cwd=ws, check=True, capture_output=True)
         stop = {"hook_event_name": "SubagentStop", "agent_id": "a", "agent_type": "ARIA flow-designer", "stop_hook_active": False}
@@ -285,7 +288,7 @@ def test_delivery_agents_and_lifecycles() -> None:
         folder = out / "com.github.copilot" / "agents"
         prototype = (folder / "prototype-creator.agent.md").read_text(encoding="utf-8")
         assert set(re.findall(r" (?:vscode|\+) hooks/(\w+\.py)", prototype)) == {"loop_guard.py", "error_guard.py"}, prototype
-        assert re.search(r"^user-invocable: false", (folder / "engineer.agent.md").read_text(encoding="utf-8"), re.M)
+        assert re.search(r"^user-invocable: false", render_template("engineer"), re.M)
         ws = workspace(tmp)
         for name, overlay in (("auto", "sdlc"), ("collab", "agile-scrum")):
             text = (folder / f"{name}.agent.md").read_text(encoding="utf-8")

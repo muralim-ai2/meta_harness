@@ -135,3 +135,60 @@ test('without Copilot models the page says so instead of failing', async t => {
   assert.match(model.modelsError, /No Copilot models are available/);
   assert.match(text(dashboard(model, UI, Date.now())), /No Copilot models are available/);
 });
+
+test('Copilot mode sessions in ~/.copilot/session-state update Live and measured Telemetry without copilot-otel.jsonl', async t => {
+  const copilotState = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'aria-cop-'));
+  process.env.HVE_COPILOT_SESSIONS = copilotState;
+  t.after(() => { delete process.env.HVE_COPILOT_SESSIONS; fs.rmSync(copilotState, { recursive: true, force: true }); });
+  const fixture = mission(t);
+  const askId = '20261111-1046-efficiency-check';
+  const askDir = path.join(fixture.root, '.aria', 'asks', askId);
+  fs.mkdirSync(path.join(askDir, 'loop'), { recursive: true });
+  fs.mkdirSync(path.join(fixture.root, '.aria', 'project'), { recursive: true });
+  fs.writeFileSync(path.join(fixture.root, '.aria', 'asks', 'active.json'), JSON.stringify({ active: askId }));
+  fs.writeFileSync(path.join(askDir, 'request.md'), 'Efficiency check\n');
+  fs.writeFileSync(path.join(askDir, 'contract.json'), JSON.stringify({
+    ask: askId, slug: 'efficiency-check', request: 'Efficiency check', lifecycle: 'direct', source: 'builtin', agent: 'ARIA Lite',
+    created: '2026-11-11T10:46:00Z', current: 'deliver', scope: [], for_stage: null, gates: 'all', packs: [],
+    paths: { ask: `.aria/asks/${askId}`, plan: `.aria/asks/${askId}/plan.md`, loop: `.aria/asks/${askId}/loop`,
+      evidence: `.aria/asks/${askId}/loop/evidence`, project: '.aria/project', feature_list: '.aria/project/feature_list.json',
+      feature_list_add: '.aria/project/feature_list.add.json' },
+    stages: [{ name: 'deliver', goal: 'Deliver', agent: 'self', skills: [], plugin_skills: [], templates: [], exit: 'Done', status: 'active', note: '' }],
+    skills: { selected: [], tokens: 0, over_budget: false, budget: { max_skills: 10, max_tokens: 32000 }, suggested: [], suggested_tokens: 0, choice: null, plugin: {} },
+    personas: [], tasks: [], environment: { mcp_servers: [], hook_files: [], tool_load: { harnesses: {}, warn_tokens: 6000, warnings: [] } },
+    delegations: [], reported: [], plan: { sha256: null, revisions: [] }, checklist: {}, checklist_rendered: {}, decisions: [],
+  }));
+  const skillFile = path.join(fixture.root, '.aria', 'skills', 'delivery-coach', 'SKILL.md');
+  fs.mkdirSync(path.dirname(skillFile), { recursive: true });
+  fs.writeFileSync(skillFile, 's'.repeat(2000));
+  const sid = '516ba980-c063-4201-b3d7-037dab6de2f8';
+  const sessionDir = path.join(copilotState, sid);
+  fs.mkdirSync(sessionDir, { recursive: true });
+  fs.writeFileSync(path.join(sessionDir, 'workspace.yaml'), `id: ${sid}\ncwd: ${fixture.root}\nclient_name: vscode-agent-host\n`);
+  const now = Date.now();
+  const iso = s => new Date(now - (30 - s) * 1000).toISOString();
+  const events = [
+    ['session.start', 0, { sessionId: sid, startTime: iso(0), selectedModel: 'gpt-6.1-sol' }],
+    ['user.message', 1, { content: `Build tracker. If you are an agent that uses .aria or .harness folders, work in the ask .aria/asks/${askId}` }],
+    ['assistant.turn_start', 2, { turnId: '0' }],
+    ['session.usage_record', 3, { usage: { model: 'gpt-6.1-sol', responseModel: 'gpt-6.1-sol', inputTokens: 28000, outputTokens: 500,
+      cacheReadTokens: 21000, reasoningTokens: 400, copilotUsage: { totalNanoAiu: 3_500_000_000 } } }],
+    ['tool.execution_start', 4, { toolCallId: 'c1', toolName: 'skill', arguments: { skill: 'delivery-coach' } }],
+    ['skill.invoked', 4, { name: 'delivery-coach', path: skillFile }],
+    ['tool.execution_complete', 5, { toolCallId: 'c1', success: true }],
+    ['tool.execution_start', 6, { toolCallId: 'c2', toolName: 'powershell', arguments: { command: 'node --test', description: 'Run unit tests' } }],
+  ];
+  fs.writeFileSync(path.join(sessionDir, 'events.jsonl'), events.map(([type, s, data]) => JSON.stringify({ type, timestamp: iso(s), data }) + '\n').join(''));
+  await fixture.controls.commands.get('frontierHve.refreshMissionControl')();
+  const model = fixture.controls.commands.get('frontierHve.missionControlModel')();
+  assert.equal(model.activity.session.id, sid);
+  assert.equal(model.activity.session.status, 'working');
+  assert.equal(model.activity.session.current.title, 'Run unit tests');
+  assert.equal(model.insights.measured, true);
+  assert.equal(model.insights.mode, 'Copilot');
+  assert.equal(model.insights.agent, 'ARIA Lite');
+  assert.equal(model.insights.model, 'gpt-6.1-sol');
+  assert.deepEqual([model.insights.input, model.insights.output, model.insights.total, model.insights.cachedTokens, model.insights.cachePercent, model.insights.thinkingTokens, model.insights.aiu],
+    [28000, 500, 28500, 21000, 75, 400, 3.5]);
+  assert.deepEqual(model.insights.skills.names, ['delivery-coach']);
+});

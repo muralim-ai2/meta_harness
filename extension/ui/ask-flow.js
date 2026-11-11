@@ -4,7 +4,7 @@ const vscode = require('vscode');
 const fs = require('node:fs');
 const path = require('node:path');
 const { listAsks, slugFor, askRequest, scopeText, starterPrompt, deletedAsks, handoffFrom } = require('./asks');
-const { claimsFrom, chatSessionUri } = require('./chats');
+const { claimsFrom, chatSessionUri, isLocalChat } = require('./chats');
 const { snapshot } = require('./workspace-state');
 const { BRAND } = require('../brand');
 const STATE = BRAND.state_dir;
@@ -194,8 +194,10 @@ async function openChat(mc, ask, choice, query, mode) {
     await vscode.commands.executeCommand('workbench.action.chat.open', { query, isPartialQuery: true, mode, attachFiles });
   } else {
     const chat = /** @type {import('./types').Chat} */ (choice.chat);
-    if (choice.target === 'own') await vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(chatSessionUri(chat.id)));
-    else if (!chat.asks.some(link => link.ask === ask.id)) {
+    if (choice.target === 'own') {
+      if (isLocalChat(mc.transcripts(), chat.id)) await vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(chatSessionUri(chat.id)));
+      else await vscode.commands.executeCommand('workbench.action.chat.open');
+    } else if (!chat.asks.some(link => link.ask === ask.id)) {
       await mc.context.workspaceState.update('chatAsks', { ...claimsFrom(mc.context.workspaceState.get('chatAsks')), [chat.id]: { ask: ask.id, how: 'continued' } });
     }
     await vscode.commands.executeCommand('workbench.action.chat.open', { query, isPartialQuery: true, mode, attachFiles });

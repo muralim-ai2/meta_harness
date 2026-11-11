@@ -13,7 +13,7 @@ Since 0.15.0 the picker shows only the delivery agents (D-055), and since 0.15.3
 | `ARIA Prototype Creator` (`prototype-creator`) | Fast UI/UX clickthrough (HTML or TypeScript) in the ask folder's `prototype/`, self-checked (`tools/prototype/check.py`) with a screenshot per screen; no loop; output evaluation on request. E.g. three screens of a leave request flow for a stakeholder demo | loop (safety only) | Yes |
 | `ARIA Lite` | Build software: verified feature loop, then output evaluation ([Evaluation](Evaluation.md)) | loop, module, error, prototype, template, skill, profile, compaction, choice | Yes |
 
-Hidden in the extension (`user-invocable: false`): the agents below still ship and can be called as sub-agents, but you do not pick them. In this repository the research arms in `.github/agents/` (`minimal`, `single`, `creator`, `creator-flow`, `creator-github`) are the user-invocable versions.
+The extension's rendered plugin installs only the four main user-facing agents above (`ARIA Auto`, `ARIA Collab`, `ARIA Prototype Creator`, `ARIA Lite`); specialist personas and reviewers below remain in `extension/agents/` for client exports and are carried into general sub-agents by `lifecycle.py brief`. In this repository the research arms in `.github/agents/` (`minimal`, `single`, `creator`, `creator-flow`, `creator-github`) are the user-invocable benchmark versions.
 
 | Agent | Use it for | Guard hooks | Needs Python |
 |---|---|---|---|

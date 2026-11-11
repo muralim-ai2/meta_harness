@@ -13,9 +13,10 @@
 | Target | Built | Tested live |
 |---|---|---|
 | VS Code, Local harness | Agents, hooks and Mission Control | Yes |
-| Copilot CLI and VS Code Copilot harness | `export.py copilot --user` | No |
+| Copilot CLI and VS Code Copilot harness | Plugin (`--plugin-dir`) + `export.py copilot --user` + Mission Control Live & Telemetry from `~/.copilot/session-state` | Yes (VS Code Copilot mode, 10–11 Nov) |
 | Copilot cloud agent | `export.py cloud .` | No |
-| Claude Code, Cursor, Codex | `export.py <client>` and `agent_compat.py` mappings | No. Only tested against documented payloads (`tests/test_adapters.py`) |
+| Claude Code | `export.py claude` and `agent_compat.py` mappings | Yes (Claude mode verified working, 11 Nov) |
+| Cursor, Codex | `export.py <client>` and `agent_compat.py` mappings | No. Only tested against documented payloads (`tests/test_adapters.py`) |
 | Mission Control in Cursor | VSIX installs; chat features assume Copilot Chat | No |
 | Mission Control on GitHub | Nothing | No |
 
