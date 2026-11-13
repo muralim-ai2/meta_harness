@@ -10,11 +10,14 @@ skills/eval_override.json
 
 # Copilot OTel export: hundreds of MB and contains full chat content
 .aria/runs/copilot-otel.jsonl
+.aria/runs/otel-archive-*.jsonl.gz
+**/otel-archive-*.jsonl.gz
 .aria/runs/otel/
 .aria/runs/bench.lock
 
 # Extension build output (assembled by extension/build.py)
 *.vsix
+extension/*.zip
 
 # Python and tool caches
 __pycache__/

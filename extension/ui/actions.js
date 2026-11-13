@@ -12,7 +12,7 @@ const { listAsks, askTree, projectTree, evaluationFiles } = require('./asks');
 const { claimsFrom, chatSessionUri, isLocalChat } = require('./chats');
 const { containedPath } = require('./file-access');
 const askFlow = require('./ask-flow');
-const { BRAND } = require('../brand');
+const { BRAND, cmd } = require('../brand');
 const STATE = BRAND.state_dir;
 const IMAGES = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
 
@@ -262,7 +262,7 @@ async function command(mc, name) {
  */
 async function telemetrySwitch(value) {
   if (value !== 'on' && value !== 'off') throw new Error('Telemetry must be on or off.');
-  await vscode.commands.executeCommand(value === 'on' ? 'frontierHve.researchTelemetry' : 'frontierHve.researchTelemetryOff');
+  await vscode.commands.executeCommand(value === 'on' ? cmd('researchTelemetry') : cmd('researchTelemetryOff'));
 }
 
 /** Return the paths of the files in an ask's folder tree.

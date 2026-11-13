@@ -31,7 +31,7 @@ code, pre { font-family: var(--vscode-editor-font-family); font-size: .92em; }
 
 /* Icons and motion */
 .icon { width: 16px; height: 16px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.brand-logo { flex: none; width: 20px; height: 20px; border-radius: 5px; background: url('aria.png') center / cover no-repeat; }
+.brand-logo { flex: none; width: 20px; height: 20px; border-radius: 5px; background: var(--brand-logo, url('aria.png')) center / cover no-repeat; }
 .icon.spin { animation: spin 1.6s linear infinite; color: var(--accent); }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--good) 55%, transparent); } 100% { box-shadow: 0 0 0 7px transparent; } }
@@ -314,6 +314,16 @@ body.vscode-high-contrast .early, body.vscode-high-contrast-light .early { backg
 .tele-big { font-size: 40px; line-height: 1; font-weight: 750; letter-spacing: -.02em;
   background: linear-gradient(90deg, var(--violet), var(--blue), var(--teal)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .tele-aiu { font-weight: 650; color: var(--amber); }
+.tele-callout { display: grid; gap: 6px; padding: 16px 18px; border-left: 4px solid var(--teal);
+  background: linear-gradient(120deg, color-mix(in srgb, var(--teal) 14%, transparent), color-mix(in srgb, var(--violet) 8%, transparent) 65%, transparent), var(--raised); }
+.tele-callout.estimated { border-left-color: var(--amber);
+  background: linear-gradient(120deg, color-mix(in srgb, var(--amber) 12%, transparent), transparent 65%), var(--raised); }
+.tele-callout-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tele-callout-head .section-label { display: inline-flex; align-items: center; gap: 6px; }
+.tele-callout-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; }
+.tele-callout-num { font-size: 30px; font-weight: 750; line-height: 1.05; letter-spacing: -.02em; color: var(--text); }
+.pack-example { margin: 6px 0; padding: 10px 12px; border: 1px dashed color-mix(in srgb, var(--accent) 55%, var(--border)); border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .tele-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
 .tele-tile { --tone: var(--blue); position: relative; display: grid; gap: 3px; padding: 14px 14px 12px; border-radius: 12px; border: 1px solid var(--border);
   background: linear-gradient(160deg, color-mix(in srgb, var(--tone) 16%, transparent), transparent 70%), var(--raised); transition: transform .15s ease, border-color .15s ease; }
@@ -363,8 +373,8 @@ button.tele-tile:hover { transform: translateY(-2px); border-color: color-mix(in
 .tele-shimmer span:nth-child(2) { width: 85%; } .tele-shimmer span:nth-child(3) { width: 60%; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .tele-shimmer span { animation: none; } .tele-tile { transition: none; } }
-body.vscode-high-contrast .tele-hero, body.vscode-high-contrast .tele-tile, body.vscode-high-contrast .tele-lab, body.vscode-high-contrast-light .tele-hero,
-body.vscode-high-contrast-light .tele-tile, body.vscode-high-contrast-light .tele-lab { background: var(--raised); }
+body.vscode-high-contrast .tele-hero, body.vscode-high-contrast .tele-tile, body.vscode-high-contrast .tele-lab, body.vscode-high-contrast .tele-callout,
+body.vscode-high-contrast-light .tele-hero, body.vscode-high-contrast-light .tele-tile, body.vscode-high-contrast-light .tele-lab, body.vscode-high-contrast-light .tele-callout { background: var(--raised); }
 body.vscode-high-contrast .tele-big, body.vscode-high-contrast-light .tele-big { background: none; color: var(--text); }
 
 @media (max-width: 760px) {

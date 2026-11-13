@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "hooks"))
+from brand import BRAND  # noqa: E402
 CATALOG = ROOT / "templates" / "personas" / "catalog.json"
 TEMPLATES = ROOT / "templates" / "personas"
 AGENTS = ROOT / "extension" / "agents"
@@ -32,37 +34,40 @@ def load(path: Path = CATALOG) -> list[Json]:
             raise ValueError(f"persona {p['id']!r} is missing {missing}")
         if not ID.match(p["id"]) or p["id"] in seen:
             raise ValueError(f"persona id {p['id']!r} must be unique and match {ID.pattern}")
-        if p["kind"] != "existing" and p["agent"] != f"ARIA {p['id']}":
-            raise ValueError(f"rendered persona {p['id']!r} must be named 'ARIA {p['id']}', not {p['agent']!r}")
+        if p["kind"] != "existing" and p["agent"] not in (f"ARIA {p['id']}", f"{BRAND['product']} {p['id']}"):
+            raise ValueError(f"rendered persona {p['id']!r} must be named '{BRAND['product']} {p['id']}', not {p['agent']!r}")
         seen.add(p["id"])
     return personas
 
 
-def description(p: Json) -> str:
+def description(p: Json, product: str | None = None) -> str:
     """Return a persona's agent description as a plain YAML scalar."""
-    text = f"ARIA {p['title']} persona. {p['goal']}"
+    brand_product = product or BRAND["product"]
+    text = f"{brand_product} {p['title']} persona. {p['goal']}"
     if ": " in text or text[0] in "'\"" or "#" in text:
         raise ValueError(f"persona {p['id']!r} description must be a plain YAML scalar (no ': ', quotes or '#'): {text}")
     return text
 
 
-def render(p: Json) -> str:
+def render(p: Json, product: str | None = None) -> str:
     """Return the agent file of a rendered persona from its kind's template."""
-    text = (TEMPLATES / f"{p['kind']}.agent.md").read_text(encoding="utf-8")
-    values = {"name": p["agent"], "description": description(p), "title": p["title"], "goal": p["goal"],
+    brand_product = product or BRAND["product"]
+    text = (TEMPLATES / f"{p['kind']}.agent.md").read_text(encoding="utf-8").replace("Frontier HVE", brand_product)
+    agent_name = f"{brand_product} {p['id']}" if p["agent"].startswith("ARIA ") else p["agent"]
+    values = {"name": agent_name, "description": description(p, brand_product), "title": p["title"], "goal": p["goal"],
               "focus": p["focus"], "produces": p.get("produces", "")}
     out = re.sub(r"\{\{(name|description|title|goal|focus|produces)\}\}", lambda m: values[m[1]], text)
     return out.replace("\n---\n", f"\n---\n\n<!-- Generated from templates/personas/catalog.json ({p['id']}); edit the catalog, not this file. -->\n", 1)
 
 
-def write(folder: Path = AGENTS, path: Path = CATALOG) -> list[str]:
+def write(folder: Path = AGENTS, path: Path = CATALOG, product: str | None = None) -> list[str]:
     """Write every rendered persona's agent file into a folder and return the file names."""
     names = []
     for p in load(path):
         if p["kind"] == "existing":
             continue
         name = f"{p['id']}.agent.md"
-        (folder / name).write_text(render(p), encoding="utf-8")
+        (folder / name).write_text(render(p, product), encoding="utf-8")
         names.append(name)
     return names
 
@@ -86,10 +91,13 @@ def match(text: str, path: Path = CATALOG) -> list[Json]:
 
 
 def by_agent(path: Path = CATALOG) -> dict[str, Json]:
-    """Return the personas indexed by display name ('ARIA engineer'), exported hyphenated name ('aria-engineer'), and id ('engineer')."""
+    """Return personas indexed by configured display/prefix name, legacy ARIA/HVE names, and raw id."""
     indexed: dict[str, Json] = {}
     for p in load(path):
-        for key in (p["agent"], p["agent"].lower().replace(" ", "-"), f"aria-{p['id']}", p["id"]):
+        pid = p["id"]
+        keys = (p["agent"], p["agent"].lower().replace(" ", "-"), f"{BRAND['product']} {pid}", f"{BRAND['prefix']}-{pid}",
+                f"ARIA {pid}", f"aria-{pid}", f"HVE {pid}", f"hve-{pid}", pid)
+        for key in keys:
             indexed[key] = p
     return indexed
 

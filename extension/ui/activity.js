@@ -22,7 +22,7 @@ const NAMED_FILES = [/\]\(([^)\s]+?)(?:#[^)\s]*)?\)/g, /`([^`\s]+\.[A-Za-z0-9]{1
 const cache = new Map();
 
 /** @typedef {import('./types').ActivityEvent} ActivityEvent */
-/** @typedef {{id: string, title: string | null, started: string, lastAt: string, turnOpen: boolean, open: {event: ActivityEvent, tool: string} | null,
+/** @typedef {{id: string, title: string | null, model: string | null, started: string, lastAt: string, turnOpen: boolean, open: {event: ActivityEvent, tool: string} | null,
  *   requested: Map<string, ActivityEvent>, turns: number, tools: number, failures: number, commands: number, todos: import('./types').Todo[], events: ActivityEvent[],
  *   files: Map<string, {count: number, last: string}>, chars: {user: number, agent: number, args: number}, skills: Map<string, number>,
  *   calls: Map<string, {title: string, count: number}>, gap: {from: string, to: string} | null, context: Map<string, {count: number, bytes: number, items: string[]}>,
@@ -237,6 +237,49 @@ function readBytes(file, args, fallback) {
   return full;
 }
 
+/** Return a clean model name without provider suffixes such as "(copilot)".
+ * @param {string | null} value
+ * @returns {string | null}
+ */
+function cleanModel(value) {
+  return value ? value.replace(/\s+\(copilot\)$/i, '').trim() || null : null;
+}
+
+/** Resolve the agent or persona a sub-agent tool call invokes from its arguments, delegation brief or ask contract.
+ * @param {string} tool
+ * @param {Record<string, unknown>} args
+ * @param {string} workspace
+ * @returns {string}
+ */
+function subagentRole(tool, args, workspace) {
+  const explicit = arg(args, 'agentName') || arg(args, 'name') || arg(args, 'agent_type') || arg(args, 'subagent_type');
+  if (explicit) return explicit;
+  if (tool === 'explore_subagent') return 'explore';
+  if (tool === 'search_subagent') return 'search';
+  if (tool === 'execution_subagent') return 'execution';
+  const prompt = arg(args, 'prompt') || '';
+  const packAgent = /^- Pack agent for this stage:\s*([^\s(]+)/m.exec(prompt);
+  if (packAgent) return packAgent[1];
+  const brief = /(?:Frontier HVE|[\w][\w .-]*) brief:\s*ask\s+([\w-]+),\s*stage\s+([\w.-]+)(?:,\s*task\s+([\w.-]+))?/.exec(prompt);
+  if (brief) {
+    const contractFile = path.join(workspace, STATE, 'asks', brief[1], 'contract.json');
+    if (fs.existsSync(contractFile)) {
+      const contract = record(JSON.parse(fs.readFileSync(contractFile, 'utf8')), 'Ask contract');
+      const delegations = Array.isArray(contract.delegations) ? contract.delegations.map(row => record(row, 'Delegation')) : [];
+      const hit = delegations.find(row => (brief[3] ? row.task === brief[3] : row.stage === brief[2]) && typeof row.persona === 'string' && row.persona);
+      if (hit) return /** @type {string} */ (hit.persona);
+      const stages = Array.isArray(contract.stages) ? contract.stages.map(row => record(row, 'Stage')) : [];
+      const stage = stages.find(row => row.name === brief[2] && typeof row.agent === 'string' && row.agent);
+      if (stage) return stage.agent === 'self' && typeof contract.agent === 'string' ? contract.agent : /** @type {string} */ (stage.agent);
+    }
+  }
+  if (/output-evaluation reviewer/i.test(prompt)) return 'evaluation-reviewer';
+  if (/read-only evaluator/i.test(prompt)) return 'rubric-evaluator';
+  if (/product council/i.test(prompt)) return 'council';
+  if (/wow-uplift|uplift[- ]judge/i.test(prompt)) return 'uplift-judge';
+  return 'sub-agent';
+}
+
 /** Parse one transcript into its session facts, separating main-agent activity from sub-agent brackets.
  * @param {string} file
  * @param {string} workspace
@@ -247,7 +290,7 @@ function parse(file, workspace) {
   const id = base === 'events' ? path.basename(path.dirname(file)) : base;
   if (!SESSION.test(id)) throw new Error(`Unexpected chat session file name: ${path.basename(file)}`);
   /** @type {Parsed} */
-  const s = { id, title: null, started: '', lastAt: '', turnOpen: false, open: null, requested: new Map(), turns: 0, tools: 0, failures: 0, commands: 0, todos: [],
+  const s = { id, title: null, model: null, started: '', lastAt: '', turnOpen: false, open: null, requested: new Map(), turns: 0, tools: 0, failures: 0, commands: 0, todos: [],
     events: [], files: new Map(), chars: { user: 0, agent: 0, args: 0 }, skills: new Map(), calls: new Map(), gap: null, context: new Map(),
     main: { turns: 0, tools: 0, reads: 0, skills: 0 }, subagents: [], tokens: null };
   /** @type {Map<string, import('./types').TokenUse>} */
@@ -266,7 +309,10 @@ function parse(file, workspace) {
     if (s.lastAt && (!s.gap || Date.parse(at) - Date.parse(s.lastAt) > Date.parse(s.gap.to) - Date.parse(s.gap.from))) s.gap = { from: s.lastAt, to: at };
     s.started ||= at;
     s.lastAt = at;
-    if (type === 'session.start') s.started = text(data.startTime, 'Session start time');
+    if (type === 'session.start') {
+      s.started = text(data.startTime, 'Session start time');
+      if (typeof data.selectedModel === 'string' && data.selectedModel) s.model = cleanModel(data.selectedModel);
+    }
     else if (type === 'user.message') {
       const unprompted = subStack.find(sub => !sub.promptSeen && sub.turns === 0);
       if (unprompted) { unprompted.promptSeen = true; continue; }
@@ -294,6 +340,7 @@ function parse(file, workspace) {
     } else if (type === 'session.usage_record' && data.usage && typeof data.usage === 'object') {
       const u = record(data.usage, 'Session usage');
       const m = text(u.responseModel ?? u.modelDisplayName ?? u.model, 'Usage model');
+      s.model ||= cleanModel(m);
       const inp = u.inputTokens === undefined ? 0 : integer(u.inputTokens, 'Input tokens');
       const out = u.outputTokens === undefined ? 0 : integer(u.outputTokens, 'Output tokens');
       const cac = u.cacheReadTokens === undefined ? 0 : integer(u.cacheReadTokens, 'Cached tokens');
@@ -307,7 +354,14 @@ function parse(file, workspace) {
       mainUsage.calls += 1; mainUsage.input += inp; mainUsage.output += out; mainUsage.cached += cac; mainUsage.reasoning += rea;
       mainUsage.peakInput = Math.max(mainUsage.peakInput, inp); mainUsage.aiu += callNano / 1e9;
     } else if (type === 'assistant.message') {
-      if (!activeSub) { settle(running); s.requested = requested(data, workspace, at); }
+      const msgModel = typeof data.model === 'string' && data.model ? cleanModel(data.model) : null;
+      if (activeSub) {
+        if (!activeSub.model && msgModel) activeSub.model = msgModel;
+      } else {
+        settle(running);
+        s.requested = requested(data, workspace, at);
+        if (msgModel) s.model = msgModel;
+      }
       const content = text(data.content, 'Agent message', true);
       if (!activeSub) s.chars.agent += content.length;
       if (content.trim()) s.events.push({ at, kind: 'message', title: clip(content, 160), detail: '', files: [], state: 'ok' });
@@ -341,10 +395,10 @@ function parse(file, workspace) {
         if (row.items.length < 4 && !row.items.includes(event.title)) row.items.push(event.title);
         s.context.set(group, row);
       }
-      if (tool === 'runSubagent' || tool === 'task') {
-        const sub = { id: callId, name: arg(args, 'agentName') || arg(args, 'name') || arg(args, 'agent_type') || 'sub-agent',
+      if (tool === 'runSubagent' || tool === 'task' || tool === 'explore_subagent' || tool === 'search_subagent' || tool === 'execution_subagent') {
+        const sub = { id: callId, name: subagentRole(tool, args, workspace),
           task: arg(args, 'description') || '', startAt: at, endAt: null, state: /** @type {const} */ ('running'), turns: 0, tools: 0, reads: 0, skills: 0,
-          model: typeof data.model === 'string' ? data.model : null };
+          model: cleanModel(arg(args, 'model') || (typeof data.model === 'string' ? data.model : null)) };
         s.subagents.push(sub);
         subStack.push(sub);
       }
@@ -436,6 +490,7 @@ function session(s, now) {
       repeats: [...s.calls.values()].filter(call => call.count >= 3).sort((a, b) => b.count - a.count).slice(0, 5),
       context: [...s.context].map(([group, row]) => ({ group, ...row, items: [...row.items] })).sort((a, b) => b.bytes - a.bytes),
       main: { ...s.main },
+      model: s.model,
       subagents: s.subagents.map(sub => ({ ...sub, state: sub.state === 'running' && state === 'idle' ? 'stopped' : sub.state })) },
     files: [...s.files].map(([file, row]) => ({ path: file, ...row })).sort((a, b) => b.last.localeCompare(a.last)) };
 }

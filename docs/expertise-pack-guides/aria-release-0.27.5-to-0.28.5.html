@@ -1,0 +1,889 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>What's New in ARIA: v0.27.5 → v0.28.5 Visual Release Guide</title>
+  <script>
+    (() => {
+      const saved = localStorage.getItem('aria-guide-theme');
+      const hc = matchMedia('(prefers-contrast: more)').matches;
+      const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.dataset.theme = saved || (hc ? 'hc' : 'light');
+      if (saved === 'system') document.documentElement.dataset.theme = hc ? 'hc' : (dark ? 'dark' : 'light');
+    })();
+  </script>
+  <style>
+    :root {
+      --canvas: #ffffff;
+      --grouped: #f5f6f8;
+      --surface: #ffffff;
+      --elevated: #ffffff;
+      --text: #111827;
+      --muted: #4b5563;
+      --subtle: #6b7280;
+      --border: #e4e6eb;
+      --primary: #0f62fe;
+      --primary-tint: rgba(15, 98, 254, 0.09);
+      --good: #15803d;
+      --good-tint: rgba(21, 128, 61, 0.10);
+      --warn: #b45309;
+      --warn-tint: rgba(180, 83, 9, 0.10);
+      --code-bg: #f3f4f6;
+      --shadow: 0 2px 8px rgba(17, 24, 39, 0.05);
+      --shadow-lg: 0 16px 40px rgba(17, 24, 39, 0.12);
+      --font-sans: "Segoe UI", Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      --font-mono: Consolas, "SFMono-Regular", Menlo, ui-monospace, monospace;
+    }
+    [data-theme="dark"] {
+      --canvas: #0f1115;
+      --grouped: #161920;
+      --surface: #181c24;
+      --elevated: #202531;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --subtle: #6b7280;
+      --border: #2a303c;
+      --primary: #60a5fa;
+      --primary-tint: rgba(96, 165, 250, 0.14);
+      --good: #4ade80;
+      --good-tint: rgba(74, 222, 128, 0.13);
+      --warn: #fbbf24;
+      --warn-tint: rgba(251, 191, 36, 0.13);
+      --code-bg: #12151c;
+      --shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+      --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.6);
+    }
+    [data-theme="hc"] {
+      --canvas: #000000;
+      --grouped: #000000;
+      --surface: #000000;
+      --elevated: #000000;
+      --text: #ffffff;
+      --muted: #ffffff;
+      --subtle: #e5e7eb;
+      --border: #6fc3df;
+      --primary: #3794ff;
+      --primary-tint: rgba(55, 148, 255, 0.25);
+      --good: #89d185;
+      --good-tint: transparent;
+      --warn: #f38518;
+      --warn-tint: transparent;
+      --code-bg: #0a0a0a;
+      --shadow: none;
+      --shadow-lg: none;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition: none !important; animation: none !important; }
+    }
+    body {
+      margin: 0;
+      background: var(--canvas);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 16px;
+      line-height: 1.5;
+      font-variant-numeric: tabular-nums;
+      transition: background-color 160ms ease, color 160ms ease;
+    }
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    a:focus-visible, button:focus-visible, summary:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+      border-radius: 6px;
+    }
+    code, pre { font-family: var(--font-mono); font-size: 0.9em; }
+    code {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    pre {
+      margin: 0;
+      padding: 16px;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow-x: auto;
+      line-height: 1.45;
+    }
+    pre code { background: none; border: 0; padding: 0; }
+
+    /* Top Bar */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: var(--canvas);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    [data-theme="hc"] .topbar { border-bottom-width: 2px; }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: -0.01em;
+    }
+    .brand-mark {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--primary-tint);
+      border: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+      color: var(--primary);
+    }
+    .top-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .guide-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--grouped);
+      color: var(--text);
+      font-size: 13.5px;
+      font-weight: 600;
+    }
+    .guide-link:hover { border-color: var(--primary); text-decoration: none; }
+    .seg {
+      display: inline-flex;
+      padding: 4px;
+      border-radius: 8px;
+      background: var(--grouped);
+      border: 1px solid var(--border);
+      gap: 4px;
+    }
+    .seg button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      min-height: 32px;
+    }
+    .seg button[aria-pressed="true"] {
+      background: var(--surface);
+      color: var(--primary);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    /* Master Grid */
+    .shell {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 32px;
+      display: grid;
+      grid-template-columns: 256px minmax(0, 1fr);
+      gap: 48px;
+      align-items: start;
+    }
+    .rail {
+      position: sticky;
+      top: 84px;
+      display: grid;
+      gap: 24px;
+    }
+    .rail-group { display: grid; gap: 4px; }
+    .rail-label {
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      padding: 0 12px 8px;
+    }
+    .rail a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 500;
+      border-left: 2px solid transparent;
+    }
+    .rail a:hover { background: var(--grouped); color: var(--text); text-decoration: none; }
+    .rail a.active {
+      background: var(--primary-tint);
+      color: var(--primary);
+      font-weight: 600;
+      border-left-color: var(--primary);
+    }
+    .ic { width: 20px; height: 20px; flex: 0 0 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* Content Column */
+    main { display: grid; gap: 48px; min-width: 0; }
+    .hero {
+      padding: 32px;
+      border-radius: 16px;
+      background: var(--grouped);
+      border: 1px solid var(--border);
+      display: grid;
+      gap: 24px;
+    }
+    [data-theme="hc"] .hero, [data-theme="hc"] .card, [data-theme="hc"] .shot-card { border-width: 1.5px; }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--primary);
+    }
+    h1 { margin: 0; font-size: 32px; line-height: 1.2; letter-spacing: -0.02em; }
+    .lead { margin: 0; font-size: 17px; color: var(--muted); max-width: 72ch; line-height: 1.55; }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .kpi {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      display: grid;
+      gap: 4px;
+    }
+    .kpi-val { font-size: 28px; font-weight: 750; line-height: 1.15; color: var(--text); }
+    .kpi-lbl { font-size: 13px; font-weight: 600; color: var(--text); }
+    .kpi-sub { font-size: 12px; color: var(--muted); }
+
+    /* Interactive Version Filter Bar */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--grouped);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+    .filter-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill-btn {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      min-height: 36px;
+    }
+    .pill-btn[aria-pressed="true"] {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #ffffff;
+    }
+
+    /* Feature Showcase Sections */
+    .section { display: grid; gap: 24px; scroll-margin-top: 96px; }
+    .section[hidden] { display: none; }
+    .sec-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+    .sec-title-wrap { display: grid; gap: 6px; }
+    .sec-title-wrap h2 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.25;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .sec-title-wrap p { margin: 0; color: var(--muted); max-width: 70ch; }
+    .ver-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: var(--primary-tint);
+      color: var(--primary);
+      border: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .shot-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      display: grid;
+    }
+    .shot-btn {
+      display: block;
+      width: 100%;
+      padding: 0;
+      border: 0;
+      background: #141414;
+      cursor: zoom-in;
+      position: relative;
+    }
+    .shot-btn img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .zoom-hint {
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(15, 17, 21, 0.82);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      font-size: 12px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .shot-caption {
+      padding: 16px 24px;
+      background: var(--grouped);
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .callout-item { display: grid; gap: 4px; align-content: start; }
+    .callout-item strong { font-size: 13.5px; display: flex; align-items: center; gap: 6px; }
+    .callout-num {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #ffffff;
+      font-size: 11.5px;
+      font-weight: 700;
+      display: inline-grid;
+      place-items: center;
+      flex: 0 0 20px;
+    }
+    .callout-item span { font-size: 13px; color: var(--muted); }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+    .card h3 { margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+    .card p, .card li { color: var(--muted); font-size: 14.5px; }
+    .card ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+
+    /* Version Matrix Table */
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow-x: auto;
+      background: var(--surface);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { background: var(--grouped); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+    tr:last-child td { border-bottom: 0; }
+    .tag-good {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600;
+      color: var(--good); background: var(--good-tint); border: 1px solid var(--border);
+    }
+
+    /* Lightbox Dialog */
+    dialog#lightbox {
+      max-width: 94vw;
+      max-height: 92vh;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #111318;
+      color: #ffffff;
+      box-shadow: var(--shadow-lg);
+    }
+    dialog#lightbox::backdrop { background: rgba(0, 0, 0, 0.72); }
+    .lb-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; border-bottom: 1px solid #2b303c; font-size: 14px; font-weight: 600;
+    }
+    .lb-close {
+      border: 1px solid #3c4252; background: #1f2430; color: #ffffff;
+      padding: 6px 12px; border-radius: 6px; cursor: pointer; font: inherit; font-size: 13px;
+    }
+    .lb-body { overflow: auto; max-height: calc(92vh - 56px); }
+    .lb-body img { display: block; max-width: 100%; height: auto; }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding-top: 24px;
+      color: var(--muted);
+      font-size: 13.5px;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    @media (max-width: 1080px) {
+      .shell { grid-template-columns: 1fr; padding: 20px; gap: 24px; }
+      .rail { position: static; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+      .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .shot-caption, .two-col { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg class="ic" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12.2 3.4c.5 0 .9.3 1 .8l3.9 12.6a.8.8 0 0 1-1.5.5L12.1 6.6 9.9 15.3c.5 1.4-.4 3-2 3.5-1.7.5-3.3-.1-3.6-1.4-.3-1.3.9-2.8 2.6-3.3.3-.1.6-.1.9-.1l3.4-9.8c.2-.5.6-.8 1-.8Z"/><circle cx="18.6" cy="17.6" r="1.5"/></svg>
+      </span>
+      <span>ARIA Release Showcase · v0.27.5 → v0.28.5</span>
+    </div>
+    <div class="top-actions">
+      <a class="guide-link" href="./expertise-packs-user-guide.html">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
+        <span>Open Expertise Packs Guide &amp; Flow Map</span>
+      </a>
+      <div class="seg" role="group" aria-label="Theme mode">
+        <button type="button" data-theme-btn="light" aria-pressed="true">Light</button>
+        <button type="button" data-theme-btn="dark" aria-pressed="false">Dark</button>
+        <button type="button" data-theme-btn="hc" aria-pressed="false">High Contrast</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="shell">
+    <nav class="rail" aria-label="Release sections">
+      <div class="rail-group">
+        <div class="rail-label">On this page</div>
+        <a href="#overview" class="active">
+          <svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18"/></svg>
+          <span>Executive Summary</span>
+        </a>
+        <a href="#telemetry-callout">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+          <span>1. Telemetry &amp; Sub-Agents</span>
+        </a>
+        <a href="#telemetry-safety">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M12 2.8 19.5 6v5.5c0 4.6-3.2 8.3-7.5 9.7-4.3-1.4-7.5-5.1-7.5-9.7V6z"/></svg>
+          <span>2. OTel Safety &amp; Prune</span>
+        </a>
+        <a href="#expertise-packs">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          <span>3. Packs &amp; Checklist Wiki</span>
+        </a>
+        <a href="#multi-brand">
+          <svg class="ic" viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3l-5.5 2.9 1-6.2L3 9.6l6.2-.9z"/></svg>
+          <span>4. Multi-Brand VSIX &amp; Icons</span>
+        </a>
+        <a href="#multi-harness">
+          <svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m7.5 9 3 3-3 3M12.5 15h4"/></svg>
+          <span>5. Copilot Mode &amp; Adapters</span>
+        </a>
+        <a href="#matrix">
+          <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12.3 2.7 2.7L16 9.7"/></svg>
+          <span>Version-by-Version Matrix</span>
+        </a>
+      </div>
+    </nav>
+
+    <main>
+      <section class="hero" id="overview">
+        <div class="eyebrow">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M13.5 2.5 5.5 13.5h6l-1 8 8-11h-6z"/></svg>
+          <span>Visual Release Report · 10 – 13 November 2026</span>
+        </div>
+        <h1>What Changed Since v0.27.5 → Latest (v0.28.5)</h1>
+        <p class="lead">
+          Across versions <strong>0.27.6 through 0.28.5</strong>, ARIA expanded from VS Code Local-only tracking to full
+          <strong>Copilot-mode Live &amp; Measured Telemetry</strong>, isolated <strong>Main-Agent vs Sub-Agent context accounting</strong>,
+          cross-workspace <strong>OTel Prune &amp; Repoint safety</strong>, bundled <strong>Expertise Packs + 1-click Checklist Wiki</strong>,
+          batched in-process hooks, and <strong>side-by-side white-label VSIX builds</strong> with configurable Activity Bar &amp; UI logos.
+        </p>
+        <div class="kpi-grid">
+          <div class="kpi">
+            <span class="kpi-val">7 Releases</span>
+            <span class="kpi-lbl">v0.27.6 → v0.28.5</span>
+            <span class="kpi-sub">100% in-place upgrade safe</span>
+          </div>
+          <div class="kpi">
+            <span class="kpi-val">4 Main Agents</span>
+            <span class="kpi-lbl">Clean Picker UX</span>
+            <span class="kpi-sub">Auto · Collab · Lite · Prototype</span>
+          </div>
+          <div class="kpi">
+            <span class="kpi-val">1× Process</span>
+            <span class="kpi-lbl">Batched Hook Engine</span>
+            <span class="kpi-sub">All Pre/PostToolUse guards in-proc</span>
+          </div>
+          <div class="kpi">
+            <span class="kpi-val">148 / 148</span>
+            <span class="kpi-lbl">UI + 17 Python Suites</span>
+            <span class="kpi-sub">Strict TypeScript + VSIX verified</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="filter-bar" role="region" aria-label="Filter updates by version">
+        <span style="font-size:13.5px;font-weight:600;color:var(--muted);">Filter sections by release band:</span>
+        <div class="filter-pills">
+          <button type="button" class="pill-btn" data-ver="all" aria-pressed="true">All (0.27.6 – 0.28.5)</button>
+          <button type="button" class="pill-btn" data-ver="0284-0285" aria-pressed="false">v0.28.4 – v0.28.5 (Latest)</button>
+          <button type="button" class="pill-btn" data-ver="0282-0283" aria-pressed="false">v0.28.2 – v0.28.3</button>
+          <button type="button" class="pill-btn" data-ver="0276-0281" aria-pressed="false">v0.27.6 – v0.28.1</button>
+        </div>
+      </div>
+
+      <!-- SECTION 1: TELEMETRY CALLOUT & SUB-AGENTS -->
+      <section class="section" id="telemetry-callout" data-bands="0282-0283 0284-0285">
+        <div class="sec-head">
+          <div class="sec-title-wrap">
+            <h2>
+              <svg class="ic" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+              <span>1. Main-Agent Non-Cached Callout &amp; Sub-Agent Resolution</span>
+            </h2>
+            <p>Separates main-window context pressure from isolated sub-agent runs, highlights non-cached tokens up front, resolves every sub-agent's persona and model, and removes the redundant <code>isolated window</code> column.</p>
+          </div>
+          <span class="ver-badge">v0.28.3 · v0.28.4 · v0.28.5</span>
+        </div>
+
+        <div class="shot-card">
+          <button type="button" class="shot-btn" data-zoom="./assets/shot-telemetry-0285.png" data-title="Mission Control — Telemetry Tab (v0.28.5)">
+            <img src="./assets/shot-telemetry-0285.png" alt="ARIA Mission Control Telemetry tab showing Main agent non-cached tokens callout banner, 7 metric tiles, and cleaned-up Sub-agents table with resolved personas and models.">
+            <span class="zoom-hint">Click to inspect full 2× resolution</span>
+          </button>
+          <div class="shot-caption">
+            <div class="callout-item">
+              <strong><span class="callout-num">1</span> Main-Agent Non-Cached Callout</strong>
+              <span>Dedicated banner directly below the hero showing billed non-cached input tokens (or estimated uncached window tokens when OTel is off), cached %, peak prompt, and turns isolated to sub-agents.</span>
+            </div>
+            <div class="callout-item">
+              <strong><span class="callout-num">2</span> Resolved Agent &amp; Model Names</strong>
+              <span>Sub-agents now resolve persona names from <code>agentName</code>, <code>contract.json</code> delegations, evaluation prompts, and OTel <code>toolCallId</code> spans, plus models from <code>args.model</code> or inherited session model.</span>
+            </div>
+            <div class="callout-item">
+              <strong><span class="callout-num">3</span> Removed Dead Column</strong>
+              <span>Removed the noisy <code>Non-cached / total</code> (<code>isolated window</code>) column from the Sub-agents table and shows <code>AIU</code> only when measured spans exist.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 2: RESEARCH TELEMETRY SAFETY & PRUNE -->
+      <section class="section" id="telemetry-safety" data-bands="0284-0285">
+        <div class="sec-head">
+          <div class="sec-title-wrap">
+            <h2>
+              <svg class="ic" viewBox="0 0 24 24"><path d="M12 2.8 19.5 6v5.5c0 4.6-3.2 8.3-7.5 9.7-4.3-1.4-7.5-5.1-7.5-9.7V6z"/></svg>
+              <span>2. Research Telemetry Cross-Workspace Safety, Chunk Scan &amp; Prune</span>
+            </h2>
+            <p>Prevents multi-window VS Code sessions from hijacking <code>github.copilot.chat.otel.outfile</code>, keeps <code>Prune data</code> always reachable whenever local or global OTel data exists, and strips multi-megabyte workspace embedding noise.</p>
+          </div>
+          <span class="ver-badge">v0.28.4 · v0.28.5</span>
+        </div>
+
+        <div class="shot-card">
+          <button type="button" class="shot-btn" data-zoom="./assets/shot-settings-telemetry-guard-0285.png" data-title="Mission Control — Research Telemetry Safety, Record Here & Prune (v0.28.5)">
+            <img src="./assets/shot-settings-telemetry-guard-0285.png" alt="ARIA Mission Control Settings tab showing cross-workspace telemetry warning, Record here button, and Prune data 49.3 MB button.">
+            <span class="zoom-hint">Click to inspect full 2× resolution</span>
+          </button>
+          <div class="shot-caption">
+            <div class="callout-item">
+              <strong><span class="callout-num">1</span> No Silent Window Hijacking</strong>
+              <span>Opening another VS Code window no longer overwrites the global <code>otel.outfile</code> path, and enabling telemetry pre-creates <code>.aria/runs/copilot-otel.jsonl</code>.</span>
+            </div>
+            <div class="callout-item">
+              <strong><span class="callout-num">2</span> Always-Visible Prune + Record Here</strong>
+              <span>Calculates prunable bytes across both the configured global path and local workspace <code>copilot-otel.jsonl</code>, surfaces a <strong>Needs you</strong> warning when pointing elsewhere, and adds 1-click <strong>Record here</strong>.</span>
+            </div>
+            <div class="callout-item">
+              <strong><span class="callout-num">3</span> Embedding Bloat Protection</strong>
+              <span><code>otel_trim.py</code> drops <code>embeddings</code> indexing spans on trim, while <code>insights.js</code> scans large OTel exports in 4 MB chunks so chat spans are never buried.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 3: EXPERTISE PACKS & CHECKLIST WIKI -->
+      <section class="section" id="expertise-packs" data-bands="0284-0285">
+        <div class="sec-head">
+          <div class="sec-title-wrap">
+            <h2>
+              <svg class="ic" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              <span>3. Bundled Example Expertise Pack, Workspace Packs &amp; 1-Click Checklist</span>
+            </h2>
+            <p>Ships the complete <code>oracle-offering</code> reference pack inside the VSIX, lists repo-committed <code>plugins/&lt;pack&gt;/</code> packs in Mission Control, and adds a 1-click <strong>Pack checklist</strong> button opening <code>Pack-Checklist.md</code>.</p>
+          </div>
+          <span class="ver-badge">v0.28.4 · v0.28.5</span>
+        </div>
+
+        <div class="shot-card">
+          <button type="button" class="shot-btn" data-zoom="./assets/shot-skills-packs-0285.png" data-title="Mission Control — Skills & Packs with Built-In Example Pack & Pack Checklist (v0.28.5)">
+            <img src="./assets/shot-skills-packs-0285.png" alt="ARIA Mission Control Skills and packs tab showing Pack checklist button, enabled workspace pack regulated-sdlc, and built-in Oracle Offering example pack with Install example pack button.">
+            <span class="zoom-hint">Click to inspect full 2× resolution</span>
+          </button>
+          <div class="shot-caption">
+            <div class="callout-item">
+              <strong><span class="callout-num">1</span> Built-In Oracle Offering Pack</strong>
+              <span>Bundled in <code>runtime/examples/plugins/oracle-offering/</code> and shown directly on <strong>Skills &amp; packs</strong> with a 1-click <strong>Install example pack</strong> button (and inside <code>Install plugin</code>).</span>
+            </div>
+            <div class="callout-item">
+              <strong><span class="callout-num">2</span> Workspace Pack Discovery</strong>
+              <span><code>plugin.py list --workspace</code> now surfaces packs committed under <code>plugins/&lt;pack&gt;/</code> right alongside globally installed packs.</span>
+            </div>
+            <div class="callout-item">
+              <strong><span class="callout-num">3</span> 1-Click Pack Checklist Wiki</strong>
+              <span>Clicking <strong>Pack checklist</strong> opens <code>docs/wiki/Pack-Checklist.md</code> beside Mission Control with every manifest, prefix, safety, and validation rule.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 4: MULTI-BRAND VSIX & CONFIGURABLE ICONS -->
+      <section class="section" id="multi-brand" data-bands="0276-0281 0284-0285">
+        <div class="sec-head">
+          <div class="sec-title-wrap">
+            <h2>
+              <svg class="ic" viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3l-5.5 2.9 1-6.2L3 9.6l6.2-.9z"/></svg>
+              <span>4. White-Label Multi-Brand VSIX Engine &amp; Configurable Icons</span>
+            </h2>
+            <p>Drives product names, prefixes, state folders, Mission Control header logos, and VS Code Activity Bar icons from <code>brand.json</code> — allowing two separately branded VSIXs to build cleanly and run side-by-side in VS Code with full backward compatibility.</p>
+          </div>
+          <span class="ver-badge">v0.28.0 · v0.28.5</span>
+        </div>
+
+        <div class="shot-card">
+          <button type="button" class="shot-btn" data-zoom="./assets/shot-multibrand-vsix-0285.png" data-title="Side-by-Side Branded VSIXs: Production ARIA vs Custom NOVA Build (v0.28.5)">
+            <img src="./assets/shot-multibrand-vsix-0285.png" alt="Side-by-side comparison of ARIA default VSIX and NOVA isolated branded VSIX showing distinct Activity Bar SVG icons, Mission Control header logos, command namespaces, and state directories.">
+            <span class="zoom-hint">Click to inspect full 2× resolution</span>
+          </button>
+          <div class="shot-caption">
+            <div class="callout-item">
+              <strong><span class="callout-num">1</span> Configurable Logo &amp; Activity Bar SVG</strong>
+              <span><code>brand.json</code> now accepts <code>"logo"</code> (Extensions view + Mission Control header via <code>brand.css</code>) and <code>"activity_icon"</code> (monochrome Activity Bar mask SVG).</span>
+            </div>
+            <div class="callout-item">
+              <strong><span class="callout-num">2</span> Isolated Side-by-Side VSIX Builds</strong>
+              <span><code>python extension/build.py --brand nova.json --package dist/nova.vsix</code> builds in a clean staging tree with isolated IDs (<code>pwc.nova</code>, <code>nova.*</code>, <code>.nova/</code>) without touching ARIA files.</span>
+            </div>
+            <div class="callout-item">
+              <strong><span class="callout-num">3</span> Zero-Breakage Production Compatibility</strong>
+              <span>Default ARIA keeps <code>pwc.frontier-hve</code>, <code>frontierHve.*</code>, and <code>~/.frontier-hve</code>; tools accept both <code>&lt;prefix&gt;-plugin.json</code> and legacy <code>hve-plugin.json</code>.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 5: COPILOT MODE LIVE, ADAPTERS & HOOK PERFORMANCE -->
+      <section class="section" id="multi-harness" data-bands="0276-0281 0282-0283">
+        <div class="sec-head">
+          <div class="sec-title-wrap">
+            <h2>
+              <svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m7.5 9 3 3-3 3M12.5 15h4"/></svg>
+              <span>5. Copilot-Mode Live Tracking, Companion Mode &amp; Batched In-Process Hooks</span>
+            </h2>
+            <p>Brings first-class Live &amp; Measured Telemetry to VS Code Copilot mode and Copilot CLI, adds Companion Mode when working in Claude Code / Cursor / Codex, trims the agent picker to the 4 main entry agents, and batches hooks in-process.</p>
+          </div>
+          <span class="ver-badge">v0.27.6 → v0.28.2</span>
+        </div>
+
+        <div class="shot-card">
+          <button type="button" class="shot-btn" data-zoom="./assets/shot-live-companion-copilot-0285.png" data-title="Mission Control — Copilot-Mode Live Tracking & Companion Mode Notice">
+            <img src="./assets/shot-live-companion-copilot-0285.png" alt="ARIA Mission Control showing Companion Mode notice in sidebar and Copilot-mode Live session tracking with measured model usage.">
+            <span class="zoom-hint">Click to inspect full 2× resolution</span>
+          </button>
+          <div class="shot-caption">
+            <div class="callout-item">
+              <strong><span class="callout-num">1</span> Copilot Session-State Live &amp; Telemetry</strong>
+              <span>Indexes <code>~/.copilot/session-state/&lt;id&gt;/events.jsonl</code> + <code>workspace.yaml</code> so Copilot mode &amp; CLI update Live steps and measured token/AIU metrics even with OTel off.</span>
+            </div>
+            <div class="callout-item">
+              <strong><span class="callout-num">2</span> Companion Mode &amp; Adapter Verifier</strong>
+              <span>Hooks record active external tools in <code>.aria/runs/client.json</code> (showing <strong>Working in Claude Code / Cursor</strong> + <strong>Copy start command</strong>), and <code>check.py</code> dry-runs hooks on install.</span>
+            </div>
+            <div class="callout-item">
+              <strong><span class="callout-num">3</span> Batched Hooks &amp; PreCompact Anchor</strong>
+              <span><code>PreToolUse</code> / <code>PostToolUse</code> guards run inside one Python process, skills load 1-line descriptions first, and <code>PreCompact</code> re-hydrates ask context after compaction.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 6: VERSION MATRIX -->
+      <section class="section" id="matrix" data-bands="0276-0281 0282-0283 0284-0285">
+        <div class="sec-head">
+          <div class="sec-title-wrap">
+            <h2>
+              <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12.3 2.7 2.7L16 9.7"/></svg>
+              <span>Complete Release Timeline (v0.27.6 → v0.28.5)</span>
+            </h2>
+            <p>Every version shipped after the <code>0.27.5</code> baseline and what it changed.</p>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:110px;">Version</th>
+                <th style="width:130px;">Area</th>
+                <th>Key Capabilities &amp; Fixes</th>
+                <th style="width:130px;">Compatibility</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>v0.27.6</strong></td>
+                <td>Cloud &amp; Windows</td>
+                <td>Cloud hook entries in <code>.github/hooks/</code> emit <code>bash</code> (<code>python3</code> in Linux cloud runner) plus a <code>powershell: exit 0</code> no-op so local Windows Copilot sessions never fail closed on the Microsoft Store <code>python3</code> alias.</td>
+                <td><span class="tag-good">✓ Drop-in</span></td>
+              </tr>
+              <tr>
+                <td><strong>v0.28.0</strong></td>
+                <td>Adapters &amp; Brand Core</td>
+                <td>Introduced <code>brand.json</code>; unified Local + Copilot plugin hook runner (<code>agent_compat.py vscode</code>); Copilot CLI <code>--plugin-dir</code> support with stale <code>~/.copilot</code> &amp; user-scope Codex cleanup; <code>check.py</code> install verifier; <strong>Companion Mode</strong> (<code>companion.js</code>); <code>harness-status</code> skill &amp; <code>lifecycle.py status</code>.</td>
+                <td><span class="tag-good">✓ Auto-clean</span></td>
+              </tr>
+              <tr>
+                <td><strong>v0.28.1</strong></td>
+                <td>Performance &amp; Context</td>
+                <td>Batched multiple <code>PreToolUse</code> and <code>PostToolUse</code> hooks into a single in-process Python invocation; description-first skill summaries so agents open <code>SKILL.md</code> only when needed; <code>PreCompact</code> working-set &amp; solution-map re-hydration hook.</td>
+                <td><span class="tag-good">✓ Drop-in</span></td>
+              </tr>
+              <tr>
+                <td><strong>v0.28.2</strong></td>
+                <td>Copilot Live &amp; Picker</td>
+                <td>Rendered plugin exposes only the 4 primary agents (<strong>ARIA Auto</strong>, <strong>ARIA Collab</strong>, <strong>ARIA Lite</strong>, <strong>ARIA Prototype Creator</strong>); added live transcript &amp; <code>session.usage_record</code> telemetry from <code>~/.copilot/session-state</code> for VS Code Copilot mode &amp; Copilot CLI; Claude mode verified live.</td>
+                <td><span class="tag-good">✓ Drop-in</span></td>
+              </tr>
+              <tr>
+                <td><strong>v0.28.3</strong></td>
+                <td>Telemetry Split</td>
+                <td>Separated main-agent turns, reads, non-cached input tokens, and peak prompt from sub-agent brackets; normalized hyphenated persona lookups in <code>personas.py</code>; auto-synced user-scope Claude &amp; Cursor exports on extension upgrade.</td>
+                <td><span class="tag-good">✓ Auto-sync</span></td>
+              </tr>
+              <tr>
+                <td><strong>v0.28.4</strong></td>
+                <td>Telemetry Safety &amp; Packs</td>
+                <td>Stopped cross-window <code>otel.outfile</code> hijacking; added dual local+global OTel detection, <strong>Record here</strong> &amp; always-available <strong>Prune data</strong>; 4 MB chunked OTel scan &amp; <code>embeddings</code> trim; added <strong>Main agent · Non-cached tokens</strong> callout; resolved sub-agent personas/models &amp; removed <code>isolated window</code> column; bundled <code>oracle-offering</code> example pack, workspace pack listing &amp; 1-click <strong>Pack checklist</strong> wiki.</td>
+                <td><span class="tag-good">✓ Drop-in</span></td>
+              </tr>
+              <tr>
+                <td><strong>v0.28.5</strong></td>
+                <td>White-Label VSIXs</td>
+                <td>Extended <code>brand.json</code> with configurable <code>logo</code> &amp; <code>activity_icon</code>; replaced remaining hardcoded brand strings across UI, hooks, templates &amp; plugins with backward-compatible dual readers (<code>&lt;prefix&gt;-plugin.json</code> + <code>hve-plugin.json</code>); added isolated multi-brand VSIX packaging (<code>build.py --brand ... --package ...</code>).</td>
+                <td><span class="tag-good">✓ Dual-read</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <footer>
+        <span>ARIA Enterprise AI Harness · Visual Release Guide (v0.27.5 → v0.28.5)</span>
+        <span>Next: <a href="./expertise-packs-user-guide.html">Expertise Packs User &amp; Author Guide (Regulated SDLC + Flow Map) →</a></span>
+      </footer>
+    </main>
+  </div>
+
+  <dialog id="lightbox" aria-label="Screenshot zoom preview">
+    <div class="lb-head">
+      <span id="lb-title">Screenshot preview</span>
+      <button type="button" class="lb-close" id="lb-close">Close (Esc)</button>
+    </div>
+    <div class="lb-body">
+      <img id="lb-img" src="" alt="">
+    </div>
+  </dialog>
+
+  <script>
+    (() => {
+      // Theme switcher
+      const btns = document.querySelectorAll('[data-theme-btn]');
+      function syncThemeBtns() {
+        const cur = document.documentElement.dataset.theme || 'light';
+        btns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.themeBtn === cur)));
+      }
+      btns.forEach(btn => btn.addEventListener('click', () => {
+        const next = btn.dataset.themeBtn;
+        document.documentElement.dataset.theme = next;
+        localStorage.setItem('aria-guide-theme', next);
+        syncThemeBtns();
+      }));
+      syncThemeBtns();
+
+      // Version band filter
+      const filterBtns = document.querySelectorAll('[data-ver]');
+      const sections = document.querySelectorAll('.section[data-bands]');
+      filterBtns.forEach(btn => btn.addEventListener('click', () => {
+        const ver = btn.dataset.ver;
+        filterBtns.forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+        sections.forEach(sec => {
+          sec.hidden = ver !== 'all' && !(sec.dataset.bands || '').split(' ').includes(ver);
+        });
+      }));
+
+      // Lightbox zoom
+      const dlg = document.getElementById('lightbox');
+      const lbImg = document.getElementById('lb-img');
+      const lbTitle = document.getElementById('lb-title');
+      document.querySelectorAll('[data-zoom]').forEach(btn => btn.addEventListener('click', () => {
+        lbImg.src = btn.dataset.zoom;
+        lbImg.alt = btn.querySelector('img')?.alt || '';
+        lbTitle.textContent = btn.dataset.title || 'Preview';
+        dlg.showModal();
+      }));
+      document.getElementById('lb-close').addEventListener('click', () => dlg.close());
+      dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+    })();
+  </script>
+</body>
+</html>

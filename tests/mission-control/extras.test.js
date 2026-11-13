@@ -139,3 +139,56 @@ test('every surface is marked as an early release', async t => {
   assert.match(text(sidebar({ ...model, surface: 'sidebar' }, UI, Date.now())), /^ARIAEarly/);
   assert.match(text(dashboard(model, UI, Date.now())), /Early release/);
 });
+
+test('when global OTel points to another workspace, Mission Control still shows local Prune data, warns, and Record here repoints it', async t => {
+  const fixture = mission(t);
+  const localOtel = path.join(fixture.root, '.aria', 'runs', 'copilot-otel.jsonl');
+  fs.mkdirSync(path.dirname(localOtel), { recursive: true });
+  fs.writeFileSync(localOtel, '{"name":"embeddings x"}\n'.repeat(200));
+  const otherMissing = path.join(path.dirname(fixture.root), 'other-ws', '.aria', 'runs', 'copilot-otel.jsonl');
+  fixture.controls.settings.set('github.copilot.chat.otel.enabled', true);
+  fixture.controls.settings.set('github.copilot.chat.otel.outfile', otherMissing);
+  await fixture.controls.commands.get('frontierHve.refreshMissionControl')();
+  const model = fixture.controls.commands.get('frontierHve.missionControlModel')();
+  assert.equal(model.telemetry.elsewhere, true);
+  assert.equal(model.telemetry.localFile, localOtel);
+  assert.ok(model.telemetry.bytes > 0);
+  const sideText = text(sidebar({ ...model, surface: 'sidebar' }, UI, Date.now()));
+  assert.match(sideText, /Research telemetry writes to another folder/);
+  assert.match(sideText, /Prune data \(0\.0 MB\)…/);
+  assert.match(sideText, /Record here/);
+  fixture.controls.confirmations.push('Delete all records');
+  await fixture.controls.provider.execute({ action: 'pruneTelemetry' });
+  assert.equal(fs.statSync(localOtel).size, 0);
+  await fixture.controls.provider.execute({ action: 'repointTelemetry' });
+  assert.equal(fixture.controls.settings.get('github.copilot.chat.otel.outfile'), localOtel);
+  assert.equal(fixture.controls.commands.get('frontierHve.missionControlModel')().telemetry.elsewhere, false);
+});
+
+test('Skills & packs surfaces the built-in oracle-offering example pack, installs it, and opens Pack-Checklist.md in one click', async t => {
+  const home = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'aria-packs-'));
+  const previous = process.env.HVE_PLUGIN_HOME;
+  process.env.HVE_PLUGIN_HOME = home;
+  t.after(() => {
+    if (previous === undefined) delete process.env.HVE_PLUGIN_HOME; else process.env.HVE_PLUGIN_HOME = previous;
+    fs.rmSync(home, { recursive: true, force: true });
+  });
+  const fixture = mission(t);
+  await fixture.controls.provider.execute({ action: 'loadPacks' });
+  const before = fixture.controls.commands.get('frontierHve.missionControlModel')();
+  assert.deepEqual(before.packs, []);
+  assert.equal(before.examplePack?.name, 'oracle-offering');
+  const beforeText = text(dashboard(before, { ...UI, page: 'skills' }, Date.now()));
+  assert.match(beforeText, /Oracle Offering \(oracle-offering 1\.0\.0\) built-in example/);
+  assert.match(beforeText, /Install example pack/);
+  assert.match(beforeText, /Pack checklist/);
+  await fixture.controls.provider.execute({ action: 'openPackChecklist' });
+  const openedDoc = fixture.controls.calls.find(call => call[0] === 'document');
+  assert.ok(openedDoc && String(openedDoc[1].fsPath).endsWith(path.join('docs', 'wiki', 'Pack-Checklist.md')));
+  fixture.controls.confirmations.push('Install');
+  await fixture.controls.provider.execute({ action: 'installExamplePack' });
+  const after = fixture.controls.commands.get('frontierHve.missionControlModel')();
+  assert.equal(after.packs.length, 1);
+  assert.equal(after.packs[0].name, 'oracle-offering');
+  assert.equal(after.packs[0].enabled, true);
+});

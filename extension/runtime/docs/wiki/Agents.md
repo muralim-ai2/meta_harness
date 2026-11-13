@@ -50,7 +50,7 @@ The contract prints `paths` (ask, plan, loop, evidence, project, feature list, f
 | `stages` | Milestones with agent, skills, plugin skills, templates and exit gate |
 | `personas` | Who owns which stages |
 | `tasks` | The features this ask added to the project's feature list (`lifecycle.py tasks-sync`) with milestone, persona, skills and pass state |
-| `environment` | Harness, MCP servers per harness with tool load, Frontier HVE hook files, plugin skills |
+| `environment` | Harness, MCP servers per harness with tool load, ARIA hook files, plugin skills |
 | `delegations`, `reported` | Each sub-agent brief and the `SKILLS-USED` line it returned |
 | `previous_ask` | The ask open before this one, with the new-workspace recommendation when this ask starts a different project |
 | `checklist` | Your sign-off of each option (`opt:evaluation`), milestone (`stage:<name>`) and task (`task:<feature>`): value, note, and whether it came from the agent's form or a tick in `plan.md` ([Ways of working](Ways-of-Working.md#what-you-are-asked-and-why)) |

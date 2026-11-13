@@ -162,6 +162,7 @@ export interface Insights {
     cachePercent: number | null;
     peakInput: number | null;
     aiu: number | null;
+    estimatedNonCached?: number;
   };
   subagents: SubagentInsight[];
   signals: Signal[];
@@ -193,8 +194,21 @@ export interface Companion {
   start: string;
   at: string;
 }
+export interface ExamplePack {
+  id: string;
+  name: string;
+  displayName: string;
+  version: string;
+  description: string;
+  agents: string[];
+  lifecycles: string[];
+  skills: string[];
+  templates: string[];
+  knowledge: string[];
+  domains: string[];
+}
 export interface Model {
-  brand: { product: string; prefix: string; state_dir: string };
+  brand: { product: string; prefix: string; state_dir: string; logo?: string; activity_icon?: string; publisher?: string; extension_name?: string; command_prefix?: string };
   now: string;
   surface: 'sidebar' | 'editor';
   busy: boolean;
@@ -202,7 +216,7 @@ export interface Model {
   workspace: { name: string; path: string } | null;
   workspaceMessage: string | null;
   connection: { version: string; python: string | null; guard: 'advise' | 'enforce' | null };
-  telemetry: { enabled: boolean; file: string | null; bytes: number | null };
+  telemetry: { enabled: boolean; file: string | null; localFile?: string | null; elsewhere?: boolean; bytes: number | null };
   transcripts: string | null;
   asks: AskSummary[] | null;
   asksError: string | null;
@@ -227,6 +241,7 @@ export interface Model {
   projectError: string | null;
   packs: Pack[] | null;
   packsError: string | null;
+  examplePack?: ExamplePack | null;
   navigate: { page: Page; seq: number };
 }
 export interface UiState {
@@ -336,6 +351,7 @@ export interface SessionStats {
   context: { group: string; count: number; bytes: number; items: string[] }[];
   main?: { turns: number; tools: number; reads: number; skills: number };
   subagents?: SubagentTrace[];
+  model?: string | null;
 }
 export interface TokenUse {
   model: string;
@@ -348,6 +364,7 @@ export interface TokenUse {
 }
 export interface SubagentSpan {
   subId: string;
+  agent?: string | null;
   startMs: number;
   endMs: number;
   model: string;

@@ -4,7 +4,7 @@ An **expertise pack** puts one practice's tribal knowledge into a form the Front
 
 The idea in one line: **the agent reads the pack's manifest, never the whole folder.** The manifest holds the routing rules and an index of everything in the pack, with a one-line "use when" for each knowledge document. Only what a stage needs is opened, and the plan and provenance show how many tokens each pack added.
 
-Packs are the product name for the plugin architecture planned on branch `plugin-architecture/pj-1013` and built in PR #8; decision D-060 records how it was brought into the lifecycle contract.
+Packs are the product name for the plugin architecture planned on branch `plugin-architecture/pj-1013` and built in PR #8; decision D-060 records how it was brought into the lifecycle contract. For a quick pre-flight and install tick-list, open [Pack checklist](Pack-Checklist.md) (also one click from **Mission Control → Skills & packs → Pack checklist**).
 
 - [Why packs](#why-packs)
 - [What is in a pack](#what-is-in-a-pack)
@@ -87,7 +87,7 @@ oracle-offering/
   "version": "1.0.0",
   "publisher": "contoso-oracle-practice",
   "harness": {"apiVersion": 1, "frontierHve": ">=0.8.0 <1.0.0"},
-  "description": "Oracle database architecture, engineering and migration assets for Frontier HVE.",
+  "description": "Oracle database architecture, engineering and migration assets for ARIA.",
   "routing": {
     "domains": ["oracle", "database"],
     "keywords": ["oracle", "pl/sql", "plsql", "exadata", "goldengate", "data guard"],
@@ -368,7 +368,7 @@ Expertise packs (1,664 tokens always loaded, 15.0% of this ask's 11,092-token co
 For the assess stage Collab runs `lifecycle.py brief "oracle-offering:oracle-db-architect" stage=assess` and passes it verbatim:
 
 ```text
-Frontier HVE brief: ask 20261023-0302-ora, stage assess
+ARIA brief: ask 20261023-0302-ora, stage assess
 - Ask folder: .aria/asks/20261023-0302-ora/ (prototypes and drafts go there, never in the workspace root)
 - Read and follow before you start: .aria/skills/oracle-offering__oracle-schema-design/SKILL.md, .aria/skills/oracle-offering__oracle-performance-tuning/SKILL.md, ...
 - Plugin skills you may use: feature-checklist, explain-walkthrough
@@ -532,7 +532,7 @@ python <tools>/plugins/plugin.py pack plugin/ --out dist
 | `... rework cap must be an integer from 1 to 3` | Lower the cap |
 | `knowledge[0] needs exactly a kebab-case id, file, title, kind, use_when and stages` | Add the missing field (`stages: []` for every stage) |
 | `tools [...] are not in the manifest tools the user consents to` | Add the tool to the manifest `tools` or remove it from the agent |
-| `plugin needs Frontier HVE >=9.0.0; this core is 0.16.0` | Widen `harness.frontierHve` |
+| `plugin needs ARIA >=9.0.0; this core is 0.16.0` | Widen `harness.frontierHve` |
 
 ## Sharing and installing packs
 

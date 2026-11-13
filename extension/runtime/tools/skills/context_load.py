@@ -10,7 +10,7 @@ from itertools import combinations
 from pathlib import Path
 from typing import Any
 
-from recommend import STATE, stems
+from recommend import BRAND, STATE, stems
 from scan import CHARS_PER_TOKEN, frontmatter
 
 SKILLS_DIR = Path(__file__).resolve().parents[2] / "skills"
@@ -197,7 +197,7 @@ def measure(workspace: Path, agent: str | None, context_tokens: int | None) -> J
     if shares[str(windows[0])] >= config["share_warn_pct"]:
         report["warnings"].append(f"always-on load is {shares[str(windows[0])]}% of a {windows[0]:,}-token context window before the user types")
     if report["warnings"]:
-        report["fixes"] = ["move rarely used skills into the Frontier HVE library (loaded per task within a budget) instead of skill folders",
+        report["fixes"] = [f"move rarely used skills into the {BRAND['product']} library (loaded per task within a budget) instead of skill folders",
                            "merge the duplicate skills listed", "narrow applyTo on *.instructions.md files that apply to every file",
                            "disable plugins or MCP servers this workspace does not use"]
     history_file.parent.mkdir(parents=True, exist_ok=True)

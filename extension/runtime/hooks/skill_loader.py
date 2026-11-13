@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any, TypedDict
 
+from brand import BRAND
 from guard_policy import check, record_answers
 from hve_paths import RUNS_DIR, STATE_DIR
 
@@ -137,7 +138,7 @@ def prompt_output(loadout: Loadout, prompt: str) -> Json | None:
     _, _, active, _, _, project_status, project_text, shift_message, topic_shift, _ = _deps()
     data = active()[1]
     p = data["paths"]
-    context = (f"Frontier HVE open ask {data['ask']}: plan {p['plan']}, evidence {p['evidence']}, project feature list "
+    context = (f"{BRAND['product']} open ask {data['ask']}: plan {p['plan']}, evidence {p['evidence']}, project feature list "
                f"{p['feature_list']}. Use these paths; never search the workspace for plan.md or feature_list.json.")
     shift = topic_shift(project_text(), prompt) if project_status() else None
     if shift is None or loadout["shift_noted"] == data["ask"]:

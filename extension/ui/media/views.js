@@ -200,6 +200,9 @@
     if (model.handoffError) items.push({ tone: 'error', icon: 'alert', title: 'Mission Control cannot read the ask carried over from another workspace', detail: model.handoffError });
     if (model.snapshotError) items.push({ tone: 'error', icon: 'alert', title: 'Mission Control cannot read the ask files', detail: model.snapshotError });
     if (model.activityError) items.push({ tone: 'error', icon: 'alert', title: 'Mission Control cannot read the live activity', detail: model.activityError });
+    if (model.telemetry.enabled && model.telemetry.elsewhere) {
+      items.push({ tone: 'warn', icon: 'alert', title: 'Research telemetry writes to another folder', detail: model.telemetry.file || '', page: 'settings' });
+    }
     if (session?.status === 'waiting') items.push({ tone: 'warn', icon: 'question', title: session.current?.state === 'pending' ? 'A step waits for your Allow in Chat'
       : 'The agent is waiting for your answer in Chat', detail: session.current?.detail || '', files: session.current?.files || [], chat: session.id });
     if (run?.errors?.paused) {
@@ -282,11 +285,16 @@
   function telemetrySwitch(model) {
     const on = model.telemetry.enabled;
     return h('div', { class: 'switch-row' }, h('div', null, h('strong', null, 'Research telemetry'),
-      h('span', { class: 'muted' }, on ? 'On: new chats record tokens, cost and full content' : 'Off: no tokens or chat content recorded')),
+      h('span', { class: 'muted' }, on
+        ? (model.telemetry.elsewhere ? 'On: writing to another workspace folder' : 'On: new chats record tokens, cost and full content')
+        : 'Off: no tokens or chat content recorded')),
     h('button', { class: `switch ${on ? 'on' : ''}`.trim(), type: 'button', role: 'switch', 'aria-checked': on ? 'true' : 'false', 'aria-label': 'Research telemetry',
       'data-action': 'telemetry', 'data-value': on ? 'off' : 'on', disabled: model.busy }, h('span', { class: 'knob' })),
+    on && model.telemetry.elsewhere && model.workspace ? button('Record here', 'repointTelemetry',
+      { kind: 'link', disabled: model.busy, title: 'Point Copilot telemetry export at this workspace folder instead' }) : null,
     model.telemetry.bytes ? button(`Prune data (${(model.telemetry.bytes / 1024 / 1024).toFixed(1)} MB)…`, 'pruneTelemetry',
-      { kind: 'link', disabled: model.busy, title: 'Archive and empty, or delete, the research telemetry export' }) : null);
+      { kind: 'link', disabled: model.busy, title: 'Archive and empty, or delete, the research telemetry export' })
+      : on ? h('span', { class: 'muted' }, '0.0 MB') : null);
   }
 
   /** Return the chats that work on the ask on screen; with no ask, every chat of this window.
@@ -376,7 +384,7 @@
     if (!snap?.ask) {
       return h('section', { class: 'card task empty' }, h('strong', null, model.asks?.length ? 'No ask is active' : 'No ask in this project yet'),
         h('p', { class: 'muted' }, model.asks?.length ? 'Choose an earlier ask above, or start one with New ask.'
-          : 'An ask is one piece of work in this project. Start one with New ask, or pick an ARIA agent in Copilot Chat. Chat activity shows below either way.'));
+          : `An ask is one piece of work in this project. Start one with New ask, or pick a ${model.brand.product} agent in Copilot Chat. Chat activity shows below either way.`));
     }
     const done = session ? session.todos.filter(todo => todo.status === 'completed').length : 0;
     const stage = snap.stages.find(row => row.name === snap.ask?.current) || snap.stages[0];
@@ -442,7 +450,7 @@
    */
   function sidebar(model, ui, now) {
     return h('div', { class: `sidebar ${model.busy ? 'busy' : ''}`.trim(), 'data-page': ui.page },
-      h('header', { class: 'top' }, h('span', { class: 'brand-logo', 'aria-hidden': 'true' }), h('strong', null, 'ARIA'), h('span', { class: 'early', title: 'Early release: features may change' }, 'Early'), chip(model),
+      h('header', { class: 'top' }, h('span', { class: 'brand-logo', 'aria-hidden': 'true' }), h('strong', null, model.brand.product), h('span', { class: 'early', title: 'Early release: features may change' }, 'Early'), chip(model),
         button('', 'refresh', { kind: 'icon', icon: 'refresh', title: 'Refresh', disabled: model.busy })),
       model.workspaceMessage ? h('div', { class: 'notice' }, model.workspaceMessage, button('Choose folder', 'selectWorkspace')) : null,
       button('New ask', 'newAsk', { kind: 'primary new-ask', icon: 'plus', disabled: model.busy || !model.workspace,

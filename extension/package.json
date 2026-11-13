@@ -2,7 +2,7 @@
   "name": "frontier-hve",
   "displayName": "ARIA",
   "description": "Enterprise AI harness for GitHub Copilot: ARIA agents with a verified feature loop, graph workflow, guards and human-ticked PRs.",
-  "version": "0.28.3",
+  "version": "0.28.5",
   "publisher": "pwc",
   "license": "UNLICENSED",
   "icon": "ui/media/aria.png",
@@ -13,17 +13,35 @@
   "engines": {
     "vscode": "^1.100.0"
   },
-  "categories": ["AI", "Chat"],
+  "categories": [
+    "AI",
+    "Chat"
+  ],
   "main": "./extension.js",
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "contributes": {
     "viewsContainers": {
-      "activitybar": [{ "id": "frontierHve", "title": "ARIA", "icon": "ui/media/aria.svg" }]
+      "activitybar": [
+        {
+          "id": "frontierHve",
+          "title": "ARIA",
+          "icon": "ui/media/aria.svg"
+        }
+      ]
     },
     "views": {
       "frontierHve": [
-        { "type": "webview", "id": "frontierHve.missionControl", "name": "Mission Control" },
-        { "id": "frontierHve.harnessFiles", "name": "Harness files" }
+        {
+          "type": "webview",
+          "id": "frontierHve.missionControl",
+          "name": "Mission Control"
+        },
+        {
+          "id": "frontierHve.harnessFiles",
+          "name": "Harness files"
+        }
       ]
     },
     "viewsWelcome": [
@@ -95,7 +113,9 @@
   },
   "overrides": {
     "@azure/identity": "4.13.0",
-    "@azure/msal-node": { "uuid": "11.1.1" }
+    "@azure/msal-node": {
+      "uuid": "11.1.1"
+    }
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

@@ -65,7 +65,7 @@ INVOKE = {
     "copilot": f"pick a {PRODUCT} agent with /agent in Copilot CLI",
     "cloud": f"commit .github/agents, .github/skills, .github/hooks/{PREFIX}.json, {CLOUD_RUNTIME_PATH}, {SETUP_STEPS_PATH} and .gitignore "
              f"to the default branch, then assign an issue to Copilot with a {PRODUCT} agent",
-    "vscode": "start the ado server in the MCP view, sign in, then pick ARIA azure-devops in the Chat view",
+    "vscode": f"start the ado server in the MCP view, sign in, then pick {PRODUCT} azure-devops in the Chat view",
 }
 GAPS = {
     "claude": ["pr-push is not exported (it needs the VS Code GitHub Pull Requests extension)",
@@ -402,8 +402,9 @@ def name_map(text: str, names: dict[str, str], exported: list[str]) -> str:
 
 
 def branded(text: str) -> str:
-    """Return agent or skill text with the state folder the templates name (.aria) replaced by the brand's."""
-    return text.replace(".aria/", f"{STATE}/")
+    """Return agent or skill text with the state folder and product name replaced by the brand's."""
+    out = text.replace(".aria/", f"{STATE}/").replace("Frontier HVE", PRODUCT)
+    return out if PRODUCT == "ARIA" else re.sub(r"\bARIA\b", PRODUCT, out)
 
 
 def export_client(t: Target) -> tuple[list[Path], list[Path]]:

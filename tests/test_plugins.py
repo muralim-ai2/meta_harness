@@ -208,6 +208,7 @@ def test_routing_contract_and_load() -> None:
         (ws / "plugins").mkdir(parents=True)
         shutil.copytree(SAMPLE, ws / "plugins" / "oracle-offering")
         (ws / "req.md").write_text("Use the mysql-offering plugin to migrate", encoding="utf-8")
+        assert {p["name"] for p in plugin.listing(ws)} == {"oracle-offering", "postgres-offering"}
         assert ok(lifecycle(ws, "route", "req.md"))["packs"]["missing"] == ["mysql-offering"]
         (ws / "req.md").write_text("Migrate our Oracle PL/SQL estate to Postgres", encoding="utf-8")
         routed = ok(lifecycle(ws, "route", "req.md"))

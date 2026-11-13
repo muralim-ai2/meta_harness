@@ -9,7 +9,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "hooks"))
 from lifecycle import WORKSPACE, active, plan_status  # noqa: E402
-from loop_paths import STATE, loop_dir, state_dir, state_file  # noqa: E402
+from loop_paths import BRAND, STATE, loop_dir, state_dir, state_file  # noqa: E402
 from ask_plan import OPTIONS, items, refresh, ticked  # noqa: E402
 import ask_packs  # noqa: E402
 
@@ -270,7 +270,7 @@ def checklist_lines(data: Json, measured: Json | None) -> list[str]:
         lines.append(f"- [{'x' if ticked(data, i) else ' '}] {i}: {detail}")
     if measured is not None:
         lines.append("\n**Research telemetry recorded this ask, with full chat content.** Turn it off when you are done: the switch in Mission "
-                     "Control, or **ARIA: Turn off research telemetry**.")
+                     f"Control, or **{BRAND['product']}: Turn off research telemetry**.")
     return lines
 
 

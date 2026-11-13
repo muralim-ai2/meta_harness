@@ -5,14 +5,14 @@ const path = require('node:path');
 const { promisify } = require('node:util');
 const { execFile } = require('node:child_process');
 const { record, text, list, integer, errorText } = require('./validate');
-const { BRAND } = require('../brand');
+const { BRAND, cmd } = require('../brand');
 const STATE = BRAND.state_dir;
 const execute = promisify(execFile);
 const BASE_COMMANDS = Object.freeze({
-  setup: 'frontierHve.setup',
-  installPack: 'frontierHve.installPlugin',
-  managePacks: 'frontierHve.managePlugins',
-  installHarnesses: 'frontierHve.installHarnesses',
+  setup: cmd('setup'),
+  installPack: cmd('installPlugin'),
+  managePacks: cmd('managePlugins'),
+  installHarnesses: cmd('installHarnesses'),
 });
 
 /** @typedef {{extensionPath: string, python: string, pythonArguments: string[], script: string}} Runtime */
@@ -43,7 +43,7 @@ function validateOperation(args) {
   if (args.length === 6 && args[0] === 'tick-for' && ask.test(args[1]) && /^[a-f0-9]{64}$/.test(args[2])
       && /^(stage|task):[a-z0-9][a-z0-9_.-]*$/.test(args[3]) && ['accepted', 'changes'].includes(args[4]) && args[5].trim()) return;
   if (args.length === 5 && args[0] === 'contract' && args[1] === 'direct' && /^[a-z0-9][a-z0-9-]{0,40}$/.test(args[2])
-      && args[3] === 'ARIA Lite' && path.isAbsolute(args[4])) return;
+      && (args[3] === `${BRAND.product} Lite` || args[3] === 'ARIA Lite') && path.isAbsolute(args[4])) return;
   if (args.length === 4 && args[0] === 'stage' && /^[\w.-]+$/.test(args[1]) && ['done', 'active'].includes(args[2]) && args[3].trim()) return;
   if (args.length === 2 && args[0] === 'skills' && args[1] === 'available') return;
   if (args.length === 3 && args[0] === 'skills' && args[1] === 'add' && /^[a-z0-9][\w.-]*(:[a-z0-9][\w.-]*)?$/.test(args[2])) return;
@@ -82,7 +82,7 @@ async function lifecycle(connection, workspace, args) {
   return runTool(connection, workspace, connection.script, args);
 }
 
-/** Return the installed expertise packs from the pack store (read-only).
+/** Return the installed and workspace expertise packs from the pack store (read-only).
  * @param {Runtime} connection
  * @param {string} workspace
  * @returns {Promise<import('./types').Pack[]>}
@@ -91,7 +91,7 @@ async function packs(connection, workspace) {
   const script = path.join(connection.extensionPath, 'runtime', 'tools', 'plugins', 'plugin.py');
   /** @type {(value: unknown, context: string) => string[]} */
   const names = (value, context) => list(value, context).map(item => text(item, context));
-  return list(await runTool(connection, workspace, script, ['list']), 'Installed packs').map(value => {
+  return list(await runTool(connection, workspace, script, ['list', '--workspace', workspace]), 'Installed packs').map(value => {
     const pack = record(value, 'Installed pack');
     return { id: text(pack.id, 'Pack id'), name: text(pack.name, 'Pack name'), version: text(pack.version, 'Pack version'),
       enabled: pack.enabled === true, disabledReason: pack.disabledReason ? text(pack.disabledReason, 'Disabled reason') : null,

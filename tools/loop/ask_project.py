@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from loop_paths import STATE, project_folder
+from loop_paths import BRAND, STATE, project_folder
 from lifecycle_catalog import catalog, pick
 from recommend import stems
 
@@ -54,7 +54,7 @@ def topic_shift(previous: str, prompt: str) -> Json | None:
 
 def shift_message(shift: Json, ask: str) -> str:
     """Return the one-line recommendation to show the user for a prompt that starts a different project."""
-    return (f"Frontier HVE: this looks like a different project from this workspace's (open ask {ask}); {shift['reason']}. Recommended: "
+    return (f"{BRAND['product']}: this looks like a different project from this workspace's (open ask {ask}); {shift['reason']}. Recommended: "
             "open another folder (or a git worktree) in a new window. You can also stay: the agent then opens a new ask here and records it.")
 
 

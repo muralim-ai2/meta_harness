@@ -284,17 +284,32 @@ def pack(folder: Path, out: Path) -> Json:
     return {"package": str(archive), "sha256": file_sha256(archive), "id": data["id"], "version": data["version"]}
 
 
-def listing() -> list[Json]:
-    """Return the installed plugins without their full manifests."""
-    return [{k: e[k] for k in ("id", "name", "version", "enabled", "disabledReason", "owner", "source")} | {
+def listing(workspace: Path | None = None) -> list[Json]:
+    """Return installed plugins and, when workspace is given, workspace-committed plugins/<pack>/ entries without full manifests."""
+    rows: dict[str, Json] = {e["name"]: {k: e[k] for k in ("id", "name", "version", "enabled", "disabledReason", "owner", "source")} | {
         "agents": [a["name"] for a in e["manifest"]["agents"]], "lifecycles": sorted(e["manifest"]["lifecycles"]),
         "knowledge": [k["id"] for k in e["manifest"]["knowledge"]],
-        "templates": sorted(e["manifest"]["templates"])} for e in store.registry()["plugins"].values()]
+        "templates": sorted(e["manifest"]["templates"])} for e in store.registry()["plugins"].values()}
+    if workspace is not None and workspace.is_dir():
+        seen_dirs: set[Path] = set()
+        for fname in dict.fromkeys((f"{store.BRAND['prefix']}-plugin.json", "hve-plugin.json")):
+            for path in sorted(workspace.glob(f"plugins/*/{fname}")):
+                if path.parent in seen_dirs:
+                    continue
+                seen_dirs.add(path.parent)
+                data = manifest.load(path.parent)
+                rows[data["name"]] = {
+                    "id": data["id"], "name": data["name"], "version": data["version"], "enabled": True, "disabledReason": None,
+                    "owner": "workspace", "source": f"workspace (plugins/{data['name']})",
+                    "agents": [a["name"] for a in data["agents"]], "lifecycles": sorted(data["lifecycles"]),
+                    "knowledge": [k["id"] for k in data["knowledge"]], "templates": sorted(data["templates"])}
+    return list(rows.values())
 
 
 def requirements(workspace: Path) -> Json:
-    """Compare the workspace's committed frontier-hve.plugins.json with the installed plugins: ok, missing, or a version conflict."""
-    path = workspace / REQUIREMENTS
+    """Compare the workspace's committed <prefix>.plugins.json (or legacy frontier-hve.plugins.json) with installed plugins."""
+    branded_req = workspace / f"{store.BRAND['prefix']}.plugins.json"
+    path = branded_req if branded_req.exists() else workspace / REQUIREMENTS
     if not path.exists():
         return {"file": None, "ok": [], "missing": [], "conflicts": []}
     data = json.loads(path.read_text(encoding="utf-8"))
@@ -329,7 +344,8 @@ def main() -> None:
             command.add_argument("--owner", default="user", help="'user', or the id of the wrapper extension that installed it")
     for name in ("enable", "disable", "uninstall"):
         commands.add_parser(name).add_argument("name")
-    commands.add_parser("list")
+    lister = commands.add_parser("list")
+    lister.add_argument("--workspace", type=Path, help="also list packs committed in <workspace>/plugins/*/hve-plugin.json")
     commands.add_parser("reconcile").add_argument("--index")
     packer = commands.add_parser("pack")
     packer.add_argument("folder", type=Path)
@@ -366,7 +382,7 @@ def main() -> None:
     elif args.command == "uninstall":
         result = uninstall(args.name)
     elif args.command == "list":
-        result = listing()
+        result = listing(args.workspace.resolve() if args.workspace else None)
     elif args.command == "reconcile":
         result = reconcile(args.index)
     elif args.command == "pack":

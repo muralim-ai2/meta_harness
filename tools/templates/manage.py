@@ -16,6 +16,7 @@ from brand import BRAND  # noqa: E402
 
 STATE = BRAND["state_dir"]
 BUNDLED = ROOT / "templates" / "deliverables"
+BRAND_CONFIG_NAME = f"{BRAND['prefix']}.templates.json"
 CONFIG_NAME = "frontier-hve.templates.json"
 KINDS = ("prd", "technicalDesign", "testStrategy")
 PLUGIN_SOURCE = re.compile(r"plugin:([a-z0-9-]+)/(\w+)@([1-9]\d*)\Z")
@@ -80,8 +81,9 @@ def safe_path(workspace: Path, value: str) -> Path:
 
 
 def configuration(workspace: Path) -> Config:
-    """Read workspace policy or the explicitly bundled default policy."""
-    config_path = safe_path(workspace, CONFIG_NAME)
+    """Read workspace policy (<prefix>.templates.json or legacy frontier-hve.templates.json) or the bundled default policy."""
+    branded_path = safe_path(workspace, BRAND_CONFIG_NAME)
+    config_path = branded_path if branded_path.exists() else safe_path(workspace, CONFIG_NAME)
     if not config_path.exists():
         config_path = BUNDLED / "catalog.json"
     data = json.loads(config_path.read_text(encoding="utf-8"))

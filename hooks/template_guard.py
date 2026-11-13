@@ -8,7 +8,9 @@ from pathlib import Path
 from typing import TypedDict
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(ROOT / "tools" / "templates"))
+from brand import BRAND  # noqa: E402
 from manage import KINDS, check_session, configuration, request  # noqa: E402
 
 AUTHOR = re.compile(r"^\s*(?:please\s+|(?:can|could|would)\s+you\s+(?:please\s+)?)?"
@@ -81,7 +83,7 @@ def handle(payload: Payload, workspace: Path) -> dict[str, object] | None:
     allowed = allowed_types()
     policy = configuration(workspace)
     command = f'python "{(ROOT / "tools" / "templates" / "manage.py").as_posix()}"'
-    context = (f"Frontier HVE deliverable templates: session {session}. "
+    context = (f"{BRAND['product']} deliverable templates: session {session}. "
                f"For {', '.join(allowed)} authoring use the deliverable-templates skill. "
                f"Register every requested type with {command} request <types> --session {session}; "
                f"init/register and validate documents with the same session. "

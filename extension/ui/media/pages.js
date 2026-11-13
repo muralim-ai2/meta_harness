@@ -216,7 +216,7 @@
       h('span', { class: 'muted' }, snap.features.length ? `${passing} of ${snap.features.length} passing` : '')),
       card('Evidence files', snap.files.length ? h('div', { class: 'files' }, ...snap.files.map(file => h('button', { class: 'file', type: 'button', 'data-action': 'openFile', 'data-path': file },
         icon('file'), h('span', null, file.split('\\').join('/'))))) : h('p', { class: 'muted' }, 'No evidence recorded yet.')),
-      journal(snap, now),
+      journal(snap, model.brand.product, now),
       card('Decisions', snap.decisions.length ? h('ol', { class: 'timeline' }, ...snap.decisions.slice().reverse().map(decision => h('li', { class: 'event' },
         h('span', { class: 'event-icon' }, icon('flag')), h('div', { class: 'event-body' }, h('div', { class: 'event-title' }, `${decision.stage}: ${decision.choice}`),
           decision.why ? h('div', { class: 'event-detail' }, decision.why) : null), h('time', null, ago(decision.ts, now)))))
@@ -231,10 +231,11 @@
 
   /** Render the project's journal of decisions, issues and pitfalls, newest first, marking entries from other asks.
    * @param {import('../types').Snapshot} snap
+   * @param {string} product
    * @param {number} now
    * @returns {VNode}
    */
-  function journal(snap, now) {
+  function journal(snap, product, now) {
     const counts = ['decision', 'issue', 'pitfall'].map(kind => plural(snap.journal.filter(row => row.kind === kind).length, kind)).join(' · ');
     return card('Decisions, issues and pitfalls (whole project)', snap.journal.length ? [h('span', { class: 'muted' }, counts),
       h('ol', { class: 'timeline' }, ...snap.journal.slice().reverse().map(row => h('li', { class: `event journal-${row.kind}` },
@@ -243,7 +244,7 @@
           row.why ? h('div', { class: 'event-detail' }, row.why) : null,
           h('span', { class: 'meta' }, [row.stage ? `Stage ${row.stage}` : null, row.ask !== snap.ask?.id ? `From ask ${row.ask}` : null].filter(Boolean).join(' · '))),
         h('time', null, ago(row.ts, now)))))]
-      : h('p', { class: 'muted' }, 'Nothing recorded yet. Every ARIA agent logs its decisions, the issues it hits and the pitfalls to avoid here as it works.'));
+      : h('p', { class: 'muted' }, `Nothing recorded yet. Every ${product} agent logs its decisions, the issues it hits and the pitfalls to avoid here as it works.`));
   }
 
   /** Return file buttons that open beside Mission Control.
@@ -367,9 +368,9 @@
         : [h('p', { class: 'muted' }, 'Skills are chosen when an ask starts.'), add],
       session ? h('span', { class: 'muted' }, `Chat on Live: ${plural(read.length, 'skill')} read of ${session.skills} allowed`) : null),
       card('Always-on harness skills', snap?.pluginSkills.length ? h('div', { class: 'chips' }, ...snap.pluginSkills.map(name => h('span', { class: 'pill' }, name)))
-        : h('p', { class: 'muted' }, 'Listed once an ask starts.'), h('span', { class: 'muted' }, 'Shipped with ARIA and available to every agent.')),
+        : h('p', { class: 'muted' }, 'Listed once an ask starts.'), h('span', { class: 'muted' }, `Shipped with ${model.brand.product} and available to every agent.`)),
       card('Expertise packs', [
-        h('p', { class: 'muted' }, 'A pack adds a practice\'s skills, agents, templates and lifecycles. Packs are installed for you, not per workspace.'),
+        h('p', { class: 'muted' }, 'A pack adds a practice\'s skills, agents, templates and lifecycles. Packs are installed for you, not per workspace, or committed in plugins/<pack>/.'),
         model.packsError ? h('div', { class: 'notice error' }, model.packsError)
           : model.packs === null ? h('p', { class: 'muted' }, 'Reading installed packs…')
             : model.packs.length ? h('ul', { class: 'packs' }, ...model.packs.map(pack => h('li', { class: 'pack' }, icon('box'),
@@ -377,8 +378,18 @@
                 plural(pack.templates.length, 'template'), plural(pack.knowledge.length, 'knowledge document')].join(' · ')), h('span', { class: 'muted' }, pack.source)),
               h('span', { class: `pill ${pack.enabled ? 'good' : 'warn'}` }, pack.enabled ? 'enabled' : `disabled${pack.disabledReason ? `: ${pack.disabledReason}` : ''}`))))
               : h('p', { class: 'muted' }, 'No packs installed.'),
-        h('div', { class: 'actions' }, action('Install a pack…', 'installPack', 'From a folder, a .hveplugin file, a git URL or your organisation\'s index. You see its source, hash and tools before it installs.', model),
-          action('Manage packs…', 'managePacks', 'Enable, disable, update or remove installed packs.', model))]),
+        model.examplePack && !(model.packs || []).some(pack => pack.name === model.examplePack?.name) ? h('div', { class: 'pack pack-example' }, icon('box'),
+          h('div', null,
+            h('strong', null, `${model.examplePack.displayName} (${model.examplePack.name} ${model.examplePack.version}) `, h('span', { class: 'pill' }, 'built-in example')),
+            h('span', { class: 'muted' }, model.examplePack.description),
+            h('span', { class: 'muted' }, [plural(model.examplePack.agents.length, 'agent'), plural(model.examplePack.lifecycles.length, 'lifecycle'),
+              plural(model.examplePack.skills.length, 'skill'), plural(model.examplePack.templates.length, 'template'),
+              plural(model.examplePack.knowledge.length, 'knowledge document'), `routes: ${model.examplePack.domains.join(', ')}`].join(' · '))),
+          button('Install example pack', 'installExamplePack', { kind: 'primary', icon: 'plus', disabled: model.busy,
+            title: 'Install the built-in Oracle Offering example expertise pack into your pack store' })) : null,
+        h('div', { class: 'actions' }, action('Install a pack…', 'installPack', 'From a folder, a .hveplugin file, a git URL, your organisation\'s index or the built-in example. You see its source, hash and tools before it installs.', model),
+          action('Manage packs…', 'managePacks', 'Enable, disable, update or remove installed packs.', model))],
+      button('Pack checklist', 'openPackChecklist', { icon: 'list', title: 'Open the Expertise Pack checklist wiki beside Mission Control' })),
     ];
   }
 
@@ -401,14 +412,18 @@
     const guard = model.connection.guard;
     return [
       card('Workspace', h('div', { class: 'stats' }, stat('Folder', model.workspace ? model.workspace.path : 'None selected'),
-        stat('ARIA', model.connection.version), stat('Python', model.connection.python || 'not found: install Python 3.11+'),
+        stat(model.brand.product, model.connection.version), stat('Python', model.connection.python || 'not found: install Python 3.11+'),
         stat('Loop guard', guard === 'advise' ? 'Advisory: warns in chat, does not block' : guard === 'enforce' ? 'Enforced: blocks' : 'unknown'),
         stat('Live activity from', model.transcripts || 'no workspace storage')),
       button('Change folder', 'selectWorkspace', { icon: 'folder', disabled: model.busy })),
-      card('Research telemetry', [telemetrySwitch(model), h('p', { class: 'muted' }, 'When on, Copilot writes every new chat, with its full content, tokens and cost, to '
-        + `${model.telemetry.file || `${model.brand.state_dir}/runs/copilot-otel.jsonl`}. Mission Control and the ask report use it for token and cost figures. Turn it off when you are done.`)]),
+      card('Research telemetry', [
+        telemetrySwitch(model),
+        model.telemetry.elsewhere ? h('div', { class: 'notice warn' }, icon('alert'),
+          h('span', null, `Copilot's global telemetry export points to another folder (${model.telemetry.file}).${model.telemetry.localFile ? ` This workspace also has ${model.telemetry.localFile}.` : ''}`)) : null,
+        h('p', { class: 'muted' }, 'When on, Copilot writes every new chat, with its full content, tokens and cost, to '
+          + `${model.telemetry.file || `${model.brand.state_dir}/runs/copilot-otel.jsonl`}. Mission Control and the ask report use it for token and cost figures. Turn it off when you are done.`)]),
       card('Set-up', h('div', { class: 'actions' }, action('Set up this workspace', 'setup', `Choose assisted or pro mode, add ${model.brand.state_dir}/ to .gitignore, and see how many tokens load into every request.`, model),
-        action('Install for other tools', 'installHarnesses', 'Make the ARIA agents, skills and guards available in Copilot CLI, Claude Code, Codex, Cursor or the Copilot cloud agent.', model))),
+        action('Install for other tools', 'installHarnesses', `Make the ${model.brand.product} agents, skills and guards available in Copilot CLI, Claude Code, Codex, Cursor or the Copilot cloud agent.`, model))),
     ];
   }
 
@@ -423,7 +438,7 @@
     const pages = { live, plan, progress, files, others, telemetry, visuals, skills: () => skills(model), settings: () => settings(model) };
     return h('div', { class: `dashboard ${model.busy ? 'busy' : ''}`.trim() },
       h('header', { class: 'dash-head' }, h('div', { class: 'dash-title' }, h('span', { class: 'brand-logo', 'aria-hidden': 'true' }),
-        h('div', null, h('span', { class: 'section-label' }, snap?.project ? pretty(snap.project.name) : 'ARIA'), h('h1', null, snap?.ask?.title || 'Mission Control')), h('span', { class: 'early', title: 'Early release: features may change' }, 'Early release'), chip(model),
+        h('div', null, h('span', { class: 'section-label' }, snap?.project ? pretty(snap.project.name) : model.brand.product), h('h1', null, snap?.ask?.title || 'Mission Control')), h('span', { class: 'early', title: 'Early release: features may change' }, 'Early release'), chip(model),
         button('New ask', 'newAsk', { icon: 'plus', disabled: model.busy || !model.workspace, title: 'Start a new piece of work in this project' }),
         button('', 'refresh', { kind: 'icon', icon: 'refresh', title: 'Refresh', disabled: model.busy })),
       askPicker(model),

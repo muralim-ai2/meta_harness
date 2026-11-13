@@ -101,7 +101,7 @@ class Workflow {
       if (!/^[a-z0-9][a-z0-9-]{0,40}$/.test(slug)) throw new Error('Ask name must contain 1-41 lowercase letters, digits or hyphens.');
       sameAsk(workspace, activeAsk);
       const result = record(await this.requestFile(request, file =>
-        lifecycle(this.connection, workspace, ['contract', 'direct', slug, 'ARIA Lite', file])), 'Created ask');
+        lifecycle(this.connection, workspace, ['contract', 'direct', slug, `${BRAND.product} Lite`, file])), 'Created ask');
       const created = askId(result.ask);
       const state = snapshot(workspace);
       if (state.ask?.id !== created) throw new Error(`Ask ${created} was created, but the active ask changed before verification. Inspect the project before continuing.`);

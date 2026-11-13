@@ -1,5 +1,7 @@
 {
   "product": "ARIA",
   "prefix": "aria",
-  "state_dir": ".aria"
+  "state_dir": ".aria",
+  "logo": "extension/ui/media/aria.png",
+  "activity_icon": "extension/ui/media/aria.svg"
 }

@@ -3,17 +3,24 @@
 import hashlib
 import json
 import os
+import sys
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "hooks"))
+from brand import BRAND  # noqa: E402
 
 Json = dict[str, Any]
 
 
 def home() -> Path:
-    """Return the global plugin home: HVE_PLUGIN_HOME when set, else ~/.frontier-hve."""
-    value = os.environ.get("HVE_PLUGIN_HOME")
-    return Path(value) if value else Path.home() / ".frontier-hve"
+    """Return the global plugin home: <PREFIX>_PLUGIN_HOME or HVE_PLUGIN_HOME when set, else ~/.frontier-hve (ARIA) or ~/.<prefix>-packs."""
+    value = os.environ.get(f"{BRAND['prefix'].upper()}_PLUGIN_HOME") or os.environ.get("HVE_PLUGIN_HOME")
+    if value:
+        return Path(value)
+    default_aria = BRAND["prefix"] == "aria" and not BRAND.get("extension_name") and not BRAND.get("command_prefix")
+    return Path.home() / (".frontier-hve" if default_aria else f".{BRAND['prefix']}-packs")
 
 
 def registry_file() -> Path:
@@ -57,16 +64,21 @@ def content_sha256(package: Path) -> str:
 
 @lru_cache(maxsize=4)
 def packs(workspace: Path) -> dict[str, Json]:
-    """Return every available pack by name: enabled installed packs, then packs committed in the workspace's plugins/<pack>/ folders (a
-    workspace pack replaces an installed one of the same name and records it)."""
+    """Return every available pack by name: enabled installed packs, then packs committed in the workspace's plugins/<pack>/ folders."""
     found = {name: {"id": e["id"], "name": name, "version": e["version"], "sha256": e["sha256"], "source": "installed",
                     "folder": folder(e).as_posix(), "manifest": e["manifest"]} for name, e in enabled().items()}
-    for path in sorted(workspace.glob("plugins/*/hve-plugin.json")):
-        import manifest  # manifest imports the lifecycle catalog, which imports this module
-        data = manifest.load(path.parent)
-        replaced = {"overrides": f"installed {found[data['name']]['version']}"} if data["name"] in found else {}
-        found[data["name"]] = {"id": data["id"], "name": data["name"], "version": data["version"], "sha256": content_sha256(path.parent),
-                               "source": "workspace", "folder": path.parent.resolve().as_posix(), "manifest": data} | replaced
+    manifest_names = tuple(dict.fromkeys((f"{BRAND['prefix']}-plugin.json", "hve-plugin.json")))
+    seen_dirs: set[Path] = set()
+    for fname in manifest_names:
+        for path in sorted(workspace.glob(f"plugins/*/{fname}")):
+            if path.parent in seen_dirs:
+                continue
+            seen_dirs.add(path.parent)
+            import manifest  # manifest imports the lifecycle catalog, which imports this module
+            data = manifest.load(path.parent)
+            replaced = {"overrides": f"installed {found[data['name']]['version']}"} if data["name"] in found else {}
+            found[data["name"]] = {"id": data["id"], "name": data["name"], "version": data["version"], "sha256": content_sha256(path.parent),
+                                   "source": "workspace", "folder": path.parent.resolve().as_posix(), "manifest": data} | replaced
     return found
 
 
@@ -74,6 +86,6 @@ def pack(workspace: Path, name: str) -> Json:
     """Return the available pack with this name, or raise naming how to install or enable it."""
     found = packs(workspace).get(name)
     if found is None:
-        raise LookupError(f"pack {name!r} is not available: install it (ARIA: Install plugin, or `plugin.py install <package>`), "
+        raise LookupError(f"pack {name!r} is not available: install it ({BRAND['product']}: Install plugin, or `plugin.py install <package>`), "
                           f"enable it (`plugin.py enable {name}`), or commit it as plugins/{name}/ in the workspace")
     return found

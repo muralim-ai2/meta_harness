@@ -64,6 +64,48 @@
         ...chats.slice().sort((a, b) => label(a).localeCompare(label(b))).map(chat => h('option', { value: chat.id, selected: chat.id === shown }, label(chat)))));
   }
 
+  /** Return a prominent callout card highlighting the main agent's non-cached input tokens (measured or estimated).
+   * @param {import('../types').Insights} data
+   * @returns {VNode}
+   */
+  function mainCallout(data) {
+    const subTurns = data.subagents.reduce((sum, row) => sum + row.turns, 0);
+    const subReads = data.subagents.reduce((sum, row) => sum + row.reads, 0);
+    const isolated = data.subagents.length
+      ? `Sub-agents isolated ${plural(subTurns, 'turn')} and ${plural(subReads, 'read')} outside the main window.` : '';
+    if (data.measured) {
+      const nonCached = data.main.nonCached ?? Math.max(0, data.input - (data.cachedTokens || 0));
+      const mainInput = data.main.input ?? data.input;
+      const mainCached = data.main.cached ?? data.cachedTokens ?? 0;
+      const cachePct = data.main.cachePercent ?? data.cachePercent;
+      const details = [
+        `Main input: ${count(mainInput)}`,
+        `Cached: ${count(mainCached)}${cachePct === null ? '' : ` (${cachePct}%)`}`,
+        data.main.peakInput ? `Peak prompt: ${count(data.main.peakInput)}` : null,
+        data.main.aiu !== null ? `Main AIU: ${data.main.aiu.toFixed(2)}` : null,
+      ].filter(Boolean).join(' · ');
+      return h('section', { class: 'card tele-callout' },
+        h('div', { class: 'tele-callout-head' },
+          h('span', { class: 'section-label' }, icon('pulse'), ' Main agent · Non-cached tokens'),
+          h('span', { class: 'tele-pill measured' }, 'Measured')),
+        h('div', { class: 'tele-callout-row' },
+          h('strong', { class: 'tele-callout-num' }, count(nonCached)),
+          h('span', null, 'non-cached input tokens billed to the main agent window')),
+        h('span', { class: 'muted' }, [details, isolated].filter(Boolean).join(' · ')));
+    }
+    const est = data.main.estimatedNonCached ?? 12000;
+    const added = Math.max(0, est - 12000);
+    return h('section', { class: 'card tele-callout estimated' },
+      h('div', { class: 'tele-callout-head' },
+        h('span', { class: 'section-label' }, icon('pulse'), ' Main agent · Non-cached tokens'),
+        h('span', { class: 'tele-pill estimated' }, 'Estimated')),
+      h('div', { class: 'tele-callout-row' },
+        h('strong', { class: 'tele-callout-num' }, count(est)),
+        h('span', null, 'estimated uncached window tokens in the main agent')),
+      h('span', { class: 'muted' }, [`12k base instructions and tools + ${count(added)} from ${plural(data.main.reads, 'read')}, skills, prompts and replies across ${plural(data.main.turns, 'main turn')}.`,
+        isolated, 'Turn on research telemetry for exact cache-miss billing.'].filter(Boolean).join(' ')));
+  }
+
   /** Return the sub-agents breakdown table when the chat delegated work to sub-agents.
    * @param {import('../types').Insights} data
    * @returns {VNode | null}
@@ -73,6 +115,7 @@
     const subTurns = data.subagents.reduce((sum, row) => sum + row.turns, 0);
     const subReads = data.subagents.reduce((sum, row) => sum + row.reads, 0);
     const subSkills = data.subagents.reduce((sum, row) => sum + row.skills, 0);
+    const showAiu = data.subagents.some(row => row.measured && row.aiu !== null);
     return h('section', { class: 'card tele-subagents' },
       h('header', { class: 'card-head' },
         h('h2', null, icon('users'), ` Sub-agents · ${plural(data.subagents.length, 'run')}`),
@@ -80,17 +123,15 @@
           + `Sub-agents isolated ${plural(subTurns, 'turn')} and ${plural(subReads, 'read')} (${subSkills} skill) outside the main window`)),
       h('div', { class: 'tele-table-wrap' },
         h('table', { class: 'tele-table' },
-          h('thead', null, h('tr', null, h('th', null, '#'), h('th', null, 'Sub-agent & task'), h('th', null, 'Model'),
-            h('th', null, 'Activity'), h('th', null, 'Reads / skills'), h('th', null, 'Non-cached / total'), h('th', null, 'AIU'), h('th', null, 'State'))),
+          h('thead', null, h('tr', null, h('th', null, '#'), h('th', null, 'Agent & task'), h('th', null, 'Model'),
+            h('th', null, 'Activity'), h('th', null, 'Reads / skills'), showAiu ? h('th', null, 'AIU') : null, h('th', null, 'State'))),
           h('tbody', null, ...data.subagents.map((row, index) => h('tr', null,
             h('td', { class: 'muted' }, String(index + 1)),
             h('td', null, h('strong', null, row.name), row.task ? h('div', { class: 'muted' }, row.task) : null),
             h('td', { class: 'muted' }, row.model || '—'),
             h('td', null, `${plural(row.turns, 'turn')} · ${plural(row.tools, 'tool')}`),
             h('td', null, `${plural(row.reads, 'read')} · ${row.skills} skill`),
-            h('td', { class: 'num' }, row.measured && row.nonCached !== null && row.total !== null
-              ? `${count(row.nonCached)} / ${count(row.total)}` : h('span', { class: 'muted' }, 'isolated window')),
-            h('td', { class: 'num' }, row.measured && row.aiu !== null ? row.aiu.toFixed(2) : '—'),
+            showAiu ? h('td', { class: 'num' }, row.measured && row.aiu !== null ? row.aiu.toFixed(2) : '—') : null,
             h('td', null, h('span', { class: `tele-pill ${row.state === 'ok' ? 'measured' : 'estimated'}` }, row.state))))))));
   }
 
@@ -173,6 +214,7 @@
         data.main.peakInput ? h('span', { class: 'muted' }, `Main peak prompt: ${count(data.main.peakInput)} · Main AIU: ${(data.main.aiu ?? data.aiu).toFixed(2)}`) : null,
         h('span', { class: 'tele-aiu' }, `Session: ${count(data.total)} tokens in total · ${data.aiu.toFixed(1)} AI units`))
         : h('div', { class: 'tele-total off' }, h('span', { class: 'muted' }, 'Total tokens and AI units appear for chats recorded with research telemetry on.'), telemetrySwitch(model))),
+      mainCallout(data),
       h('div', { class: 'tele-tiles' },
         tile('pulse', 'Turns', data.subagents.length ? data.main.turns : data.turns,
           data.subagents.length ? `main agent · +${data.turns - data.main.turns} in ${plural(data.subagents.length, 'sub-agent')}` : 'model calls the agent made',

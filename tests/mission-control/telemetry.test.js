@@ -245,6 +245,61 @@ test('Telemetry separates main-agent non-cached tokens and peak prompt from per-
     ['aria-engineer', 'Build domain', 'gpt-5.6-luna', 1, 1, 3000, 12600, 0.5, 'ok']);
   const rendered = text(dashboard(model, UI, Date.now()));
   assert.match(rendered, /10kmain non-cached input tokens/);
+  assert.match(rendered, /Main agent · Non-cached tokensMeasured10knon-cached input tokens billed to the main agent window/);
   assert.match(rendered, /Main peak prompt: 42k · Main AIU: 4\.50/);
-  assert.match(rendered, /Sub-agents · 1 run[\s\S]*aria-engineer[\s\S]*Build domain[\s\S]*gpt-5\.6-luna[\s\S]*3,000 \/ 13k[\s\S]*0\.50/);
+  assert.match(rendered, /Sub-agents · 1 run[\s\S]*aria-engineer[\s\S]*Build domain[\s\S]*gpt-5\.6-luna[\s\S]*1 turn · 1 tool[\s\S]*1 read · 0 skill[\s\S]*0\.50[\s\S]*ok/);
+  assert.doesNotMatch(rendered, /Non-cached \/ total|isolated window/);
+});
+
+test('Sub-agent table resolves agent and model from brief delegations, tool arguments and session model without isolated-window column', async t => {
+  const fixture = mission(t);
+  const askId = '20261111-1902-elevate-design';
+  const askDir = path.join(fixture.root, '.aria', 'asks', askId);
+  fs.mkdirSync(path.join(askDir, 'loop'), { recursive: true });
+  fs.mkdirSync(path.join(fixture.root, '.aria', 'project'), { recursive: true });
+  fs.writeFileSync(path.join(fixture.root, '.aria', 'asks', 'active.json'), JSON.stringify({ active: askId }));
+  fs.writeFileSync(path.join(askDir, 'request.md'), 'Elevate design\n');
+  fs.writeFileSync(path.join(askDir, 'contract.json'), JSON.stringify({
+    ask: askId, slug: 'elevate-design', request: 'Elevate design', lifecycle: 'direct', source: 'builtin', agent: 'ARIA Lite',
+    created: '2026-11-11T19:02:00Z', current: 'deliver', scope: [], for_stage: null, gates: 'all', packs: [],
+    paths: { ask: `.aria/asks/${askId}`, plan: `.aria/asks/${askId}/plan.md`, loop: `.aria/asks/${askId}/loop`,
+      evidence: `.aria/asks/${askId}/loop/evidence`, project: '.aria/project', feature_list: '.aria/project/feature_list.json',
+      feature_list_add: '.aria/project/feature_list.add.json' },
+    stages: [{ name: 'deliver', goal: 'Deliver', agent: 'self', skills: [], plugin_skills: [], templates: [], exit: 'Done', status: 'active', note: '' }],
+    skills: { selected: [], tokens: 0, over_budget: false, budget: { max_skills: 10, max_tokens: 32000 }, suggested: [], suggested_tokens: 0, choice: null, plugin: {} },
+    personas: [], tasks: [], environment: { mcp_servers: [], hook_files: [], tool_load: { harnesses: {}, warn_tokens: 6000, warnings: [] } },
+    delegations: [{ ts: '2026-11-11T19:13:28Z', persona: 'frontend', stage: 'deliver', task: 'glass-theme', skills: [] }],
+    reported: [], plan: { sha256: null, revisions: [] }, checklist: {}, checklist_rendered: {}, decisions: [],
+  }));
+  const sid = 'sub-resolve-1';
+  const start = Date.now() - 40_000;
+  const iso = s => new Date(start + s * 1000).toISOString();
+  const rows = [
+    ['session.start', 0, { sessionId: sid, startTime: iso(0), selectedModel: 'claude-opus-5.5' }],
+    ['user.message', 1, { content: `Work in the ask .aria/asks/${askId}` }],
+    ['assistant.turn_start', 2, { turnId: '0' }],
+    ['tool.execution_start', 3, { toolCallId: 's1', toolName: 'runSubagent', arguments: {
+      description: 'Build glass-theme restyle',
+      prompt: `Frontier HVE brief: ask ${askId}, stage deliver, task glass-theme\n- Stage goal: Deliver`,
+    } }],
+    ['assistant.turn_start', 4, { turnId: 's1-0' }],
+    ['tool.execution_complete', 5, { toolCallId: 's1', success: true }],
+    ['tool.execution_start', 6, { toolCallId: 's2', toolName: 'runSubagent', arguments: {
+      description: 'Council critical review', model: 'GPT-5 (copilot)',
+      prompt: 'You are a read-only output-evaluation reviewer.',
+    } }],
+    ['tool.execution_complete', 7, { toolCallId: 's2', success: false }],
+    ['assistant.turn_end', 8, {}],
+  ];
+  fs.mkdirSync(fixture.transcripts, { recursive: true });
+  fs.writeFileSync(path.join(fixture.transcripts, `${sid}.jsonl`), rows.map(([type, s, data]) => JSON.stringify({ type, timestamp: iso(s), data }) + '\n').join(''));
+  await fixture.controls.commands.get('frontierHve.refreshMissionControl')();
+  const model = fixture.controls.commands.get('frontierHve.missionControlModel')();
+  assert.deepEqual(model.insights.subagents.map(r => [r.name, r.model, r.state]), [
+    ['frontend', 'claude-opus-5.5', 'ok'],
+    ['evaluation-reviewer', 'GPT-5', 'failed'],
+  ]);
+  const rendered = text(dashboard(model, UI, Date.now()));
+  assert.match(rendered, /Main agent · Non-cached tokensEstimated/);
+  assert.doesNotMatch(rendered, /isolated window|Non-cached \/ total/);
 });

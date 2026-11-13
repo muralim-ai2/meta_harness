@@ -16,7 +16,7 @@ const SHELL_TOOLS = new Set(['run_in_terminal', 'powershell', 'bash', 'shell', '
 const CONTRACT = /\bcontract\s+["']?[\w.-]+["']?\s+["']?([a-z0-9][a-z0-9-]{0,40})(?=["'\s;|]|$)/g;
 const OPEN = /\bopen\s+["']?(\d{8}-\d{4}-[a-z0-9][a-z0-9-]{0,40})(?=["'\s;|]|$)/g;
 const ASK_PATH = new RegExp(`(?:^|[\\\\/])${STATE.replace('.', '\\.')}[\\\\/]asks[\\\\/](\\d{8}-\\d{4}-[a-z0-9][a-z0-9-]{0,40})[\\\\/]`);
-const STARTER_ASK = new RegExp(`work in the ask ${STATE.replace('.', '\\.')}/asks/(\\d{8}-\\d{4}-[a-z0-9][a-z0-9-]{0,40})\\b`);
+const STARTER_ASK = new RegExp(`work in the ask ${STATE.replace('.', '\\.')}/asks/(\\d{8}-\\d{4}-[a-z0-9][a-z0-9-]{0,40})\\b`, 'i');
 const HOW = ['started', 'linked', 'continued'];
 
 /** @typedef {{offset: number, size: number, mtime: number, lines: number, id: string, model: string | null, title: string | null, started: string, lastAt: string,

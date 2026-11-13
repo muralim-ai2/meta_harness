@@ -10,7 +10,7 @@ const { BRAND } = require('../brand');
 const STATE = BRAND.state_dir;
 const NAME = /^[a-z0-9][a-z0-9-]{0,40}$/;
 const HANDOFF = 'askHandoff';
-const AGENT = 'ARIA Collab';
+const AGENT = `${BRAND.product} Collab`;
 
 /** @typedef {import('./mission-control').MissionControl} MissionControl */
 /** @typedef {{title: string, description: string}} Brief */

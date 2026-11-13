@@ -20,7 +20,7 @@ const extras = require('./extras');
 const { evaluationFiles } = require('./asks');
 const { insights } = require('./insights');
 const { record, text, message, errorText } = require('./validate');
-const { BRAND } = require('../brand');
+const { BRAND, cmd } = require('../brand');
 const STATE = BRAND.state_dir;
 const PAGES = ['live', 'plan', 'progress', 'files', 'others', 'telemetry', 'skills', 'settings'];
 const SCRIPTS = ['vnode.js', 'markdown.js', 'views.js', 'telemetry.js', 'pages.js', 'app.js'];
@@ -37,7 +37,7 @@ function documentHtml(webview, media) {
   const uri = name => webview.asWebviewUri(vscode.Uri.joinPath(media, name)).toString();
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource}; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
-<title>ARIA Mission Control</title><link rel="stylesheet" href="${uri('app.css')}"></head>
+<title>${BRAND.product} Mission Control</title><link rel="stylesheet" href="${uri('brand.css')}"><link rel="stylesheet" href="${uri('app.css')}"></head>
 <body><div id="root" aria-busy="true"><p class="loading">Connecting to the harness…</p></div><div id="announce" class="sr-only" role="status" aria-live="polite"></div>
 ${SCRIPTS.map(name => `<script nonce="${nonce}" src="${uri(name)}"></script>`).join('\n')}</body></html>`;
 }
@@ -51,7 +51,7 @@ class MissionControl {
   constructor(context, findPython) {
     this.context = context;
     this.findPython = findPython;
-    this.output = vscode.window.createOutputChannel('ARIA Mission Control');
+    this.output = vscode.window.createOutputChannel(`${BRAND.product} Mission Control`);
     /** @type {Map<vscode.Webview, 'sidebar' | 'editor'>} */
     this.views = new Map();
     /** @type {vscode.WebviewView | null} */
@@ -133,14 +133,23 @@ class MissionControl {
     return process.env.HVE_COPILOT_SESSIONS || (this.context.globalStorageUri ? path.join(os.homedir(), '.copilot', 'session-state') : null);
   }
 
-  /** Return the research telemetry switch and its export file.
+  /** Return the research telemetry switch, its configured export, any local export in this workspace, and total prunable bytes.
    * @returns {import('./types').Model['telemetry']}
    */
   telemetry() {
     const otel = vscode.workspace.getConfiguration('github.copilot.chat.otel');
-    const file = otel.get('outfile');
-    const resolved = typeof file === 'string' && file ? (path.isAbsolute(file) || !this.workspace ? file : path.join(this.workspace.uri.fsPath, file)) : null;
-    return { enabled: otel.get('enabled') === true, file: resolved, bytes: resolved && fs.existsSync(resolved) ? fs.statSync(resolved).size : null };
+    const raw = otel.get('outfile');
+    const ws = this.workspace?.uri.scheme === 'file' ? this.workspace.uri.fsPath : null;
+    const configured = typeof raw === 'string' && raw ? (path.isAbsolute(raw) || !ws ? raw : path.join(ws, raw)) : null;
+    const local = ws ? path.join(ws, STATE, 'runs', 'copilot-otel.jsonl') : null;
+    const norm = (/** @type {string} */ value) => process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
+    const same = Boolean(configured && local && norm(configured) === norm(local));
+    const elsewhere = Boolean(ws && configured && !same);
+    const existing = [...new Map([configured, local].filter(/** @returns {f is string} */ f => Boolean(f && fs.existsSync(f) && fs.statSync(f).isFile()))
+      .map(f => [norm(f), f])).values()];
+    const bytes = existing.length ? existing.reduce((sum, f) => sum + fs.statSync(f).size, 0) : null;
+    return { enabled: otel.get('enabled') === true, file: configured || (local && fs.existsSync(local) ? local : null),
+      localFile: !same && local && fs.existsSync(local) ? local : null, elsewhere, bytes };
   }
 
   /** Watch the workspace's .aria/ and .harness/ folders and this window's chat transcripts.
@@ -203,7 +212,7 @@ class MissionControl {
     const root = this.target().uri.fsPath;
     if (this.flow) return this.flow;
     const python = await this.findPython();
-    if (!python) throw new Error('Mission Control needs Python 3.11+ on PATH (python, python3 or py -3). Install it, then run "ARIA: Set up".');
+    if (!python) throw new Error(`Mission Control needs Python 3.11+ on PATH (python, python3 or py -3). Install it, then run "${BRAND.product}: Set up".`);
     const connection = runtime(this.context.extensionPath, python.split(' '));
     await inspect(connection, root);
     this.python = python;
@@ -266,7 +275,9 @@ class MissionControl {
       this.state.pending = claimed ? null : pending;
       const shown = shownChat(chats, viewed, this.chat, viewed === (asks.value?.find(ask => ask.active)?.id ?? null));
       const linkedAsk = shown?.asks[0]?.ask ? (asks.value || []).find(ask => ask.id === shown.asks[0].ask) : null;
-      return { ...activity(root, shown ? transcriptPath(transcripts, copilotRoot, shown.id) : null, this.telemetry().file, now), chats,
+      const tel = this.telemetry();
+      const workspaceOtel = tel.elsewhere ? (tel.localFile ?? null) : tel.file;
+      return { ...activity(root, shown ? transcriptPath(transcripts, copilotRoot, shown.id) : null, workspaceOtel, now), chats,
         meta: shown ? chatMeta(transcripts, shown.id, copilotRoot, linkedAsk?.agent || state.value?.ask?.agent || null) : null };
     });
     const files = await this.section('Ask files', async () => viewed ? askTree(root, viewed) : null);
@@ -288,6 +299,7 @@ class MissionControl {
    */
   model(surface) {
     return { ...this.state, brand: BRAND, now: new Date().toISOString(), surface, navigate: this.navigate, telemetry: this.telemetry(), transcripts: this.transcripts(),
+      examplePack: extras.examplePack(this.context.extensionPath),
       workspace: this.workspace ? { name: this.workspace.name, path: this.workspace.uri.fsPath } : null };
   }
 
@@ -304,7 +316,7 @@ class MissionControl {
    * @returns {Error}
    */
   show(error) {
-    const contextual = new Error(`ARIA Mission Control: ${errorText(error)}`, { cause: error });
+    const contextual = new Error(`${BRAND.product} Mission Control: ${errorText(error)}`, { cause: error });
     this.state.error = contextual.message;
     this.output.appendLine(contextual.message);
     this.paint();
@@ -343,7 +355,7 @@ class MissionControl {
     if (!PAGES.includes(page)) throw new Error(`Unknown page: ${page}`);
     this.navigate = { page: /** @type {import('./types').Page} */ (page), seq: this.navigate.seq + 1 };
     if (!this.panel) {
-      const panel = vscode.window.createWebviewPanel('frontierHve.missionControlDetail', 'ARIA Mission Control', vscode.ViewColumn.Active, {});
+      const panel = vscode.window.createWebviewPanel(cmd('missionControlDetail'), `${BRAND.product} Mission Control`, vscode.ViewColumn.Active, {});
       this.panel = panel;
       const attached = this.attach(panel.webview, 'editor');
       panel.onDidDispose(() => { attached.dispose(); this.panel = null; });
@@ -358,7 +370,7 @@ class MissionControl {
     const folders = vscode.workspace.workspaceFolders || [];
     if (!folders.length) throw new Error('Open a local folder in VS Code first.');
     const selected = await vscode.window.showQuickPick(folders.map(folder => ({ label: folder.name, description: folder.uri.fsPath, folder })),
-      { title: 'ARIA: which folder should Mission Control follow?', ignoreFocusOut: true });
+      { title: `${BRAND.product}: which folder should Mission Control follow?`, ignoreFocusOut: true });
     if (!selected) return;
     if (selected.folder.uri.scheme !== 'file') throw new Error('Choose a local folder.');
     this.workspace = selected.folder;
@@ -391,7 +403,7 @@ class MissionControl {
   async execute(raw) {
     if (this.disposed) throw new Error('Mission Control has been disposed.');
     const data = message(raw);
-    const mutating = ['newAsk', 'newChat', 'startHandoff', 'dismissHandoff', 'activateAsk', 'review', 'markDone', 'addSkill', 'command', 'telemetry', 'selectWorkspace'].includes(data.action);
+    const mutating = ['newAsk', 'newChat', 'startHandoff', 'dismissHandoff', 'activateAsk', 'review', 'markDone', 'addSkill', 'command', 'telemetry', 'repointTelemetry', 'installExamplePack', 'selectWorkspace'].includes(data.action);
     if (mutating && this.state.busy) throw new Error('Another Mission Control action is still running.');
     if (mutating) { this.state.busy = true; this.paint(); }
     try {
@@ -409,6 +421,9 @@ class MissionControl {
         case 'analyze': await analysis.analyze(this, data.model, data.question); break;
         case 'summarize': await analysis.summarize(this, data.model); break;
         case 'pruneTelemetry': await extras.pruneTelemetry(this); break;
+        case 'repointTelemetry': await extras.repointTelemetry(this); break;
+        case 'openPackChecklist': await extras.openPackChecklist(this); break;
+        case 'installExamplePack': await extras.installExamplePack(this); break;
         case 'refreshMap': await extras.refreshMap(this); break;
         case 'openMap': extras.openMap(this); break;
         case 'infographic': await extras.infographic(this); break;
@@ -465,17 +480,17 @@ class MissionControl {
  */
 function register(context, findPython) {
   const ui = new MissionControl(context, findPython);
-  const files = vscode.window.createTreeView('frontierHve.harnessFiles', { treeDataProvider: ui.tree, showCollapseAll: true });
+  const files = vscode.window.createTreeView(cmd('harnessFiles'), { treeDataProvider: ui.tree, showCollapseAll: true });
   ui.tree.view = files;
   askFlow.offerHandoff(ui).catch(error => ui.show(error));
   return [ui, files,
-    vscode.window.registerWebviewViewProvider('frontierHve.missionControl', ui),
-    vscode.commands.registerCommand('frontierHve.openMissionControl', () => ui.execute({ action: 'openDashboard', page: 'live' })),
-    vscode.commands.registerCommand('frontierHve.refreshMissionControl', () => ui.execute({ action: 'refresh' })),
-    vscode.commands.registerCommand('frontierHve.selectWorkspace', () => ui.execute({ action: 'selectWorkspace' })),
-    vscode.commands.registerCommand('frontierHve.newAsk', () => ui.execute({ action: 'newAsk' })),
-    vscode.commands.registerCommand('frontierHve.editPlan', () => ui.execute({ action: 'editPlan' })),
-    vscode.commands.registerCommand('frontierHve.missionControlModel', () => ui.model('editor')),
+    vscode.window.registerWebviewViewProvider(cmd('missionControl'), ui),
+    vscode.commands.registerCommand(cmd('openMissionControl'), () => ui.execute({ action: 'openDashboard', page: 'live' })),
+    vscode.commands.registerCommand(cmd('refreshMissionControl'), () => ui.execute({ action: 'refresh' })),
+    vscode.commands.registerCommand(cmd('selectWorkspace'), () => ui.execute({ action: 'selectWorkspace' })),
+    vscode.commands.registerCommand(cmd('newAsk'), () => ui.execute({ action: 'newAsk' })),
+    vscode.commands.registerCommand(cmd('editPlan'), () => ui.execute({ action: 'editPlan' })),
+    vscode.commands.registerCommand(cmd('missionControlModel'), () => ui.model('editor')),
     vscode.workspace.onDidChangeWorkspaceFolders(() => { ui.restoreWorkspace(); ui.scheduleRefresh(); }),
     vscode.workspace.onDidChangeConfiguration(event => {
       if (event.affectsConfiguration('github.copilot.chat.otel')) ui.scheduleRefresh();

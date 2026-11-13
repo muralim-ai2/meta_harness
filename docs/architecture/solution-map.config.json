@@ -65,6 +65,7 @@
     {"match": "^tools/prototype/", "view": "extension", "id": "extension:prototype-check", "name": "Prototype checks", "purpose": "Lint clickable prototypes and capture screenshots."},
     {"match": "^tests/", "view": "tests", "id": "tests:suite", "name": "Test suite", "purpose": "Unit and integration tests, one file per area."},
     {"match": "^docs/wiki/", "view": "docs", "id": "docs:wiki", "name": "Wiki", "purpose": "How-to pages for users and agents."},
+    {"match": "^docs/(guides|expertise-pack-guides)/", "view": "docs", "id": "docs:guides", "name": "Visual guides and flow maps", "purpose": "Interactive HTML release guides, expertise pack walkthroughs and clickable flow maps."},
     {"match": "^(README\\.md|AGENTS\\.md|\\.github/copilot-instructions\\.md)$", "view": "docs", "id": "docs:instructions", "name": "README and instructions", "purpose": "The README and the instructions every agent loads."},
     {"match": "^docs/artifacts/", "view": "docs", "id": "docs:learnings", "name": "Learnings", "purpose": "Learnings captured after a delivery."},
     {"match": "^\\.vscode/", "view": "extension", "id": "extension:workspace-settings", "name": "Workspace settings", "purpose": "VS Code settings and MCP servers for working on this repository."}

@@ -1,6 +1,6 @@
 # Configured Deliverable Templates
 
-Frontier HVE includes versioned Markdown templates for Product Requirements
+ARIA includes versioned Markdown templates for Product Requirements
 Documents (`prd`), Technical Design Specifications (`technicalDesign`) and Test
 Strategies (`testStrategy`). They are bundled in the extension runtime, not read
 from any other installed extension. Only the requested document types are loaded.

@@ -1,0 +1,1146 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ARIA Expertise Packs User Guide · Checklist, Activation &amp; Regulated SDLC Walkthrough</title>
+  <script>
+    (() => {
+      const saved = localStorage.getItem('aria-guide-theme');
+      const hc = matchMedia('(prefers-contrast: more)').matches;
+      const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.dataset.theme = saved || (hc ? 'hc' : 'light');
+      if (saved === 'system') document.documentElement.dataset.theme = hc ? 'hc' : (dark ? 'dark' : 'light');
+    })();
+  </script>
+  <style>
+    :root {
+      --canvas: #ffffff;
+      --grouped: #f5f6f8;
+      --surface: #ffffff;
+      --text: #111827;
+      --muted: #4b5563;
+      --subtle: #6b7280;
+      --border: #e4e6eb;
+      --primary: #0f62fe;
+      --primary-tint: rgba(15, 98, 254, 0.09);
+      --good: #15803d;
+      --good-tint: rgba(21, 128, 61, 0.10);
+      --warn: #b45309;
+      --warn-tint: rgba(180, 83, 9, 0.10);
+      --code-bg: #f3f4f6;
+      --shadow: 0 2px 8px rgba(17, 24, 39, 0.05);
+      --shadow-lg: 0 16px 40px rgba(17, 24, 39, 0.12);
+      --font-sans: "Segoe UI", Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      --font-mono: Consolas, "SFMono-Regular", Menlo, ui-monospace, monospace;
+    }
+    [data-theme="dark"] {
+      --canvas: #0f1115;
+      --grouped: #161920;
+      --surface: #181c24;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --subtle: #6b7280;
+      --border: #2a303c;
+      --primary: #60a5fa;
+      --primary-tint: rgba(96, 165, 250, 0.14);
+      --good: #4ade80;
+      --good-tint: rgba(74, 222, 128, 0.13);
+      --warn: #fbbf24;
+      --warn-tint: rgba(251, 191, 36, 0.13);
+      --code-bg: #12151c;
+      --shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+      --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.6);
+    }
+    [data-theme="hc"] {
+      --canvas: #000000;
+      --grouped: #000000;
+      --surface: #000000;
+      --text: #ffffff;
+      --muted: #ffffff;
+      --subtle: #e5e7eb;
+      --border: #6fc3df;
+      --primary: #3794ff;
+      --primary-tint: rgba(55, 148, 255, 0.25);
+      --good: #89d185;
+      --good-tint: transparent;
+      --warn: #f38518;
+      --warn-tint: transparent;
+      --code-bg: #0a0a0a;
+      --shadow: none;
+      --shadow-lg: none;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition: none !important; animation: none !important; }
+    }
+    body {
+      margin: 0;
+      background: var(--canvas);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 16px;
+      line-height: 1.5;
+      font-variant-numeric: tabular-nums;
+      transition: background-color 160ms ease, color 160ms ease;
+    }
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    a:focus-visible, button:focus-visible, input:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+      border-radius: 6px;
+    }
+    code, pre { font-family: var(--font-mono); font-size: 0.89em; }
+    code {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    pre {
+      margin: 0;
+      padding: 16px;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow-x: auto;
+      line-height: 1.48;
+      font-size: 13px;
+    }
+    pre code { background: none; border: 0; padding: 0; }
+
+    /* Top Bar */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: var(--canvas);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    [data-theme="hc"] .topbar { border-bottom-width: 2px; }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 16px;
+    }
+    .brand-mark {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: var(--primary-tint);
+      border: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+      color: var(--primary);
+    }
+    .top-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .guide-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--grouped);
+      color: var(--text);
+      font-size: 13.5px;
+      font-weight: 600;
+    }
+    .guide-link.primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #ffffff;
+    }
+    .guide-link:hover { border-color: var(--primary); text-decoration: none; }
+    .seg {
+      display: inline-flex;
+      padding: 4px;
+      border-radius: 8px;
+      background: var(--grouped);
+      border: 1px solid var(--border);
+      gap: 4px;
+    }
+    .seg button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      min-height: 32px;
+    }
+    .seg button[aria-pressed="true"] {
+      background: var(--surface);
+      color: var(--primary);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    /* Master Grid */
+    .shell {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 32px;
+      display: grid;
+      grid-template-columns: 264px minmax(0, 1fr);
+      gap: 48px;
+      align-items: start;
+    }
+    .rail {
+      position: sticky;
+      top: 84px;
+      display: grid;
+      gap: 24px;
+    }
+    .rail-group { display: grid; gap: 4px; }
+    .rail-label {
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      padding: 0 12px 8px;
+    }
+    .rail a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 500;
+      border-left: 2px solid transparent;
+    }
+    .rail a:hover { background: var(--grouped); color: var(--text); text-decoration: none; }
+    .rail a.active {
+      background: var(--primary-tint);
+      color: var(--primary);
+      font-weight: 600;
+      border-left-color: var(--primary);
+    }
+    .ic { width: 20px; height: 20px; flex: 0 0 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+    main { display: grid; gap: 48px; min-width: 0; }
+    .hero {
+      padding: 32px;
+      border-radius: 16px;
+      background: var(--grouped);
+      border: 1px solid var(--border);
+      display: grid;
+      gap: 20px;
+    }
+    [data-theme="hc"] .hero, [data-theme="hc"] .card, [data-theme="hc"] .shot-card { border-width: 1.5px; }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--primary);
+    }
+    h1 { margin: 0; font-size: 32px; line-height: 1.2; letter-spacing: -0.02em; }
+    .lead { margin: 0; font-size: 17px; color: var(--muted); max-width: 74ch; line-height: 1.55; }
+
+    .section { display: grid; gap: 24px; scroll-margin-top: 96px; }
+    .sec-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+    .sec-head h2 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.25;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .sec-head p { margin: 6px 0 0; color: var(--muted); max-width: 72ch; }
+
+    .two-col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .three-col { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+      box-shadow: var(--shadow);
+    }
+    .card h3 { margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14.5px; }
+    .card ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; color: var(--muted); font-size: 14.5px; }
+
+    /* Interactive Checklist */
+    .cl-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding: 16px 20px;
+      border-radius: 12px;
+      background: var(--grouped);
+      border: 1px solid var(--border);
+    }
+    .cl-progress-wrap { display: flex; align-items: center; gap: 16px; flex: 1 1 280px; }
+    .cl-bar {
+      flex: 1;
+      max-width: 320px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--border);
+      overflow: hidden;
+    }
+    .cl-bar > span { display: block; height: 100%; background: var(--good); width: 0%; transition: width 180ms ease; }
+    .cl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    .cl-list label {
+      display: grid;
+      grid-template-columns: 20px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      padding: 8px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--text);
+      border: 1px solid transparent;
+    }
+    .cl-list label:hover { background: var(--grouped); }
+    .cl-list input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      margin: 2px 0 0;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+    .cl-list label.done span { color: var(--muted); text-decoration: line-through; }
+    .btn-subtle {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      min-height: 36px;
+    }
+    .btn-subtle:hover { border-color: var(--primary); }
+
+    /* Flow Map Showcase Card */
+    .shot-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .shot-btn {
+      display: block;
+      width: 100%;
+      padding: 0;
+      border: 0;
+      background: var(--grouped);
+      cursor: zoom-in;
+      position: relative;
+    }
+    .shot-btn img { display: block; width: 100%; height: auto; }
+    .shot-foot {
+      padding: 16px 24px;
+      background: var(--grouped);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    /* Tabbed Code Viewer */
+    .code-tabs {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+    .tab-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--grouped);
+      border-bottom: 1px solid var(--border);
+    }
+    .tab-list { display: flex; flex-wrap: wrap; gap: 4px; }
+    .tab-btn {
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      min-height: 34px;
+    }
+    .tab-btn[aria-selected="true"] {
+      background: var(--surface);
+      color: var(--primary);
+      border-color: var(--border);
+      box-shadow: var(--shadow);
+    }
+    .tab-panel { padding: 0; }
+    .tab-panel[hidden] { display: none; }
+    .tab-panel pre { border: 0; border-radius: 0; }
+
+    /* Stepper for Auto vs Collab Execution */
+    .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+    .step {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr);
+      gap: 16px;
+      padding: 20px 24px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .step-num {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--primary-tint);
+      color: var(--primary);
+      border: 1px solid var(--border);
+      font-weight: 750;
+      display: grid;
+      place-items: center;
+    }
+    .step-body { display: grid; gap: 10px; min-width: 0; }
+    .step-body h3 { margin: 0; font-size: 16px; }
+    .step-body p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+      border: 1px solid var(--border); background: var(--primary-tint); color: var(--primary);
+    }
+    .badge.warn { background: var(--warn-tint); color: var(--warn); }
+    .badge.good { background: var(--good-tint); color: var(--good); }
+
+    dialog#lightbox {
+      max-width: 94vw; max-height: 92vh; padding: 0;
+      border: 1px solid var(--border); border-radius: 12px;
+      background: #111318; color: #ffffff; box-shadow: var(--shadow-lg);
+    }
+    dialog#lightbox::backdrop { background: rgba(0, 0, 0, 0.72); }
+    .lb-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #2b303c; font-size: 14px; font-weight: 600; }
+    .lb-close { border: 1px solid #3c4252; background: #1f2430; color: #ffffff; padding: 6px 12px; border-radius: 6px; cursor: pointer; font: inherit; font-size: 13px; }
+    .lb-body { overflow: auto; max-height: calc(92vh - 56px); }
+    .lb-body img { display: block; max-width: 100%; height: auto; }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding-top: 24px;
+      color: var(--muted);
+      font-size: 13.5px;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    @media (max-width: 1080px) {
+      .shell { grid-template-columns: 1fr; padding: 20px; gap: 24px; }
+      .rail { position: static; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+      .two-col, .three-col { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      </span>
+      <span>ARIA Expertise Packs · User &amp; Author Guide</span>
+    </div>
+    <div class="top-actions">
+      <a class="guide-link" href="./aria-release-0.27.5-to-0.28.5.html">
+        <span>← Release Showcase (0.27.5 → 0.28.5)</span>
+      </a>
+      <a class="guide-link primary" href="./regulated-sdlc-flow/index.html" target="_blank" rel="noopener">
+        <svg class="ic" viewBox="0 0 24 24"><path d="m9 4-6 2.5v13.5l6-2.5 6 2.5 6-2.5V3.5L15 6z"/><path d="M9 4v13.5M15 6v13.5"/></svg>
+        <span>Launch Clickable 1920×1080 Flow Map</span>
+      </a>
+      <div class="seg" role="group" aria-label="Theme mode">
+        <button type="button" data-theme-btn="light" aria-pressed="true">Light</button>
+        <button type="button" data-theme-btn="dark" aria-pressed="false">Dark</button>
+        <button type="button" data-theme-btn="hc" aria-pressed="false">High Contrast</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="shell">
+    <nav class="rail" aria-label="Guide navigation">
+      <div class="rail-group">
+        <div class="rail-label">Guide Sections</div>
+        <a href="#flowmap" class="active">
+          <svg class="ic" viewBox="0 0 24 24"><path d="m9 4-6 2.5v13.5l6-2.5 6 2.5 6-2.5V3.5L15 6z"/></svg>
+          <span>1. Visual Flow Map</span>
+        </a>
+        <a href="#checklist">
+          <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12.3 2.7 2.7L16 9.7"/></svg>
+          <span>2. Prep Checklist</span>
+        </a>
+        <a href="#activate">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M13.5 2.5 5.5 13.5h6l-1 8 8-11h-6z"/></svg>
+          <span>3. Validate &amp; Activate</span>
+        </a>
+        <a href="#standard">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M12 2.8 19.5 6v5.5c0 4.6-3.2 8.3-7.5 9.7-4.3-1.4-7.5-5.1-7.5-9.7V6z"/></svg>
+          <span>4. Regulated SDLC &amp; STD-SEC-2026</span>
+        </a>
+        <a href="#templates">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/></svg>
+          <span>5. Pack Files &amp; Templates</span>
+        </a>
+        <a href="#execution">
+          <svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m7.5 9 3 3-3 3M12.5 15h4"/></svg>
+          <span>6. Auto &amp; Collab Execution</span>
+        </a>
+      </div>
+    </nav>
+
+    <main>
+      <section class="hero">
+        <div class="eyebrow">
+          <svg class="ic" viewBox="0 0 24 24"><path d="M12 2.8 19.5 6v5.5c0 4.6-3.2 8.3-7.5 9.7-4.3-1.4-7.5-5.1-7.5-9.7V6z"/></svg>
+          <span>Enterprise Tribal Knowledge · Zero Script Risk · Stage-Scoped Context</span>
+        </div>
+        <h1>Preparing, Activating &amp; Running an ARIA Expertise Pack</h1>
+        <p class="lead">
+          An <strong>Expertise Pack</strong> packages a practice's custom SDLC process, engineering standards, deliverable templates, specialist personas, skills, and evaluation rubrics into a <strong>Markdown + JSON-only folder</strong>. Agents read the compact manifest index (~1.4k tokens) to route work and open standards like <code>STD-SEC-2026</code> strictly on the stages that need them.
+        </p>
+      </section>
+
+      <!-- 1. FLOW MAP -->
+      <section class="section" id="flowmap">
+        <div class="sec-head">
+          <div>
+            <h2>
+              <svg class="ic" viewBox="0 0 24 24"><path d="m9 4-6 2.5v13.5l6-2.5 6 2.5 6-2.5V3.5L15 6z"/><path d="M9 4v13.5M15 6v13.5"/></svg>
+              <span>1. End-to-End Flow Map: From Prompt to Regulated Production Release</span>
+            </h2>
+            <p>How <code>ARIA Auto</code> and <code>ARIA Collab</code> call <code>lifecycle.py route</code>, match <code>aria-plugin.json</code>, load <code>STD-SEC-2026</code> on demand, and enforce <strong>InfoSec Review</strong> and <strong>UAT Environment Sign-off</strong> before shipping.</p>
+          </div>
+          <a class="guide-link primary" href="./regulated-sdlc-flow/index.html" target="_blank" rel="noopener">Open Interactive Clickable Canvas →</a>
+        </div>
+
+        <div class="shot-card">
+          <button type="button" class="shot-btn" id="flow-zoom-btn" data-zoom="./assets/regulated-sdlc-flow-light.png" data-title="Regulated SDLC Expertise Pack — End-to-End Routing & Gate Flow">
+            <img id="flow-img" src="./assets/regulated-sdlc-flow-light.png" alt="End-to-end flow map showing Request -> lifecycle.py route -> aria-plugin.json match -> ARIA Auto/Collab lifecycle.py contract -> Design & Feature Loop + on-demand STD-SEC-2026 brief -> InfoSec Review & UAT Env Review evidence gates -> Human Sign-off & provenance.md.">
+          </button>
+          <div class="shot-foot">
+            <span>The diagram above automatically adapts to your chosen theme (Light / Dark / High Contrast). Click to zoom, or open the interactive 1920×1080 canvas to click individual nodes.</span>
+            <a href="../wiki/Pack-Checklist.md">Open raw Pack-Checklist.md</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. INTERACTIVE CHECKLIST -->
+      <section class="section" id="checklist">
+        <div class="sec-head">
+          <div>
+            <h2>
+              <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12.3 2.7 2.7L16 9.7"/></svg>
+              <span>2. Preparing Your Pack with the Pre-Flight Checklist</span>
+            </h2>
+            <p>Tick each item as you assemble your pack folder (also accessible inside VS Code via <strong>Mission Control → Skills &amp; packs → Pack checklist</strong>). Progress saves automatically in your browser.</p>
+          </div>
+        </div>
+
+        <div class="cl-banner">
+          <div class="cl-progress-wrap">
+            <strong id="cl-count">0 / 12 items verified</strong>
+            <div class="cl-bar" role="progressbar" aria-label="Pack readiness" aria-valuemin="0" aria-valuemax="12" aria-valuenow="0">
+              <span id="cl-fill"></span>
+            </div>
+          </div>
+          <button type="button" class="btn-subtle" id="cl-reset">Reset checklist</button>
+        </div>
+
+        <div class="two-col">
+          <div class="card">
+            <h3>
+              <svg class="ic" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>
+              <span>A. Safety, Root Files &amp; Manifest</span>
+            </h3>
+            <ul class="cl-list">
+              <li><label><input type="checkbox" data-cl="c1"><span><strong>Data-only files:</strong> Only <code>.md</code>, <code>.json</code>, <code>.txt</code>, <code>LICENSE</code>, or <code>NOTICE</code> (zero <code>.py</code>, <code>.js</code>, <code>.sh</code>, hooks, or binaries; total &lt; 20 MB).</span></label></li>
+              <li><label><input type="checkbox" data-cl="c2"><span><strong>4 required root files:</strong> <code>aria-plugin.json</code> (or <code>hve-plugin.json</code>), <code>README.md</code>, <code>LICENSE</code>, and <code>registry.json</code>.</span></label></li>
+              <li><label><input type="checkbox" data-cl="c3"><span><strong>Identity &amp; SemVer:</strong> Kebab-case <code>name</code> &amp; <code>publisher</code>, exact <code>MAJOR.MINOR.PATCH</code> version, and <code>harness.apiVersion: 1</code>.</span></label></li>
+              <li><label><input type="checkbox" data-cl="c4"><span><strong>Routing rules:</strong> <code>domains</code>, <code>keywords</code>, <code>task_pattern</code> regex, and <code>workspace_signals</code> globs/markers defined.</span></label></li>
+              <li><label><input type="checkbox" data-cl="c5"><span><strong>Explicit tool ceiling:</strong> <code>tools: [...]</code> lists every VS Code tool ID that pack personas are permitted to request.</span></label></li>
+              <li><label><input type="checkbox" data-cl="c6"><span><strong>Zero undeclared files:</strong> Every file in <code>agents/</code>, <code>templates/</code>, <code>lifecycles/</code>, <code>knowledge/</code>, and <code>evaluation/</code> is declared in the manifest.</span></label></li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <h3>
+              <svg class="ic" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/></svg>
+              <span>B. Prefix Rules, Templates &amp; Validation</span>
+            </h3>
+            <ul class="cl-list">
+              <li><label><input type="checkbox" data-cl="c7"><span><strong><code>&lt;pack&gt;:</code> prefix rule:</strong> Lifecycle overlays prefix pack assets (<code>regulated-sdlc:infosec-assessor</code>) and leave core ARIA assets unprefixed (<code>ARIA engineer</code>).</span></label></li>
+              <li><label><input type="checkbox" data-cl="c8"><span><strong>Hookless persona frontmatter:</strong> <code>agents/*.agent.md</code> use flat YAML keys only — ARIA injects core guard hooks automatically on render.</span></label></li>
+              <li><label><input type="checkbox" data-cl="c9"><span><strong>Validated template markers:</strong> Custom deliverables include <code>&lt;!-- hve-template: kind@1 --&gt;</code>, <code>&lt;!-- hve-section: ... --&gt;</code>, and an <code>output</code> path with one <code>{slug}</code>.</span></label></li>
+              <li><label><input type="checkbox" data-cl="c10"><span><strong>Stage-scoped knowledge:</strong> Standards in <code>knowledge/*.md</code> set <code>use_when</code> and <code>stages</code> so agents load them on demand.</span></label></li>
+              <li><label><input type="checkbox" data-cl="c11"><span><strong>CLI validation passes:</strong> <code>python plugin.py validate &lt;folder&gt;</code> exits 0 with token counts.</span></label></li>
+              <li><label><input type="checkbox" data-cl="c12"><span><strong>Routing suite passes:</strong> <code>python plugin.py test &lt;folder&gt;</code> verifies all <code>should_match</code> and <code>should_not_match</code> prompts in <code>tests/routing.json</code>.</span></label></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. VALIDATE & ACTIVATE -->
+      <section class="section" id="activate">
+        <div class="sec-head">
+          <div>
+            <h2>
+              <svg class="ic" viewBox="0 0 24 24"><path d="M13.5 2.5 5.5 13.5h6l-1 8 8-11h-6z"/></svg>
+              <span>3. How to Validate, Install &amp; Activate the Pack</span>
+            </h2>
+            <p>Scaffold or validate from the terminal, then activate globally for yourself or commit directly into a team repository.</p>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="card">
+            <h3>1. Validate, Test &amp; Package (CLI)</h3>
+            <p>Run the bundled pack tool before distributing or installing:</p>
+            <pre><code># 1. Validate manifest schema, markers, tool ceiling &amp; token cost
+python extension/runtime/tools/plugins/plugin.py validate ./regulated-sdlc
+
+# 2. Run positive + negative prompt routing assertions
+python extension/runtime/tools/plugins/plugin.py test ./regulated-sdlc
+
+# 3. Optional: build deterministic archive with SHA256SUMS
+python extension/runtime/tools/plugins/plugin.py pack ./regulated-sdlc --out dist/</code></pre>
+          </div>
+
+          <div class="card">
+            <h3>2. Four Ways to Activate in VS Code</h3>
+            <ul>
+              <li><strong>Mission Control UI (User-wide):</strong> Open <strong>Skills &amp; packs → Install a pack…</strong>, pick your folder, <code>.ariaplugin</code> / <code>.hveplugin</code> file, Git URL, or organization index, confirm the SHA-256 &amp; tool list, and click <strong>Reload Window</strong>.</li>
+              <li><strong>Workspace-Committed (Zero install step):</strong> Commit the folder at <code>plugins/regulated-sdlc/</code> in your repo. ARIA discovers, renders, and lists it as <code>enabled</code> automatically.</li>
+              <li><strong>Team Requirement Prompt:</strong> Add <code>aria.plugins.json</code> (or <code>frontier-hve.plugins.json</code>) to the repo root so every teammate gets a 1-click <strong>Install</strong> prompt on open.</li>
+              <li><strong>Built-In Example:</strong> Click <strong>Install example pack</strong> on <code>Oracle Offering</code> in <strong>Skills &amp; packs</strong> to inspect a live working pack immediately.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="shot-card">
+          <button type="button" class="shot-btn" data-zoom="./assets/shot-pack-trust-gate-0285.png" data-title="Pack Installation Trust Confirmation & Regulated Gate Sign-offs">
+            <img src="./assets/shot-pack-trust-gate-0285.png" alt="Mission Control showing the Install expertise pack regulated-sdlc trust confirmation modal with SHA-256 hash and allowed tools, over the Plan sign-off view.">
+          </button>
+          <div class="shot-foot">
+            <span>Before installing any pack not pre-verified by your organization index, ARIA shows its exact publisher, <code>sha256</code> content digest, and maximum tool ceiling.</span>
+            <span class="badge good">✓ Rendered into chat.pluginLocations</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. SCENARIO: NEW REGULATED SDLC + STD-SEC-2026 -->
+      <section class="section" id="standard">
+        <div class="sec-head">
+          <div>
+            <h2>
+              <svg class="ic" viewBox="0 0 24 24"><path d="M12 2.8 19.5 6v5.5c0 4.6-3.2 8.3-7.5 9.7-4.3-1.4-7.5-5.1-7.5-9.7V6z"/></svg>
+              <span>4. Worked Enterprise Scenario: Regulated SDLC + Standard <code>STD-SEC-2026</code></span>
+            </h2>
+            <p>Suppose your enterprise introduces a mandatory production governance process requiring an <strong>InfoSec Threat &amp; Controls Review</strong> and a <strong>UAT Environment Readiness Review</strong> governed by a new security standard.</p>
+          </div>
+          <span class="badge warn">Pack: regulated-sdlc 1.0.0</span>
+        </div>
+
+        <div class="three-col">
+          <div class="card">
+            <h3>New Enterprise Standard: <code>STD-SEC-2026</code></h3>
+            <p><strong>Zero-Trust Production Readiness &amp; Data Classification Standard</strong> (stored in <code>knowledge/std-sec-2026-standard.md</code>):</p>
+            <ul>
+              <li><strong>§1 Data Tiering:</strong> Classify every payload as <code>Tier-1 Restricted</code>, <code>Tier-2 Confidential</code>, or <code>Tier-3 Internal</code>.</li>
+              <li><strong>§2 Zero Static Secrets:</strong> Tier-1/2 services must enforce mutual TLS (mTLS) + workload identity; static API keys are forbidden.</li>
+              <li><strong>§3 Audit Correlation:</strong> Emit immutable <code>X-Audit-Correlation-Id</code> logs on every state-mutating call.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <h3>Added Gate 1: <code>infosec-review</code></h3>
+            <p>Inserted immediately after <code>build</code> and delegated to pack persona <code>regulated-sdlc:infosec-assessor</code>:</p>
+            <ul>
+              <li>Opens <code>std-sec-2026-standard.md</code> on demand.</li>
+              <li>Authors <code>docs/compliance/INFOSEC-{slug}.md</code> from template <code>regulated-sdlc:infosecClearance</code>.</li>
+              <li><strong>Hard Gate:</strong> <code>stage_evidence.py</code> blocks marking the stage <code>done</code> until every <code>STD-SEC-2026</code> section validates with zero <code>{{FILL:...}}</code> placeholders; sends back to <code>build</code> on violations.</li>
+            </ul>
+          </div>
+
+          <div class="card">
+            <h3>Added Gate 2: <code>uat-signoff</code></h3>
+            <p>Inserted before <code>release</code> and delegated to pack persona <code>regulated-sdlc:uat-release-reviewer</code>:</p>
+            <ul>
+              <li>Verifies UAT config parity, staging smoke suite logs, and a timed rollback rehearsal.</li>
+              <li>Authors <code>docs/compliance/UAT-SIGNOFF-{slug}.md</code> from template <code>regulated-sdlc:uatSignoff</code>.</li>
+              <li><strong>Hard Gate + Rework:</strong> Requires both <code>feature-checks</code> passing and <code>template-valid</code>; failures trigger <code>lifecycle.py rework</code> back to <code>build</code> (capped at 2).</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. PACK FILES & TEMPLATES -->
+      <section class="section" id="templates">
+        <div class="sec-head">
+          <div>
+            <h2>
+              <svg class="ic" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/></svg>
+              <span>5. How It Is Templatized Inside <code>plugins/regulated-sdlc/</code></span>
+            </h2>
+            <p>Select any tab below to inspect the exact manifest, custom 6-stage SDLC overlay, templated clearance deliverables, standard document, and routing tests.</p>
+          </div>
+        </div>
+
+        <div class="code-tabs">
+          <div class="tab-bar">
+            <div class="tab-list" role="tablist" aria-label="Pack source files">
+              <button type="button" class="tab-btn" role="tab" aria-selected="true" data-tab="t-manifest">aria-plugin.json</button>
+              <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="t-lifecycle">lifecycles/regulated-prod-sdlc.json</button>
+              <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="t-infosec">templates/infosec-clearance-v1.md</button>
+              <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="t-uat">templates/uat-signoff-v1.md</button>
+              <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="t-std">knowledge/std-sec-2026-standard.md</button>
+              <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="t-routing">tests/routing.json</button>
+            </div>
+            <button type="button" class="btn-subtle" id="copy-tab">Copy file</button>
+          </div>
+
+          <div class="tab-panel" id="t-manifest" role="tabpanel">
+<pre><code>{
+  "name": "regulated-sdlc",
+  "displayName": "Regulated Production SDLC",
+  "version": "1.0.0",
+  "publisher": "enterprise-risk",
+  "harness": { "apiVersion": 1, "aria": "&gt;=0.28.0 &lt;1.0.0" },
+  "description": "Enforces STD-SEC-2026 zero-trust controls, InfoSec clearance and UAT readiness gates before production release.",
+  "routing": {
+    "domains": ["regulated-sdlc", "compliance", "infosec", "uat", "production"],
+    "keywords": ["regulated", "infosec", "uat", "std-sec-2026", "production release", "clearance", "go-live"],
+    "task_pattern": "\\b(regulated\\s+sdlc|infosec\\s+review|uat\\s+(?:sign-?off|review)|std-sec-2026|production\\s+release)\\b",
+    "workspace_signals": ["compliance.yaml", "**/CODEOWNERS", "infra/**/*.bicep"]
+  },
+  "agents": [
+    { "name": "infosec-assessor", "file": "agents/infosec-assessor.agent.md", "capabilities": ["security-review", "threat-model", "std-sec-2026"] },
+    { "name": "uat-release-reviewer", "file": "agents/uat-release-reviewer.agent.md", "capabilities": ["uat-validation", "rollback-drill", "release-gate"] }
+  ],
+  "skills": "registry.json",
+  "templates": {
+    "infosecClearance": { "file": "templates/infosec-clearance-v1.md", "version": 1, "output": "docs/compliance/INFOSEC-{slug}.md" },
+    "uatSignoff": { "file": "templates/uat-signoff-v1.md", "version": 1, "output": "docs/compliance/UAT-SIGNOFF-{slug}.md" }
+  },
+  "lifecycles": ["lifecycles/regulated-prod-sdlc.json"],
+  "knowledge": [
+    {
+      "id": "std-sec-2026-standard",
+      "file": "knowledge/std-sec-2026-standard.md",
+      "title": "STD-SEC-2026 Zero-Trust &amp; Data Classification Standard",
+      "kind": "reference",
+      "use_when": "Designing endpoints, implementing auth/logging, or conducting the InfoSec clearance review.",
+      "stages": ["design", "build", "infosec-review"]
+    },
+    {
+      "id": "uat-environment-gate",
+      "file": "knowledge/uat-environment-gate.md",
+      "title": "UAT Environment Parity &amp; Rollback Runbook",
+      "kind": "runbook",
+      "use_when": "Verifying staging parity, smoke checks and rollback rehearsal in uat-signoff.",
+      "stages": ["uat-signoff"]
+    }
+  ],
+  "evaluation": "evaluation/regulated-sdlc.eval.json",
+  "tools": [
+    "read/readFile", "search/fileSearch", "search/textSearch", "search/listDirectory",
+    "edit/editFiles", "edit/createFile", "execute/runInTerminal", "execute/getTerminalOutput"
+  ]
+}</code></pre>
+          </div>
+
+          <div class="tab-panel" id="t-lifecycle" role="tabpanel" hidden>
+<pre><code>{
+  "name": "regulated-prod-sdlc",
+  "title": "Regulated Production SDLC (InfoSec + UAT Gates)",
+  "summary": "Requirements, zero-trust design, verified feature build, mandatory STD-SEC-2026 InfoSec review, UAT environment rehearsal, and release.",
+  "fits": ["regulated", "production", "infosec", "uat", "std-sec-2026", "api", "service", "go-live", "compliance"],
+  "stages": [
+    {
+      "name": "requirements",
+      "goal": "Define functional scope and assign STD-SEC-2026 data classification tier.",
+      "agent": "ARIA product-manager",
+      "skills": [],
+      "plugin_skills": ["deliverable-templates"],
+      "templates": ["prd"],
+      "exit": "PRD accepted with data classification tier recorded.",
+      "skip_when": "An accepted PRD already exists."
+    },
+    {
+      "name": "design",
+      "goal": "Specify service contracts, mTLS + workload identity, and audit correlation logging.",
+      "agent": "ARIA solution-architect",
+      "skills": ["regulated-sdlc:std-sec-2026-controls"],
+      "plugin_skills": ["deliverable-templates"],
+      "templates": ["technicalDesign"],
+      "exit": "Technical design passes STD-SEC-2026 architectural controls.",
+      "skip_when": "Small change with an up-to-date technical design."
+    },
+    {
+      "name": "build",
+      "goal": "Implement and verify every feature through locked checks in loop.py.",
+      "agent": "ARIA engineer",
+      "skills": ["regulated-sdlc:std-sec-2026-controls"],
+      "plugin_skills": ["feature-checklist", "run-tests"],
+      "templates": [],
+      "exit": "Every feature check exits 0 with saved evidence.",
+      "skip_when": "Never.",
+      "evidence": [{ "type": "feature-checks" }]
+    },
+    {
+      "name": "infosec-review",
+      "goal": "Audit code and config against STD-SEC-2026 and author the InfoSec clearance record.",
+      "agent": "regulated-sdlc:infosec-assessor",
+      "skills": ["regulated-sdlc:std-sec-2026-controls"],
+      "plugin_skills": ["deliverable-templates"],
+      "templates": ["regulated-sdlc:infosecClearance"],
+      "exit": "InfoSec reviewer accepts docs/compliance/INFOSEC-{slug}.md.",
+      "skip_when": "Never: mandatory under STD-SEC-2026 §4.",
+      "evidence": [{ "type": "template-valid", "kind": "regulated-sdlc:infosecClearance" }],
+      "rework": { "to": "build", "max": 2 }
+    },
+    {
+      "name": "uat-signoff",
+      "goal": "Verify UAT environment parity, smoke test outputs, and timed rollback drill.",
+      "agent": "regulated-sdlc:uat-release-reviewer",
+      "skills": ["regulated-sdlc:uat-readiness"],
+      "plugin_skills": ["deliverable-templates", "run-tests"],
+      "templates": ["regulated-sdlc:uatSignoff"],
+      "exit": "Release manager accepts docs/compliance/UAT-SIGNOFF-{slug}.md.",
+      "skip_when": "Never: mandatory before production cutover.",
+      "evidence": [
+        { "type": "feature-checks" },
+        { "type": "template-valid", "kind": "regulated-sdlc:uatSignoff" }
+      ],
+      "rework": { "to": "build", "max": 2 }
+    },
+    {
+      "name": "release",
+      "goal": "Run composite evaluation, generate provenance.md, and prepare release PR.",
+      "agent": "ARIA devops-engineer",
+      "skills": [],
+      "plugin_skills": ["output-evaluation", "code-review"],
+      "templates": [],
+      "exit": "All sign-offs accepted and provenance report written.",
+      "skip_when": "Never."
+    }
+  ]
+}</code></pre>
+          </div>
+
+          <div class="tab-panel" id="t-infosec" role="tabpanel" hidden>
+<pre><code>&lt;!-- hve-template: infosecClearance@1 --&gt;
+# InfoSec Clearance Record — {{FILL: service name}}
+
+&lt;!-- hve-section: data-classification --&gt;
+## 1. Data Classification (STD-SEC-2026 §1)
+- Classification Tier: {{FILL: Tier-1 Restricted | Tier-2 Confidential | Tier-3 Internal}}
+- Regulated Fields Handled: {{FILL: exact payload fields and retention window}}
+
+&lt;!-- hve-section: mtls-and-identity --&gt;
+## 2. Transport &amp; Workload Identity (STD-SEC-2026 §2)
+- Inbound / Outbound mTLS Policy: {{FILL: certificate authority and enforcement config}}
+- Secret-Free Identity Proof: {{FILL: managed identity principal and grep proof of zero static keys}}
+
+&lt;!-- hve-section: audit-correlation --&gt;
+## 3. Immutable Audit Trail (STD-SEC-2026 §3)
+- Correlation Header &amp; Sink: {{FILL: X-Audit-Correlation-Id propagation and test log path}}
+
+&lt;!-- hve-section: std-sec-2026-attestation --&gt;
+## 4. Threat Mitigations &amp; Assessor Verdict
+- Findings &amp; Remediations: {{FILL: findings table or verified clean}}
+- Verdict: {{FILL: APPROVED FOR UAT | REWORK REQUIRED}}</code></pre>
+          </div>
+
+          <div class="tab-panel" id="t-uat" role="tabpanel" hidden>
+<pre><code>&lt;!-- hve-template: uatSignoff@1 --&gt;
+# UAT Environment &amp; Rollback Sign-Off — {{FILL: service name}}
+
+&lt;!-- hve-section: environment-parity --&gt;
+## 1. UAT Environment Parity
+- UAT Target &amp; Config Digest: {{FILL: staging namespace, TLS policy and schema version}}
+
+&lt;!-- hve-section: uat-test-evidence --&gt;
+## 2. Smoke &amp; Regression Evidence
+- Executed Checks &amp; Exit Codes: {{FILL: exact commands, exit codes and evidence log paths}}
+
+&lt;!-- hve-section: rollback-rehearsal --&gt;
+## 3. Rehearsed Rollback Drill
+- Rollback Steps &amp; Measured Recovery Time: {{FILL: rollback command, duration in seconds, post-rollback health check}}
+
+&lt;!-- hve-section: release-signoff --&gt;
+## 4. Production Go-Live Recommendation
+- Release Readiness Verdict: {{FILL: READY FOR PRODUCTION | HOLD}}</code></pre>
+          </div>
+
+          <div class="tab-panel" id="t-std" role="tabpanel" hidden>
+<pre><code># STD-SEC-2026: Zero-Trust Production Readiness &amp; Data Classification
+
+1. **Data Classification (§1):** Every API must declare `Tier-1 Restricted`, `Tier-2 Confidential`, or `Tier-3 Internal` in its design and InfoSec clearance record.
+2. **Zero Static Credentials (§2):** Tier-1 and Tier-2 workloads must authenticate via mTLS and short-lived workload identity tokens. Connection strings with embedded passwords or API keys fail InfoSec review automatically.
+3. **Audit Correlation (§3):** Every state-changing request must require or mint `X-Audit-Correlation-Id` and emit structured actor/action/outcome audit events verified by an automated test.
+4. **Gate Enforcement (§4–§5):** No Tier-1/Tier-2 service may enter production without validated `INFOSEC-{slug}.md` and `UAT-SIGNOFF-{slug}.md` deliverables signed off in the ask contract.</code></pre>
+          </div>
+
+          <div class="tab-panel" id="t-routing" role="tabpanel" hidden>
+<pre><code>{
+  "should_match": [
+    "Build the customer wire-transfer approval API and take it to production under regulated SDLC",
+    "Run InfoSec review and UAT sign-off for the payments webhook under STD-SEC-2026"
+  ],
+  "should_not_match": [
+    "Sketch a clickable HTML prototype for a team lunch poll",
+    "Fix a typo in the local developer README"
+  ]
+}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6. EXECUTION WITH ARIA AUTO VS ARIA COLLAB -->
+      <section class="section" id="execution">
+        <div class="sec-head">
+          <div>
+            <h2>
+              <svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m7.5 9 3 3-3 3M12.5 15h4"/></svg>
+              <span>6. How <code>ARIA Auto</code> &amp; <code>ARIA Collab</code> Route &amp; Execute via <code>lifecycle.py</code></span>
+            </h2>
+            <p>Toggle between <strong>ARIA Auto</strong> and <strong>ARIA Collab</strong> below to see the exact CLI commands and gate behavior when a user submits: <em>“Build the customer wire-transfer approval API and take it to production under regulated SDLC.”</em></p>
+          </div>
+          <div class="seg" role="group" aria-label="Choose ARIA agent mode">
+            <button type="button" data-agent-btn="auto" aria-pressed="true">ARIA Auto (Autonomous + Ticked Gates)</button>
+            <button type="button" data-agent-btn="collab" aria-pressed="false">ARIA Collab (Stage-Scoped / Hand-offs)</button>
+          </div>
+        </div>
+
+        <ol class="steps">
+          <li class="step">
+            <span class="step-num">1</span>
+            <div class="step-body">
+              <h3>Manifest Routing (<code>lifecycle.py route</code>) — Finds the Pack Without Reading Its Full Files</h3>
+              <p>Both agents save the prompt to <code>.aria/asks/request.md</code> and run <code>lifecycle.py route</code>. The router inspects <code>plugins/regulated-sdlc/aria-plugin.json</code> (and installed pack manifests), matches <code>task_pattern</code> + keyword <code>regulated</code> + workspace file <code>compliance.yaml</code>, and ranks <code>regulated-sdlc:regulated-prod-sdlc</code> #1 above built-in <code>sdlc</code>:</p>
+              <pre><code>python "{{RUNTIME}}/tools/loop/lifecycle.py" route .aria/asks/request.md
+# → packs.matched: [{"name": "regulated-sdlc", "signals": 1, "why": ["task pattern matched 'regulated SDLC'", "signal compliance.yaml"]}]
+# → lifecycles[0]: {"name": "regulated-sdlc:regulated-prod-sdlc", "pack": "regulated-sdlc"}</code></pre>
+            </div>
+          </li>
+
+          <li class="step">
+            <span class="step-num">2</span>
+            <div class="step-body" id="step-contract-auto">
+              <h3>Contracting with <code>ARIA Auto</code> (<code>gates=ticked</code>)</h3>
+              <p><strong>ARIA Auto</strong> offers <code>regulated-sdlc:regulated-prod-sdlc</code> + <code>@regulated-sdlc</code>, writes <code>plan.md</code>, and asks you to tick which milestones should pause for human sign-off (you tick <code>stage:infosec-review</code> and <code>stage:uat-signoff</code>). It then binds the ask contract:</p>
+              <pre><code>python "{{RUNTIME}}/tools/loop/lifecycle.py" contract regulated-sdlc:regulated-prod-sdlc wire-transfer-api "ARIA Auto" .aria/asks/request.md @regulated-sdlc gates=ticked</code></pre>
+              <p>This copies <code>std-sec-2026-controls</code> and <code>uat-readiness</code> into <code>.aria/skills/regulated-sdlc__*/</code> and records the pack's exact token share in <code>plan.md</code>.</p>
+            </div>
+            <div class="step-body" id="step-contract-collab" hidden>
+              <h3>Contracting with <code>ARIA Collab</code> (Full Overlay or Mid-Project Stage Entry)</h3>
+              <p><strong>ARIA Collab</strong> pauses at every persona hand-off — and if your team <em>already built</em> the API in an earlier ask and only needs the new regulated InfoSec + UAT stages before go-live, Collab scopes the contract to just those two stages and logs them in <code>.aria/project/ledger.json</code>:</p>
+              <pre><code># Run only InfoSec Review + UAT Sign-off on an already-built service:
+python "{{RUNTIME}}/tools/loop/lifecycle.py" contract regulated-sdlc:regulated-prod-sdlc wire-transfer-clearance "ARIA Collab" .aria/asks/request.md only=infosec-review,uat-signoff @regulated-sdlc</code></pre>
+            </div>
+          </li>
+
+          <li class="step">
+            <span class="step-num">3</span>
+            <div class="step-body">
+              <h3>Stage-Scoped Delegation Brief (<code>lifecycle.py brief</code>) — Injects <code>STD-SEC-2026</code> On Demand</h3>
+              <p>When entering <code>infosec-review</code>, the orchestrator requests a stage brief for pack persona <code>regulated-sdlc:infosec-assessor</code>. Because <code>std-sec-2026-standard</code> lists <code>"stages": ["design", "build", "infosec-review"]</code>, <code>ask_packs.py</code> injects its pointer now (and omits <code>uat-environment-gate.md</code> until <code>uat-signoff</code>):</p>
+              <pre><code>python "{{RUNTIME}}/tools/loop/lifecycle.py" brief "regulated-sdlc:infosec-assessor" stage=infosec-review
+# Brief output includes:
+# - Pack agent for this stage: regulated-sdlc:infosec-assessor (.../agents/infosec-assessor.agent.md)
+# - Pack knowledge (open only when use-when applies): STD-SEC-2026 Zero-Trust &amp; Data Classification Standard at .../knowledge/std-sec-2026-standard.md</code></pre>
+            </div>
+          </li>
+
+          <li class="step">
+            <span class="step-num">4</span>
+            <div class="step-body">
+              <h3>Templated Deliverable Initialization &amp; Hard Evidence Gate (<code>manage.py</code> + <code>stage_evidence.py</code>)</h3>
+              <p>The pack persona initializes the custom template, audits the code against <code>STD-SEC-2026</code>, fills every required section, and validates it. Attempting to close the stage early is rejected automatically:</p>
+              <pre><code>python "{{RUNTIME}}/tools/templates/manage.py" init regulated-sdlc:infosecClearance --slug wire-transfer-api --session s1
+# → writes docs/compliance/INFOSEC-wire-transfer-api.md
+
+python "{{RUNTIME}}/tools/templates/manage.py" validate docs/compliance/INFOSEC-wire-transfer-api.md --session s1
+python "{{RUNTIME}}/tools/loop/lifecycle.py" stage infosec-review done "Verified Tier-1 mTLS, workload identity &amp; correlation logs"</code></pre>
+              <p>If UAT smoke checks or the rollback drill uncover a defect in <code>uat-signoff</code>, <code>lifecycle.py rework uat-signoff "Rollback exceeded 30s target"</code> reopens <code>build</code> (up to the <code>"max": 2</code> cap).</p>
+            </div>
+          </li>
+
+          <li class="step" id="signoff">
+            <span class="step-num">5</span>
+            <div class="step-body">
+              <h3>Human Sign-Off in Mission Control, Composite Evaluation &amp; Provenance Report</h3>
+              <p>On Mission Control's <strong>Plan</strong> tab, each sign-off row links directly to <code>docs/compliance/INFOSEC-wire-transfer-api.md</code> and <code>docs/compliance/UAT-SIGNOFF-wire-transfer-api.md</code>. After you click <strong>Accept</strong>, ARIA runs the combined evaluation contract (<code>coreShare: 0.7</code> + pack rubrics) and writes <code>provenance.md</code>:</p>
+              <pre><code>python "{{RUNTIME}}/tools/loop/lifecycle.py" report s1
+# Writes .aria/asks/.../provenance.md with:
+# - Pillars (quality, cost, tokens, latency, cache)
+# - Stages &amp; verified deliverables (INFOSEC-wire-transfer-api.md ✓, UAT-SIGNOFF-wire-transfer-api.md ✓)
+# - Expertise packs token table (always-loaded manifest/skills vs on-demand STD-SEC-2026 &amp; templates)</code></pre>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <footer>
+        <span>ARIA Expertise Packs User &amp; Author Guide · Paired with <a href="../wiki/Pack-Checklist.md">Pack-Checklist.md</a> &amp; <a href="../wiki/Plugins.md">Plugins.md</a></span>
+        <span><a href="./regulated-sdlc-flow/index.html" target="_blank" rel="noopener">Open 1920×1080 Clickable Flow Map →</a></span>
+      </footer>
+    </main>
+  </div>
+
+  <dialog id="lightbox" aria-label="Diagram zoom preview">
+    <div class="lb-head">
+      <span id="lb-title">Preview</span>
+      <button type="button" class="lb-close" id="lb-close">Close (Esc)</button>
+    </div>
+    <div class="lb-body">
+      <img id="lb-img" src="" alt="">
+    </div>
+  </dialog>
+
+  <script>
+    (() => {
+      // Theme switcher + theme-synced Flow Map image
+      const flowImg = document.getElementById('flow-img');
+      const flowZoom = document.getElementById('flow-zoom-btn');
+      const btns = document.querySelectorAll('[data-theme-btn]');
+      function syncTheme() {
+        const cur = document.documentElement.dataset.theme || 'light';
+        btns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.themeBtn === cur)));
+        const mapSrc = `./assets/regulated-sdlc-flow-${cur === 'hc' ? 'hc' : cur === 'dark' ? 'dark' : 'light'}.png`;
+        if (flowImg) flowImg.src = mapSrc;
+        if (flowZoom) flowZoom.dataset.zoom = mapSrc;
+      }
+      btns.forEach(btn => btn.addEventListener('click', () => {
+        document.documentElement.dataset.theme = btn.dataset.themeBtn;
+        localStorage.setItem('aria-guide-theme', btn.dataset.themeBtn);
+        syncTheme();
+      }));
+      syncTheme();
+
+      // Persisted Interactive Checklist
+      const boxes = [...document.querySelectorAll('input[data-cl]')];
+      const countEl = document.getElementById('cl-count');
+      const fillEl = document.getElementById('cl-fill');
+      const barEl = fillEl.parentElement;
+      const savedCl = JSON.parse(localStorage.getItem('aria-pack-checklist') || '{}');
+      function updateCl() {
+        let done = 0;
+        const state = {};
+        boxes.forEach(box => {
+          state[box.dataset.cl] = box.checked;
+          box.closest('label').classList.toggle('done', box.checked);
+          if (box.checked) done += 1;
+        });
+        countEl.textContent = `${done} / ${boxes.length} items verified`;
+        fillEl.style.width = `${Math.round(done / boxes.length * 100)}%`;
+        barEl.setAttribute('aria-valuenow', String(done));
+        localStorage.setItem('aria-pack-checklist', JSON.stringify(state));
+      }
+      boxes.forEach(box => {
+        if (savedCl[box.dataset.cl]) box.checked = true;
+        box.addEventListener('change', updateCl);
+      });
+      document.getElementById('cl-reset').addEventListener('click', () => {
+        boxes.forEach(b => { b.checked = false; });
+        updateCl();
+      });
+      updateCl();
+
+      // Code tabs + Copy button
+      const tabBtns = document.querySelectorAll('.tab-btn[data-tab]');
+      const panels = document.querySelectorAll('.tab-panel');
+      tabBtns.forEach(btn => btn.addEventListener('click', () => {
+        tabBtns.forEach(b => b.setAttribute('aria-selected', String(b === btn)));
+        panels.forEach(p => { p.hidden = p.id !== btn.dataset.tab; });
+      }));
+      const copyBtn = document.getElementById('copy-tab');
+      copyBtn.addEventListener('click', async () => {
+        const active = [...panels].find(p => !p.hidden);
+        if (!active) return;
+        await navigator.clipboard.writeText(active.innerText.trim());
+        const prev = copyBtn.textContent;
+        copyBtn.textContent = 'Copied ✓';
+        setTimeout(() => { copyBtn.textContent = prev; }, 1400);
+      });
+
+      // ARIA Auto vs ARIA Collab switcher
+      const agentBtns = document.querySelectorAll('[data-agent-btn]');
+      const autoBox = document.getElementById('step-contract-auto');
+      const collabBox = document.getElementById('step-contract-collab');
+      agentBtns.forEach(btn => btn.addEventListener('click', () => {
+        const mode = btn.dataset.agentBtn;
+        agentBtns.forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+        autoBox.hidden = mode !== 'auto';
+        collabBox.hidden = mode !== 'collab';
+      }));
+
+      // Lightbox
+      const dlg = document.getElementById('lightbox');
+      const lbImg = document.getElementById('lb-img');
+      const lbTitle = document.getElementById('lb-title');
+      document.querySelectorAll('[data-zoom]').forEach(btn => btn.addEventListener('click', () => {
+        lbImg.src = btn.dataset.zoom;
+        lbImg.alt = btn.querySelector('img')?.alt || '';
+        lbTitle.textContent = btn.dataset.title || 'Preview';
+        dlg.showModal();
+      }));
+      document.getElementById('lb-close').addEventListener('click', () => dlg.close());
+      dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+    })();
+  </script>
+</body>
+</html>

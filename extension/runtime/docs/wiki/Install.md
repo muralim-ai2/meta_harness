@@ -1,6 +1,6 @@
 # Install
 
-Frontier HVE ships as one VS Code extension (VSIX). Installing it is the only required step.
+ARIA ships as one VS Code extension (VSIX). Installing it is the only required step.
 
 ## Requirements
 
@@ -44,9 +44,33 @@ Upgrading from 0.24 or older: ARIA is now published by `pwc` (extension ID `pwc.
 
 Upgrading from a version that kept its state in `.hve/`: on start the extension moves `.hve/` into `.aria/`, rewrites the ask paths stored in `contract.json`, `project/` and `plan.md`, adds the matching `.aria` lines to `.gitignore` and repoints the research telemetry file. A file that exists in both folders is left in `.hve/` and named in an error; compare the two copies, keep one in `.aria/` and delete `.hve/`. Reviews pending at the time of the move show as changed and need a fresh look.
 
-## Build the VSIX (maintainers)
+## Build the VSIX and white-label brands (maintainers)
 
-From the repository: `python extension/build.py`, then in `extension/`: `npx --yes @vscode/vsce package --skip-license --allow-missing-repository --out aria-<version>.vsix` (git ignores `*.vsix`). On Microsoft-managed devices set the npm registry first (see `AGENTS.md`).
+From the repository:
+
+```powershell
+python extension/build.py --package extension/aria-<version>.vsix
+```
+
+`brand.json` in the repository root controls the product name, agent/export prefix, workspace state folder, Mission Control header/extension logo, and VS Code Activity Bar icon:
+
+```json
+{
+  "product": "ARIA",
+  "prefix": "aria",
+  "state_dir": ".aria",
+  "logo": "extension/ui/media/aria.png",
+  "activity_icon": "extension/ui/media/aria.svg"
+}
+```
+
+Optional keys (`publisher`, `extension_name`, `command_prefix`) customize the extension ID and command/view namespace. To build a **second, separately branded VSIX** from the same repository without modifying the working tree (installable side-by-side with ARIA):
+
+```powershell
+python extension/build.py --brand path/to/other-brand.json --package dist/other-brand.vsix
+```
+
+Default ARIA preserves `pwc.frontier-hve` and `frontierHve.*` IDs so existing production installs upgrade in place, while any non-default `prefix` automatically isolates its extension ID, commands, Activity Bar container, rendered plugin, pack store (`~/.<prefix>-packs`) and workspace state folder (`<state_dir>/`). Existing `hve-plugin.json`, `frontier-hve.plugins.json` and `frontier-hve.templates.json` files stay backward-compatible in every brand.
 
 Release check: `npm --prefix extension ci`, then set `HVE_VSCODE` to a VS Code executable and run `npm --prefix extension run test:release`. It type-checks Mission Control, builds and packages the VSIX into a temporary folder, checks the package keeps every agent, skill and runtime file and adds Mission Control, then installs it into a throwaway profile, starts VS Code with Copilot Chat disabled and checks that the extension activates by itself, renders its agents and opens Mission Control with the ask dropdown, the ask's files, the Harness files pane and a live chat linked to the ask. Your own profile and extensions are not used. The check prints and keeps its run folder (`hve-release-*` in the temp folder, about 25 MB) for inspection; delete it when done. Mission Control's unit and integration tests: `node --test "tests/mission-control/*.test.js"`. For a visual check, `node tests/mission-control/preview.js <workspace> <transcripts folder> [telemetry export or -] [time or -] [ask on screen]` writes a browser preview built read-only from a real workspace and its chat transcripts.
 

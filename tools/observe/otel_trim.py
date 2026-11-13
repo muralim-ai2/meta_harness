@@ -21,11 +21,13 @@ IGNORED_BY = {f"{STATE}/", f"/{STATE}/", STATE, f"{STATE}/*", f"{STATE}/runs/", 
 Json = dict[str, Any]
 
 
-def stamp_ms(raw: bytes) -> float | None:
-    """Return a record's end time (else start time) in epoch milliseconds, or None for a record that carries neither."""
+def keep_record(raw: bytes, now_ms: float, cutoff: float) -> bool:
+    """Return False for workspace embedding spans or spans older than cutoff; keep undated or recent chat and tool spans."""
     record = json.loads(raw)
+    if str(record.get("name", "")).startswith("embeddings "):
+        return False
     hrtime = record.get("endTime") or record.get("startTime")
-    return hrtime[0] * 1000 + hrtime[1] / 1e6 if hrtime else None
+    return (hrtime[0] * 1000 + hrtime[1] / 1e6 if hrtime else now_ms) >= cutoff
 
 
 def ensure_ignored(workspace: Path) -> bool:
@@ -52,7 +54,7 @@ def trim(workspace: Path, now_ms: float) -> Json:
     kept = export.with_suffix(f".{os.getpid()}.tmp")
     with export.open("rb") as source, kept.open("wb") as out:
         for raw in source:
-            if not raw.endswith(b"\n") or (stamp_ms(raw) or now_ms) >= cutoff:
+            if not raw.endswith(b"\n") or keep_record(raw, now_ms, cutoff):
                 out.write(raw)
     with kept.open("rb") as f:
         f.seek(max(0, kept.stat().st_size - MAX_BYTES))

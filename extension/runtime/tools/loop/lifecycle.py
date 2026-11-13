@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT / "tools" / "skills"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from recommend import rank, skill_dir  # noqa: E402
 from environment import environment  # noqa: E402
-from loop_paths import ASK_ID, STATE, append_journal, loop_dir, project_folder, state_file  # noqa: E402
+from loop_paths import ASK_ID, BRAND, STATE, append_journal, loop_dir, project_folder, state_file  # noqa: E402
 from ask_plan import CHECKLIST_BLOCK, SKILLS_BLOCK, items, plugin_skills, record, refresh, ticked, unfinished  # noqa: E402
 from lifecycle_catalog import catalog, pick, route  # noqa: E402
 from ask_project import (CREATE, SCOPE_NOTE, SHIFT_OVERLAP, deliverable, ledger, overlap, project_status, project_text,  # noqa: E402,F401
@@ -367,7 +367,7 @@ def brief(stage: str | None, task: str | None, persona: str) -> str:
                                 "task": task, "skills": skills})
     path.write_text(json.dumps(data, indent=2), encoding="utf-8")
     return "\n".join([
-        f"Frontier HVE brief: ask {data['ask']}, stage {row['name']}" + (f", task {task}" if task else ""),
+        f"{BRAND['product']} brief: ask {data['ask']}, stage {row['name']}" + (f", task {task}" if task else ""),
         *ask_skills.role_lines(role, data["paths"]["ask"], row["name"]),
         f"- Stage goal: {row['goal']} Gate: {row['exit']}",
         f"- Ask folder: {data['paths']['ask']}/ (prototypes and drafts go there, never in the workspace root)",

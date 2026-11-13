@@ -8,7 +8,8 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(ROOT / "tools" / "loop"), str(ROOT / "tools" / "templates"), str(ROOT / "tools" / "evaluation")]
+sys.path[:0] = [str(ROOT / "hooks"), str(ROOT / "tools" / "loop"), str(ROOT / "tools" / "templates"), str(ROOT / "tools" / "evaluation")]
+from brand import BRAND  # noqa: E402
 from compose import plugin_contract  # noqa: E402
 from contract import load_contract  # noqa: E402
 from lifecycle_catalog import validate as validate_lifecycle  # noqa: E402
@@ -271,12 +272,14 @@ def lifecycles(folder: Path, name: str, raw: object, agent_names: set[str], skil
 
 
 def load(folder: Path) -> Json:
-    """Return the normalized manifest of a pack folder, or raise naming the first problem."""
+    """Return the normalized manifest of a pack folder (<prefix>-plugin.json or legacy hve-plugin.json), or raise naming the first problem."""
     files = files_of(folder)
-    manifest_file = declared(folder, "hve-plugin.json", "manifest")
+    branded_manifest = f"{BRAND['prefix']}-plugin.json"
+    manifest_name = branded_manifest if (folder / branded_manifest).is_file() else "hve-plugin.json"
+    manifest_file = declared(folder, manifest_name, "manifest")
     raw = json.loads(manifest_file.read_text(encoding="utf-8"))
     if not isinstance(raw, dict) or set(raw) - MANIFEST_KEYS or not REQUIRED_KEYS <= set(raw):
-        raise ValueError(f"hve-plugin.json keys: required {sorted(REQUIRED_KEYS)}, optional lifecycles, knowledge, evaluation, $schema; "
+        raise ValueError(f"{manifest_name} keys: required {sorted(REQUIRED_KEYS)}, optional lifecycles, knowledge, evaluation, $schema; "
                          f"got {sorted(raw)}")
     name, publisher = raw["name"], raw["publisher"]
     if not (isinstance(name, str) and NAME.fullmatch(name) and isinstance(publisher, str) and NAME.fullmatch(publisher)):
@@ -285,10 +288,13 @@ def load(folder: Path) -> Json:
         raise ValueError(f"{sorted(RESERVED)} are reserved")
     version_tuple(raw["version"])
     harness = raw["harness"]
-    if not isinstance(harness, dict) or set(harness) != {"apiVersion", "frontierHve"} or harness["apiVersion"] not in API_VERSIONS:
-        raise ValueError(f"harness needs apiVersion in {API_VERSIONS} and a frontierHve version range")
-    if not satisfies(core_version(), harness["frontierHve"]):
-        raise ValueError(f"plugin needs Frontier HVE {harness['frontierHve']}; this core is {core_version()}")
+    range_keys = [k for k in (BRAND["prefix"], "aria", "frontierHve") if isinstance(harness, dict) and k in harness]
+    range_key = range_keys[0] if len(set(range_keys)) == 1 else ""
+    if not isinstance(harness, dict) or not range_key or set(harness) != {"apiVersion", range_key} or harness["apiVersion"] not in API_VERSIONS:
+        raise ValueError(f"harness needs apiVersion in {API_VERSIONS} and a {BRAND['prefix']} or frontierHve version range")
+    if not satisfies(core_version(), harness[range_key]):
+        label = "Frontier HVE" if range_key == "frontierHve" else BRAND["product"]
+        raise ValueError(f"plugin needs {label} {harness[range_key]}; this core is {core_version()}")
     plugin_json = folder / "plugin.json"
     if plugin_json.exists() and "hooks" in json.loads(plugin_json.read_text(encoding="utf-8")):
         raise ValueError("plugin.json must not declare hooks")
@@ -311,7 +317,7 @@ def load(folder: Path) -> Json:
     contracts = [raw["evaluation"]] if "evaluation" in raw else []
     for path in contracts:
         plugin_contract(json.loads(declared(folder, path, "evaluation").read_text(encoding="utf-8")), load_contract(CORE_CONTRACT))
-    listed = ({"hve-plugin.json", "plugin.json", "registry.json", "categories.json"} | {a["file"] for a in agent_list}
+    listed = ({manifest_name, "hve-plugin.json", "plugin.json", "registry.json", "categories.json"} | {a["file"] for a in agent_list}
               | {s["file"] for s in template_map.values()} | {f["file"] for f in flows.values()} | {d["file"] for d in docs} | set(contracts))
     hidden = [p.relative_to(folder).as_posix() for p in files
               if p.relative_to(folder).as_posix() not in listed and p.parts[len(folder.parts)] in ASSET_FOLDERS]
@@ -320,6 +326,6 @@ def load(folder: Path) -> Json:
     for doc in ("README.md", "LICENSE"):
         declared(folder, doc, "package file")
     return {"id": f"{publisher}.{name}", "name": name, "publisher": publisher, "version": raw["version"], "displayName": raw["displayName"],
-            "description": raw["description"], "frontierHve": harness["frontierHve"], "routing": routing, "tools": tools,
+            "description": raw["description"], "frontierHve": harness[range_key], "routing": routing, "tools": tools,
             "agents": agent_list, "categories": cats, "skills": skill_list, "templates": template_map, "lifecycles": flows,
             "knowledge": docs, "evaluation": raw.get("evaluation"), "manifest_tokens": tokens(manifest_file)}

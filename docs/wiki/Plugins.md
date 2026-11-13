@@ -4,7 +4,7 @@ An **expertise pack** puts one practice's tribal knowledge into a form the Front
 
 The idea in one line: **the agent reads the pack's manifest, never the whole folder.** The manifest holds the routing rules and an index of everything in the pack, with a one-line "use when" for each knowledge document. Only what a stage needs is opened, and the plan and provenance show how many tokens each pack added.
 
-Packs are the product name for the plugin architecture planned on branch `plugin-architecture/pj-1013` and built in PR #8; decision D-060 records how it was brought into the lifecycle contract.
+Packs are the product name for the plugin architecture planned on branch `plugin-architecture/pj-1013` and built in PR #8; decision D-060 records how it was brought into the lifecycle contract. For a quick pre-flight and install tick-list, open [Pack checklist](Pack-Checklist.md) (also one click from **Mission Control → Skills & packs → Pack checklist**).
 
 - [Why packs](#why-packs)
 - [What is in a pack](#what-is-in-a-pack)

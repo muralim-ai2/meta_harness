@@ -10,7 +10,7 @@ It works on any repository. Nothing in `tools/map/` is specific to this repo; re
 
 ## Create or refresh the map
 
-**In chat** (Frontier HVE extension 0.17.0 or later):
+**In chat** (ARIA extension 0.17.0 or later):
 
 ```
 /solution-map create

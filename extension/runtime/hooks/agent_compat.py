@@ -175,7 +175,7 @@ def hook_failed(payload: Json, client: Client, script: Path, project: Path, erro
         f.write(f"--- {now} {client} {script.name} {event} {tool or ''}\npayload: {json.dumps(payload)[:4000]}\n{error.strip()}\n")
     last = error.strip().splitlines()[-1] if error.strip() else "no error output"
     where = log.relative_to(project).as_posix() if log.is_relative_to(project) else str(log)
-    message = (f"ARIA hook {script.name} failed on {tool or event} and was skipped, so nothing was blocked: {last}. Full error: {where}. "
+    message = (f"{BRAND['product']} hook {script.name} failed on {tool or event} and was skipped, so nothing was blocked: {last}. Full error: {where}. "
                "Mention it to the user in one line, then continue.")
     session = str(payload.get("session_id") or payload.get("conversation_id") or "")
     if state.parent == project and re.fullmatch(r"[\w-]+", session):

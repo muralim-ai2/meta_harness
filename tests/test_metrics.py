@@ -144,7 +144,8 @@ def test_otel_trim_keeps_recent_records_and_ignores_the_export() -> None:
         runs.mkdir(parents=True)
         day = 86_400_000
         old, new = chat_span("old", -4 * day, "m", 10, {}), chat_span("new", -day, "m", 10, {})
-        (runs / "copilot-otel.jsonl").write_text("".join(json.dumps(s) + "\n" for s in (old, {"resource": {}}, new)), encoding="utf-8")
+        emb = {"spanId": "emb", "name": "embeddings metis-1024-I16-Binary", "endTime": new["endTime"]}
+        (runs / "copilot-otel.jsonl").write_text("".join(json.dumps(s) + "\n" for s in (old, emb, {"resource": {}}, new)), encoding="utf-8")
         report = otel_trim.trim(ws, T0)
         kept = [json.loads(line).get("spanId") for line in (runs / "copilot-otel.jsonl").read_text(encoding="utf-8").splitlines()]
         assert kept == [None, "new"] and report["before_mb"] >= report["after_mb"] and report["gitignore_added"] is False, (kept, report)
