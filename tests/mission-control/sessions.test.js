@@ -131,7 +131,7 @@ test('transcripts are read incrementally: new lines update a chat, a half-writte
   assert.equal(chatList(transcripts, root, ASKS, {}, null, now).chats[0].status, 'working');
   write(transcripts, 'broken', [row('user.message', '2026-10-29T09:00:00.000Z', { content: 'ok' })]);
   fs.appendFileSync(path.join(transcripts, 'broken.jsonl'), '{"type":\n');
-  assert.throws(() => chatList(transcripts, root, ASKS, {}, null, now), /Invalid chat event on line 2 of broken\.jsonl/);
+  assert.throws(() => chatList(transcripts, root, ASKS, {}, null, now), /Invalid chat event on line 2 of broken\.jsonl in chat broken: .*JSON/);
   assert.deepEqual(chatList(null, root, ASKS, {}, null, now), { chats: [], claimed: null });
 });
 

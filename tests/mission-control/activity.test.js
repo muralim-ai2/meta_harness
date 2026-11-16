@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { workspace, removeWorkspace, json } = require('./helpers');
 const { activity, describe } = require('../../extension/ui/activity');
+const { chatList } = require('../../extension/ui/chats');
 const SESSION = '42699ac7-2882-4c23-83a4-5b7ef4a73106';
 const START = Date.parse('2026-10-28T20:07:35.000Z');
 
@@ -125,6 +126,17 @@ test('a command the agent requested but Copilot has not started waits for your A
   write(asked);
   ({ session } = activity(root, chat, null, START + 3 * 60 * 60_000));
   assert.deepEqual([session.status, session.current], ['idle', null], 'a request left for hours is not a wait: the chat was left or the step skipped');
+});
+
+test('a malformed tool request the model wrote is shown by tool name and does not stop the chat list or live activity', t => {
+  const { root, transcripts, chat, write } = setup(t);
+  const requests = [
+    { toolCallId: 'm1', name: 'multi_replace_string_in_file', arguments: JSON.stringify({ explanation: 'x', replacements: '[{"filePath": "a.md", "oldString": "subgraph LATER["P2' }) },
+    { toolCallId: 'm2', name: 'run_in_terminal', arguments: '{"command": "npm test' }];
+  write([...busy(root).slice(0, -1), row('assistant.message', 30, { content: '', toolRequests: requests })]);
+  assert.equal(chatList(transcripts, root, [], {}, null, START + 60_000).chats.length, 1);
+  const { session } = activity(root, chat, null, START + 60_000);
+  assert.deepEqual([session.status, session.current.detail], ['waiting', 'Requested run_in_terminal with malformed arguments']);
 });
 
 test('ten quiet minutes make a session idle and unfinished calls show as stopped', t => {

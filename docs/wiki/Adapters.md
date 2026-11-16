@@ -134,7 +134,7 @@ Safety rules:
 In any tool, ask for the status or use the `harness-status` skill. It runs `lifecycle.py status`: the open ask (or the recent asks), its stages, what is not finished, the newest journal entries and guard events, and the number of hook errors.
 
 ### Mission Control while another tool works
-When Claude Code, Codex, Cursor or Copilot CLI runs hooks for the open ask, the hooks record the tool in `.aria/runs/client.json`. Mission Control then shows **Working in <tool>** with a **Copy start command** button, and New ask, Request changes and the other chat actions copy the message for you to paste into that tool instead of opening Copilot Chat. The notice clears once a Copilot chat in this window is newer, or after two hours. Asks, Plan, Accept, Mark done, Progress, Skills and guard events work as before, because they read the files in `.aria/`.
+When Claude Code, Codex, Cursor or Copilot CLI runs hooks for the open ask, the hooks record the tool in `.aria/runs/client.json`. Mission Control then shows **Working in <tool>** with a **Copy start command** button, and New ask, Refine and the other chat actions copy the message for you to paste into that tool instead of opening Copilot Chat. The notice clears once a Copilot chat in this window is newer, or after two hours. Asks, Plan, Accept, Mark done, Progress, Skills and guard events work as before, because they read the files in `.aria/`.
 
 ## Azure DevOps
 

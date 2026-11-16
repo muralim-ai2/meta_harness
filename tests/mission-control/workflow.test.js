@@ -47,29 +47,32 @@ test('requested changes persist through the guarded API and the new ask opens on
   const state = await create(fixture, 'review');
   assert.deepEqual(fixture.controls.commands.get('frontierHve.missionControlModel')().navigate, { page: 'live', seq: 1 });
   fixture.controls.inputs.push('Clarify the policy acceptance criteria.');
-  fixture.controls.confirmations.push('Request changes');
+  fixture.controls.confirmations.push('Refine');
   await fixture.controls.provider.execute({ action: 'review', item: 'stage:deliver', value: 'changes', revision: state.reviews[0].revision });
   const saved = snapshot(fixture.root);
   assert.equal(saved.reviews[0].decision, 'changes');
   assert.equal(saved.reviews[0].note, 'Clarify the policy acceptance criteria.');
 });
 
-test('Request changes on a done stage reopens it and hands the request to the ask\'s agent in Chat, filled in but not sent', async t => {
+test('Refine on a done stage reopens it and hands the request to the ask\'s agent in Chat; the stage links the files and decisions to review', async t => {
   const fixture = mission(t);
   const state = await create(fixture, 'changes');
-  fixture.controls.inputs.push('Built and checked in the chat.');
+  fs.mkdirSync(path.join(fixture.root, 'docs'));
+  fs.writeFileSync(path.join(fixture.root, 'docs', 'policy.md'), '# Policy\n');
+  fixture.controls.inputs.push('Built docs/policy.md and checked it in the chat.');
   fixture.controls.confirmations.push('Mark done');
   await fixture.controls.provider.execute({ action: 'markDone', item: 'stage:deliver', revision: state.reviews[0].revision });
   const done = snapshot(fixture.root);
   assert.equal(done.reviews[0].ready, true);
+  assert.ok(done.reviews[0].files.includes(path.join('docs', 'policy.md')), 'a file the stage note names is linked for review');
   const seen = fixture.controls.calls.length;
   fixture.controls.inputs.push('Add a review stage before delivery');
-  fixture.controls.confirmations.push('Request changes');
+  fixture.controls.confirmations.push('Refine');
   await fixture.controls.provider.execute({ action: 'review', item: 'stage:deliver', value: 'changes', revision: done.reviews[0].revision });
   const after = snapshot(fixture.root);
   assert.deepEqual([after.reviews[0].decision, after.reviews[0].status, after.reviews[0].ready], ['changes', 'active', false]);
   const calls = fixture.controls.calls.slice(seen);
-  assert.match(calls.find(call => call[0] === 'input')[1].title, /What should change in stage:deliver\?/);
+  assert.match(calls.find(call => call[0] === 'input')[1].title, /Refine stage:deliver: what should change\?/);
   assert.match(calls.find(call => call[0] === 'confirmation')[2].detail, /sets the stage back to active and opens the ask's chat/);
   const chat = calls.filter(call => call[0] === 'workbench.action.chat.open').at(-1)[1];
   assert.equal(chat.isPartialQuery, true, 'filled in, never sent for the user');
@@ -78,7 +81,10 @@ test('Request changes on a done stage reopens it and hands the request to the as
   assert.match(chat.query, /update plan\.md, run `lifecycle\.py plan-sync`[\s\S]*lifecycle\.py stage deliver done/);
   assert.ok(chat.attachFiles.some(file => file.fsPath.endsWith('request.md')));
   const plan = text(dashboard(fixture.controls.commands.get('frontierHve.missionControlModel')(), { page: 'plan', filter: 'all', open: {}, seq: 0 }, Date.now()));
-  assert.match(plan, /Your change request went to the agent in Chat; accept once it is done again\./);
+  assert.match(plan, /Your refinement went to the agent in Chat; accept once it is done again\./);
+  assert.match(plan, /Refinement requested/);
+  assert.match(plan, /docs\/policy\.md/);
+  assert.match(plan, /decision ?active: Changes requested: Add a review stage before delivery[\s\S]*decision ?done: Built docs\/policy\.md/);
 });
 
 test('accepting unfinished work is refused before any confirmation or write', async t => {

@@ -2,7 +2,7 @@
 /** Index this window's Copilot Chat sessions incrementally and link each one to the asks it created, reopened, edited or was opened for. */
 const fs = require('node:fs');
 const path = require('node:path');
-const { record, text } = require('./validate');
+const { record, text, errorText } = require('./validate');
 const { describe, headline, status, stillRunning, requested, awaiting } = require('./activity');
 const { ASK, askTime } = require('./asks');
 const { BRAND } = require('../brand');
@@ -188,7 +188,7 @@ function scan(file, workspace) {
           apply(s, record(JSON.parse(line), `${path.basename(file)} line ${s.lines}`), workspace);
         } catch (error) {
           scans.delete(file);
-          throw new Error(`Invalid chat event on line ${s.lines} of ${path.basename(file)}`, { cause: error });
+          throw new Error(`Invalid chat event on line ${s.lines} of ${path.basename(file)} in chat ${id}: ${errorText(error)}`, { cause: error });
         }
       }
       s.offset += end + 1;

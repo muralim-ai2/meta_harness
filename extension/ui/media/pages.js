@@ -20,6 +20,7 @@
   /** @typedef {import('../types').Child} Child */
 
   const FILTERS = /** @type {const} */ ([['all', 'All'], ['edits', 'Edits'], ['commands', 'Commands'], ['conversation', 'Conversation'], ['problems', 'Problems']]);
+  const STAGE_RECORDS = 5;
   /** @type {Record<string, (event: import('../types').ActivityEvent) => boolean>} */
   const MATCH = { all: () => true, edits: event => event.kind === 'edit', commands: event => event.kind === 'run',
     conversation: event => ['prompt', 'message', 'ask'].includes(event.kind), problems: event => event.state === 'failed' || event.kind === 'guard' };
@@ -140,7 +141,22 @@
     ];
   }
 
-  /** Render the sign-off list with confirmed Accept and Request changes actions.
+  /** Render a stage's decisions and journal entries (decisions, issues, pitfalls) for this ask, newest first.
+   * @param {import('../types').Snapshot} snap
+   * @param {string} stage
+   * @returns {VNode | null}
+   */
+  function stageRecords(snap, stage) {
+    const rows = [...snap.decisions.filter(row => row.stage === stage).map(row => ({ ts: row.ts, kind: 'decision', text: row.why ? `${row.choice}: ${row.why}` : row.choice })),
+      ...snap.journal.filter(row => row.ask === snap.ask?.id && row.stage === stage).map(row => ({ ts: row.ts, kind: row.kind, text: row.why ? `${row.text} (${row.why})` : row.text }))]
+      .sort((a, b) => b.ts.localeCompare(a.ts));
+    if (!rows.length) return null;
+    return h('ul', { class: 'stage-records' }, ...rows.slice(0, STAGE_RECORDS).map(row => h('li', null,
+      h('span', { class: `pill ${row.kind === 'decision' ? '' : 'warn'}`.trim() }, row.kind), ' ', row.text)),
+    rows.length > STAGE_RECORDS ? h('li', { class: 'muted' }, `${rows.length - STAGE_RECORDS} more on the Progress page`) : null);
+  }
+
+  /** Render the sign-off list with confirmed Accept and Refine actions.
    * @param {Model} model
    * @returns {VNode}
    */
@@ -152,21 +168,22 @@
       return h('li', { class: `review decision-${review.decision}` },
         h('div', { class: 'review-text' }, h('span', { class: 'section-label' }, review.item), h('strong', null, review.title),
           h('span', { class: 'muted' }, review.decision === 'changes'
-            ? review.ready ? 'Done again after your change request: review it again.' : 'Your change request went to the agent in Chat; accept once it is done again.'
+            ? review.ready ? 'Done again after your refinement: review it again.' : 'Your refinement went to the agent in Chat; accept once it is done again.'
             : review.ready ? 'Done and ready for your review.' : `Status: ${review.status}. You can accept it once it is done.`),
           review.note ? h('span', { class: 'quote' }, review.note) : null, fileLinks(review.files),
+          review.item.startsWith('stage:') ? stageRecords(snap, review.item.slice('stage:'.length)) : null,
           review.commit ? button(`Show changes (${review.commit.base.slice(0, 7)}..${review.commit.head.slice(0, 7)})`, 'showChanges',
             { kind: 'link', data: { item: review.item }, title: 'Open what this task\'s commits changed in a diff editor' }) : null),
         h('div', { class: 'review-actions' }, h('span', { class: `pill ${settled ? 'good' : review.decision === 'changes' ? 'warn' : ''}`.trim() },
-          { open: 'Open', accepted: 'Accepted', changes: 'Changes requested', skipped: 'Continued without review' }[review.decision] || review.decision),
+          { open: 'Open', accepted: 'Accepted', changes: 'Refinement requested', skipped: 'Continued without review' }[review.decision] || review.decision),
         button('Accept', 'review', { kind: 'primary', icon: 'check', data: { item: review.item, revision: review.revision, value: 'accepted' },
           disabled: blocked || settled || !review.ready || snap.planState === 'unsynced',
           title: !snap.ask?.active ? 'Make this ask active to sign off' : snap.planState === 'unsynced' ? 'The plan was edited: the agent reconciles it first'
             : !review.ready ? 'Accept once the work is done' : undefined }),
         review.item.startsWith('stage:') && !review.ready && !settled ? button('Mark done', 'markDone', { icon: 'flag', data: { item: review.item, revision: review.revision },
           disabled: blocked, title: !snap.ask?.active ? 'Make this ask active to change its status' : 'Set this stage to done when the chat shows it is finished' }) : null,
-        button('Request changes', 'review', { data: { item: review.item, revision: review.revision, value: 'changes' }, disabled: blocked,
-          title: !snap.ask?.active ? 'Make this ask active to sign off' : undefined })));
+        button('Refine', 'review', { icon: 'pencil', data: { item: review.item, revision: review.revision, value: 'changes' }, disabled: blocked,
+          title: !snap.ask?.active ? 'Make this ask active to sign off' : 'Tell the agent what to change; it reworks this and asks you to review again' })));
     }), snap.reviews.length ? null : h('li', { class: 'muted' }, 'No milestones yet.'));
   }
 

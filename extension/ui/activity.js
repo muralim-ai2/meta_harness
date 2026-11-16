@@ -205,8 +205,16 @@ function requested(data, workspace, at) {
   const rows = data.toolRequests === undefined ? [] : list(data.toolRequests, 'Tool requests').map(value => record(value, 'Tool request'));
   return new Map(rows.map(row => {
     const tool = text(row.name, 'Requested tool');
-    const args = row.arguments === undefined ? {} : record(typeof row.arguments === 'string' ? JSON.parse(row.arguments) : row.arguments, `${tool} request arguments`);
-    return [text(row.toolCallId, 'Requested tool call id'), { ...describe(tool, args, workspace, at), state: /** @type {const} */ ('pending') }];
+    /** @type {ActivityEvent} */
+    let event;
+    // Requested arguments are the model's unchecked output, which Copilot rejects when malformed, so a bad shape names the tool only.
+    try {
+      const raw = typeof row.arguments === 'string' ? JSON.parse(row.arguments) : row.arguments;
+      event = describe(tool, raw === undefined ? {} : record(raw, `${tool} request arguments`), workspace, at);
+    } catch {
+      event = { at, kind: 'tool', title: `Requested ${tool} with malformed arguments`, detail: '', files: [], state: 'pending' };
+    }
+    return [text(row.toolCallId, 'Requested tool call id'), { ...event, state: /** @type {const} */ ('pending') }];
   }));
 }
 
@@ -542,4 +550,4 @@ function activity(workspace, file, telemetryFile, now) {
   return { session: current, errors: run.errors, loadout: run.loadout, tokens: otel || raw.tokens };
 }
 
-module.exports = { activity, describe, status, stillRunning, requested, awaiting, headline, clip, jsonLines };
+module.exports = { activity, describe, status, stillRunning, requested, awaiting, headline, clip, jsonLines, referenced };
