@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { Reader, digest, containedPath } = require('./file-access');
 const { record, text, list, flag, integer } = require('./validate');
-const { headline } = require('./activity');
+const { headline, referenced } = require('./activity');
 const { BRAND } = require('../brand');
 const STATE = BRAND.state_dir;
 const ASK = /^\d{8}-\d{4}-[a-z0-9][a-z0-9-]{0,40}$/;
@@ -95,6 +95,27 @@ function stageFiles(root, askFolder, stage) {
     ? list(item.paths, 'Evidence paths').map(value => text(value, 'Evidence path')) : [])
     .filter(name => !name.includes('*')).map(name => path.normalize(name.replace('{ask}', askFolder.split(path.sep).join('/'))))
     .filter(name => fs.existsSync(containedPath(root, name)) && fs.statSync(containedPath(root, name)).isFile());
+}
+
+/** Return the files to review for a stage: its declared evidence and evidence folder, the feature tracker for a feature-loop stage, the
+ * project journal when it has entries for the stage, and existing files named in the stage's notes, decisions and journal entries.
+ * @param {string} root
+ * @param {string} askFolder
+ * @param {Record<string, unknown>} stage
+ * @param {string} name
+ * @param {string} signoffNote
+ * @param {import('./types').Snapshot} state
+ * @returns {string[]}
+ */
+function stageLinks(root, askFolder, stage, name, signoffNote, state) {
+  const evidenceFolder = path.join(askFolder, 'loop', 'evidence', name) + path.sep;
+  const journal = state.journal.filter(row => row.ask === state.ask?.id && row.stage === name);
+  const notes = [typeof stage.note === 'string' ? stage.note : '', signoffNote,
+    ...state.decisions.filter(row => row.stage === name).flatMap(row => [row.choice, row.why]), ...journal.flatMap(row => [row.text, row.why])];
+  const trackers = [stage.loop === true ? path.join(STATE, 'project', 'feature_list.json') : null, journal.length ? path.join(STATE, 'project', 'journal.jsonl') : null]
+    .filter(/** @returns {file is string} */ file => file !== null && fs.existsSync(path.join(root, file)));
+  return [...new Set([...stageFiles(root, askFolder, stage), ...state.files.filter(file => file.startsWith(evidenceFolder)), ...trackers,
+    ...referenced(notes.join('\n'), root).map(file => path.normalize(file))])];
 }
 
 /** Compute the plan digest using the existing lifecycle's generated-block exclusions.
@@ -219,14 +240,20 @@ function snapshot(workspace, selected = null) {
       return { name: text(stage.name, 'Stage name'), goal: text(stage.goal, 'Stage goal'), status: text(stage.status, 'Stage status'),
         persona: agent === 'self' ? text(contract.agent, 'Ask agent') : agent };
     });
+    state.decisions = list(contract.decisions, 'Ask decisions').map(value => {
+      const row = record(value, 'Decision');
+      return { ts: text(row.ts, 'Decision timestamp'), stage: text(row.stage, 'Decision stage'),
+        choice: text(row.choice, 'Decision choice'), why: text(row.why, 'Decision reason', true) };
+    });
     state.reviews = list(contract.stages, 'Ask stages').map(value => {
       const stage = record(value, 'Stage');
       const name = text(stage.name, 'Stage name');
       const status = text(stage.status, 'Stage status');
       if (!/^[\w.-]+$/.test(name) || !['planned', 'active', 'done', 'skipped'].includes(status)) throw new Error('Invalid stage identity or status.');
       const item = `stage:${name}`;
-      return { item, title: text(stage.goal, 'Stage goal'), status, ready: status === 'done', files: stageFiles(reader.root, askFolder, stage), commit: null,
-        revision: '', ...decision(checklist, item) };
+      const signoff = decision(checklist, item);
+      return { item, title: text(stage.goal, 'Stage goal'), status, ready: status === 'done',
+        files: stageLinks(reader.root, askFolder, stage, name, signoff.note, state), commit: null, revision: '', ...signoff };
     }).filter(stage => stage.status !== 'skipped');
     for (const value of list(contract.tasks, 'Ask tasks')) {
       const task = record(value, 'Task');
@@ -240,11 +267,6 @@ function snapshot(workspace, selected = null) {
         files: [...(feature?.check ? [feature.check.source, ...feature.check.changed] : []), ...state.files.filter(file => file.startsWith(evidenceFolder))],
         commit: feature?.check?.commit ?? null, revision: '', ...decision(checklist, item) });
     }
-    state.decisions = list(contract.decisions, 'Ask decisions').map(value => {
-      const row = record(value, 'Decision');
-      return { ts: text(row.ts, 'Decision timestamp'), stage: text(row.stage, 'Decision stage'),
-        choice: text(row.choice, 'Decision choice'), why: text(row.why, 'Decision reason', true) };
-    });
   }
   state.revision = reader.revision();
   for (const review of state.reviews) {

@@ -2,7 +2,7 @@
   "name": "frontier-hve",
   "displayName": "ARIA",
   "description": "Enterprise AI harness for GitHub Copilot: ARIA agents with a verified feature loop, graph workflow, guards and human-ticked PRs.",
-  "version": "0.28.5",
+  "version": "0.28.6",
   "publisher": "pwc",
   "license": "UNLICENSED",
   "icon": "ui/media/aria.png",

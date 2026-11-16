@@ -137,11 +137,11 @@ async function review(mc, data) {
   const ticket = flow.prepareReview(target.uri.fsPath, data.revision, data.item, data.value);
   const item = /** @type {import('./types').Review} */ (snapshot(target.uri.fsPath).reviews.find(row => row.item === data.item));
   const changes = data.value === 'changes';
-  const note = await vscode.window.showInputBox({ title: changes ? `What should change in ${data.item}?` : `Accept ${data.item}: what did you check?`,
+  const note = await vscode.window.showInputBox({ title: changes ? `Refine ${data.item}: what should change?` : `Accept ${data.item}: what did you check?`,
     placeHolder: changes ? 'For example: add a review stage before delivery' : undefined, ignoreFocusOut: true,
     validateInput: value => !value.trim() ? 'A note is required.' : value.length > 4000 ? 'Use at most 4,000 characters.' : null });
   if (note === undefined) return;
-  const label = changes ? 'Request changes' : 'Accept';
+  const label = changes ? 'Refine' : 'Accept';
   const confirm = await vscode.window.showWarningMessage(`${label}: ${data.item}?`, { modal: true,
     detail: `Ask ${ticket.ask} in ${target.uri.fsPath}\n\n“${note}”\n\n` + (changes
       ? `This records your request${item.status === 'done' ? ', sets the stage back to active' : ''} and opens the ask's chat with your request filled in `
@@ -155,7 +155,7 @@ async function review(mc, data) {
     return;
   }
   await askFlow.messageInChat(mc, ticket.ask, changeMessage(ticket.ask, item, note));
-  void vscode.window.showInformationMessage(`Your change request for ${data.item} is filled in the ask's chat. Press Enter there to send it to the agent.`);
+  void vscode.window.showInformationMessage(`Your refinement for ${data.item} is filled in the ask's chat. Press Enter there to send it to the agent.`);
 }
 
 /** Confirm and set a stage of the active ask to done, so the plan matches what the chat shows; the harness still checks its evidence.

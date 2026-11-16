@@ -205,6 +205,7 @@ details.card > summary { cursor: pointer; font-weight: 600; }
 .review-text { display: grid; gap: 2px; flex: 1 1 260px; min-width: 0; }
 .review-text .muted { font-size: 12px; }
 .quote { padding-left: 8px; border-left: 2px solid var(--border); color: var(--muted); font-style: italic; font-size: 12px; }
+.stage-records { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 3px; font-size: 12px; }
 .review-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .options { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 
