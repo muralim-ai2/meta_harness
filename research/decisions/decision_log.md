@@ -626,3 +626,33 @@
 - **Decided:** two boxes, title (3-80 characters, names the folder, saved as the request's heading so it shows everywhere) and an optional description that the scope check reads first. Verdict new-workspace: a modal with the harness's reason recommends a new workspace; the user picks or creates a folder outside this one, the title and description are kept in VS Code's global state for that folder for a day, the folder opens in a new window, and its Mission Control offers **Start the ask** (notification and sidebar notice) with both boxes filled in. Verdict continue: continue or create a separate ask. Then the chat: a new ask offers a new session (recommended) or this one; a follow-up offers the ask's own chat (recommended, reopened by its session address) or a new session; a single option needs no question. The chat gets the ask's request and plan attached, the agent for a new session, and a short starter message that is filled in, never sent; a notification offers **Attach files…**. A chat chosen as "this chat session" is linked to the ask (shown as continued here).
 - **Built:** `extension/ui/ask-flow.js` (moved New ask and new chat out of `actions.js`); `askRequest`, `scopeText`, `starterPrompt`, `handoffFrom` in `asks.js`; `chatSessionUri` in `chats.js`; actions `attachReferences`, `startHandoff`, `dismissHandoff`; the carried-over notice in `views.js` and `pages.js`; extension 0.20.2.
 - **Verified:** loop features `ask-title-flow`, `ask-chat-start` and `new-workspace-handoff` (`tests/mission-control/newask.test.js`, `chatstart.test.js`, `handoff.test.js`, real lifecycle subprocesses, a second test window sharing global state); 111 Mission Control tests; a strict type check; the harness's verdicts for the user's examples; the chat command options read from VS Code 1.144's source; and the release check. Not verified: the chat actually opening, filling and attaching in a signed-in VS Code, and a real second window picking up the carried-over ask.
+
+## D-068: Copilot's chat logs and telemetry are external input, read best-effort; strict validation stays for harness-owned files (2026-11-17)
+- **Request:** client machines kept showing "Mission Control cannot read the live activity: Invalid chat event on line N", which stopped Live, the chat list and Insights. The user asked why Mission Control checks Copilot's files at all: they are not ours, we cannot control them, and Mission Control only displays them. It wanted the root cause fixed rather than one symptom per release, recorded as a decision.
+- **Found:** the "fail fast" rule had been applied to data Copilot owns.
+  - Oct 28 (`696a143`): strict per-line checks, for VS Code Local transcripts only.
+  - Nov 9 (`3c7b9d2`, 0.27.x): `requested()` parses the arguments of tool calls the model *requested*. A malformed request (a `multi_replace_string_in_file` whose `replacements` was a cut-off string) broke Live even though Copilot had rejected the call.
+  - Nov 11 (`e1908c6`, 0.28.2): Mission Control started reading Copilot mode and Copilot CLI session logs (`~/.copilot/session-state/*/events.jsonl`) and parsed every string `arguments` as JSON. GPT/Codex-style models pass `apply_patch` the raw patch text (`*** Begin Patch …`), so any chat using them broke Live. That matches the reports that chats worked before 0.28.3.
+  - 0.28.6 only made requested calls tolerant (a `try/catch` labelling them "malformed arguments") and kept executed calls strict. The client then hit the `apply_patch` case.
+  - Nothing read from these logs gates a decision, writes to an ask or runs anything. It feeds the Live feed, chat status, the to-do list, sub-agent rows, counts, chat-to-ask links and the Telemetry figures. Sign-off, plan state, feature checks and the error guard come from harness files.
+- **Decided:** Copilot-owned data (Local transcripts, Copilot mode and CLI session logs, the research telemetry export) is external input and is read best-effort.
+  - A line that is not a JSON object, an event without a type or a valid time, and a line over 4 MB are skipped and counted.
+  - Unknown event types are ignored.
+  - Fields of an unexpected shape are ignored: a missing tool name or call id skips that call; a to-do item with an unknown status is left out; a telemetry span without attributes or a model is left out; a non-integer token count reads as 0.
+  - Tool arguments that are not JSON are the tool's text input (`{input: <text>}`), which is how `apply_patch` names its files.
+  - Skipped lines never reach Needs you. The Mission Control output channel notes the count per chat once each time it changes.
+  - These checks stay because they protect something rather than validate a shape: files are linked or opened only when they exist inside the workspace; the session id that names folders stays strictly checked; size limits stay.
+  - The harness's own files (contract, active ask, plan, feature list, journal, attempts, guard, error and skill records) keep strict validation and fail fast as before.
+  - This replaces the 0.28.6 `try/catch` in `requested()` and its "malformed arguments" label.
+- **Built:** `extension/ui/copilot-log.js` (`jsonObject`, `looseLines`, `object`, `objects`, `str`, `count`, `event`, `toolArgs`), used by:
+  - `chats.js`: `scan` skips and counts lines, including over-4 MB lines; `apply`; `unreadable()`;
+  - `activity.js`: `parse`, `requested`, `editedFiles`, `describe` questions, `todoList`;
+  - `insights.js`: `otelUsage` and `sessionRecords`.
+  
+  Also: the output-channel note in `mission-control.js`; `docs/wiki/Mission-Control.md`; extension 0.28.7.
+- **Verified:**
+  - 149 Mission Control tests. The boundary test covers raw `apply_patch` text (including a path outside the workspace that is not listed), the malformed `multi_replace` request, a non-JSON request, non-object requests, an unknown event type, an event without a time, `data: null`, an unknown to-do status and a non-JSON line. The telemetry test adds a non-JSON line, a span without attributes and a span without a model. The scanner test adds a 5 MB line. The controller test checks that Live keeps working, that the output-channel note appears and that Needs you shows nothing.
+  - The changed tests fail against the 0.28.6 readers.
+  - A strict type check.
+  - The isolated VS Code release check of the 0.28.7 VSIX.
+  - Not verified: the client's own `events.jsonl` (not available here); the user confirms on the client machine.
