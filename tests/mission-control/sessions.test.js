@@ -7,7 +7,7 @@ const path = require('node:path');
 const { workspace, removeWorkspace } = require('./helpers');
 const { mission } = require('./vscode-stub');
 const { realAsks } = require('./fixtures');
-const { chatList, shownChat, claimsFrom, pendingFrom } = require('../../extension/ui/chats');
+const { chatList, shownChat, claimsFrom, pendingFrom, unreadable } = require('../../extension/ui/chats');
 const { slugFor, listAsks } = require('../../extension/ui/asks');
 const { text } = require('../../extension/ui/media/vnode');
 const { dashboard } = require('../../extension/ui/media/pages');
@@ -114,7 +114,7 @@ test('a pending new chat claims the first chat that starts after it, never an ol
   assert.deepEqual(claimsFrom(undefined), {});
 });
 
-test('transcripts are read incrementally: new lines update a chat, a half-written line waits, and a malformed line fails with its place', t => {
+test('transcripts are read incrementally: new lines update a chat, a half-written line waits, and a line that is not JSON is skipped and counted', t => {
   const { root, transcripts } = setup(t);
   const file = write(transcripts, 'live', [row('session.start', '2026-10-29T09:00:00.000Z', { startTime: '2026-10-29T09:00:00.000Z' }),
     row('user.message', '2026-10-29T09:00:01.000Z', { content: 'Build the feed' }), row('assistant.turn_start', '2026-10-29T09:00:02.000Z')]);
@@ -131,7 +131,12 @@ test('transcripts are read incrementally: new lines update a chat, a half-writte
   assert.equal(chatList(transcripts, root, ASKS, {}, null, now).chats[0].status, 'working');
   write(transcripts, 'broken', [row('user.message', '2026-10-29T09:00:00.000Z', { content: 'ok' })]);
   fs.appendFileSync(path.join(transcripts, 'broken.jsonl'), '{"type":\n');
-  assert.throws(() => chatList(transcripts, root, ASKS, {}, null, now), /Invalid chat event on line 2 of broken\.jsonl in chat broken: .*JSON/);
+  assert.ok(chatList(transcripts, root, ASKS, {}, null, now).chats.some(row => row.id === 'broken'), 'a line that is not JSON is skipped, not fatal');
+  assert.deepEqual(unreadable().filter(row => row.id === 'broken'), [{ id: 'broken', skipped: 1 }]);
+  const huge = path.join(transcripts, 'huge.jsonl');
+  fs.writeFileSync(huge, `${'x'.repeat(5 * 1024 * 1024)}\n${JSON.stringify(row('user.message', '2026-10-29T09:00:05.000Z', { content: 'After a huge line' }))}\n`);
+  assert.equal(chatList(transcripts, root, ASKS, {}, null, now).chats.find(row => row.id === 'huge')?.title, 'After a huge line', 'a line over 4 MB is skipped');
+  assert.deepEqual(unreadable().filter(row => row.id === 'huge'), [{ id: 'huge', skipped: 1 }]);
   assert.deepEqual(chatList(null, root, ASKS, {}, null, now), { chats: [], claimed: null });
 });
 

@@ -1,9 +1,8 @@
 'use strict';
 /** Telemetry for one chat: main-agent vs sub-agent token/activity split, OTel span aggregation, warning signals, and the digest an analysis model reads. */
 const fs = require('node:fs');
-const path = require('node:path');
 const { containedPath } = require('./file-access');
-const { record, text, integer } = require('./validate');
+const { object, str, count } = require('./copilot-log');
 const BASE_CONTEXT_TOKENS = 12000;
 const AIU_PER_1K_INPUT = 0.125;
 const CHARS_PER_TOKEN = 4;
@@ -16,16 +15,17 @@ function hrMs(value) {
   return Array.isArray(value) && typeof value[0] === 'number' && typeof value[1] === 'number' ? value[0] * 1000 + value[1] / 1e6 : 0;
 }
 
-/** Return parsed OTel JSON records from file belonging to session id, scanning past large non-chat spans in 4 MB chunks.
+/** Return the OTel records from file belonging to session id, scanning past large non-chat spans in 4 MB chunks; lines that are not JSON objects
+ * are skipped.
  * @param {string} file
  * @param {string} id
- * @param {{tail: (f: string, limit: number) => string, jsonLines: (c: string, s: string) => Record<string, unknown>[]}} io
+ * @param {{tail: (f: string, limit: number) => string, lines: (c: string) => Record<string, unknown>[]}} io
  * @returns {Record<string, unknown>[]}
  */
 function sessionRecords(file, id, io) {
   const size = fs.statSync(file).size;
   if (!size) return [];
-  if (size <= TELEMETRY_TAIL_BYTES) return io.jsonLines(io.tail(file, TELEMETRY_TAIL_BYTES), path.basename(file));
+  if (size <= TELEMETRY_TAIL_BYTES) return io.lines(io.tail(file, TELEMETRY_TAIL_BYTES));
   const handle = fs.openSync(file, 'r');
   /** @type {string[]} */
   const matched = [];
@@ -51,14 +51,15 @@ function sessionRecords(file, id, io) {
   } finally {
     fs.closeSync(handle);
   }
-  return matched.length ? io.jsonLines(`${matched.join('\n')}\n`, path.basename(file)) : [];
+  return matched.length ? io.lines(`${matched.join('\n')}\n`) : [];
 }
 
-/** Sum research telemetry model calls of one chat session from a workspace-contained export, separating main-agent from sub-agents.
+/** Sum research telemetry model calls of one chat session from a workspace-contained export, separating main-agent from sub-agents; spans
+ * without attributes or a model are left out (Copilot owns this format, decision D-068).
  * @param {string} workspace
  * @param {string} file
  * @param {string} id
- * @param {{tail: (f: string, limit: number) => string, jsonLines: (c: string, s: string) => Record<string, unknown>[], inside: (f: string, w: string) => string | null}} io
+ * @param {{tail: (f: string, limit: number) => string, lines: (c: string) => Record<string, unknown>[], inside: (f: string, w: string) => string | null}} io
  * @returns {import('./types').Activity['tokens']}
  */
 function otelUsage(workspace, file, id, io) {
@@ -74,23 +75,24 @@ function otelUsage(workspace, file, id, io) {
   let nano = 0;
   for (const row of sessionRecords(candidate, id, io)) {
     if (typeof row.name !== 'string' || !row.name.startsWith('chat ')) continue;
-    const attrs = record(row.attributes, 'Telemetry span attributes');
+    const attrs = object(row.attributes);
+    if (!attrs) continue;
     const owners = [attrs['gen_ai.conversation.id'], attrs['copilot_chat.session_id'], attrs['copilot_chat.chat_session_id'], attrs['copilot_chat.parent_chat_session_id']];
     if (!owners.includes(id)) continue;
-    const model = text(attrs['gen_ai.response.model'] ?? attrs['gen_ai.request.model'], 'Telemetry model');
+    const model = str(attrs['gen_ai.response.model']) || str(attrs['gen_ai.request.model']);
+    if (!model) continue;
     const use = models.get(model) || { model, calls: 0, failed: 0, input: 0, output: 0, cached: 0, reasoning: 0 };
     use.calls += 1;
     models.set(model, use);
-    if (attrs['gen_ai.usage.input_tokens'] === undefined && record(row.status, 'Telemetry span status').code === 2) {
+    if (attrs['gen_ai.usage.input_tokens'] === undefined && object(row.status)?.code === 2) {
       use.failed += 1;
       continue;
     }
-    const inp = integer(attrs['gen_ai.usage.input_tokens'], 'Input tokens');
-    const out = integer(attrs['gen_ai.usage.output_tokens'], 'Output tokens');
-    const cac = attrs['gen_ai.usage.cache_read.input_tokens'] === undefined ? 0 : integer(attrs['gen_ai.usage.cache_read.input_tokens'], 'Cached tokens');
-    const rawR = attrs['gen_ai.usage.reasoning_tokens'] ?? attrs['gen_ai.usage.reasoning.output_tokens'];
-    const rea = rawR === undefined ? 0 : integer(rawR, 'Thinking tokens');
-    const spanNano = attrs['copilot_chat.copilot_usage_nano_aiu'] === undefined ? 0 : integer(attrs['copilot_chat.copilot_usage_nano_aiu'], 'AI units');
+    const inp = count(attrs['gen_ai.usage.input_tokens']);
+    const out = count(attrs['gen_ai.usage.output_tokens']);
+    const cac = count(attrs['gen_ai.usage.cache_read.input_tokens']);
+    const rea = count(attrs['gen_ai.usage.reasoning_tokens'] ?? attrs['gen_ai.usage.reasoning.output_tokens']);
+    const spanNano = count(attrs['copilot_chat.copilot_usage_nano_aiu']);
     use.input += inp; use.output += out; use.cached += cac; use.reasoning += rea;
     nano += spanNano;
     const agentAttr = typeof attrs['gen_ai.agent.name'] === 'string' ? attrs['gen_ai.agent.name'] : null;

@@ -9,7 +9,7 @@ const { runtime, inspect, guardMode, packs } = require('./lifecycle-cli');
 const { snapshot } = require('./workspace-state');
 const { activity } = require('./activity');
 const { listAsks, askTree, projectTree } = require('./asks');
-const { chatList, shownChat, claimsFrom, pendingFrom, chatMeta, transcriptPath, copilotDigest } = require('./chats');
+const { chatList, shownChat, claimsFrom, pendingFrom, chatMeta, transcriptPath, copilotDigest, unreadable } = require('./chats');
 const { companion } = require('./companion');
 const { Workflow } = require('./workflow');
 const { HarnessTree } = require('./harness-tree');
@@ -80,6 +80,8 @@ class MissionControl {
     /** @type {NodeJS.Timeout | null} */
     this.treeTimer = null;
     this.copilotStamp = '';
+    /** @type {Map<string, number>} Unreadable line counts already written to the output channel, by chat. */
+    this.unreadableLogged = new Map();
     this.copilotTimer = setInterval(() => {
       if (this.disposed || !(this.sidebar?.visible || this.panel?.visible) || this.state.busy || this.workspace?.uri.scheme !== 'file') return;
       const stamp = copilotDigest(this.workspace.uri.fsPath, this.copilotSessions());
@@ -268,6 +270,11 @@ class MissionControl {
       const claims = claimsFrom(this.context.workspaceState.get('chatAsks'));
       const pending = pendingFrom(this.context.workspaceState.get('pendingChat'), now);
       const { chats, claimed } = chatList(transcripts, root, (asks.value || []).map(ask => ask.id), claims, pending, now, copilotRoot);
+      for (const row of unreadable()) {
+        if (this.unreadableLogged.get(row.id) === row.skipped) continue;
+        this.unreadableLogged.set(row.id, row.skipped);
+        this.output.appendLine(`Live activity: skipped ${row.skipped} unreadable line(s) in chat ${row.id}; Copilot's log format is read best-effort (D-068).`);
+      }
       if (claimed) {
         await this.context.workspaceState.update('chatAsks', { ...claims, [claimed.chat]: { ask: claimed.ask, how: 'started' } });
         await this.context.workspaceState.update('pendingChat', null);

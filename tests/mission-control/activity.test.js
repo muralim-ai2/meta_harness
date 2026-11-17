@@ -128,15 +128,25 @@ test('a command the agent requested but Copilot has not started waits for your A
   assert.deepEqual([session.status, session.current], ['idle', null], 'a request left for hours is not a wait: the chat was left or the step skipped');
 });
 
-test('a malformed tool request the model wrote is shown by tool name and does not stop the chat list or live activity', t => {
+test('Copilot-owned log content is read best-effort: raw patch text, malformed requests, unknown events and odd fields never stop Live (D-068)', t => {
   const { root, transcripts, chat, write } = setup(t);
+  const patch = `*** Begin Patch\n*** Update File: ${path.join(root, 'index.html')}\n*** Update File: ${path.join(path.dirname(root), 'outside.js')}\n*** End Patch`;
   const requests = [
     { toolCallId: 'm1', name: 'multi_replace_string_in_file', arguments: JSON.stringify({ explanation: 'x', replacements: '[{"filePath": "a.md", "oldString": "subgraph LATER["P2' }) },
-    { toolCallId: 'm2', name: 'run_in_terminal', arguments: '{"command": "npm test' }];
-  write([...busy(root).slice(0, -1), row('assistant.message', 30, { content: '', toolRequests: requests })]);
+    { toolCallId: 'm2', name: 'run_in_terminal', arguments: '{"command": "npm test' }, { name: 'no_call_id' }, 'not an object'];
+  write([...busy(root), done(31, 't4'), tool(32, 'p1', 'apply_patch', patch), done(33, 'p1'),
+    tool(34, 't5', 'manage_todo_list', { todoList: [{ title: 'Feed', status: 'blocked' }, { title: 'Profile', status: 'completed' }, 'x'] }), done(35, 't5'),
+    row('copilot.future_event', 36, { anything: [1, 2] }), { type: 'assistant.message', data: { content: 'no time' } }, row('assistant.turn_start', 37, null),
+    row('assistant.message', 38, { content: '', toolRequests: requests })]);
+  fs.appendFileSync(chat, 'not json\n');
   assert.equal(chatList(transcripts, root, [], {}, null, START + 60_000).chats.length, 1);
   const { session } = activity(root, chat, null, START + 60_000);
-  assert.deepEqual([session.status, session.current.detail], ['waiting', 'Requested run_in_terminal with malformed arguments']);
+  assert.ok(session.events.some(event => event.title === 'Edited 2 files' && event.state === 'ok'), 'raw apply_patch text reads as an edit');
+  assert.deepEqual(session.files, [{ path: 'index.html', count: 3, last: at(32) }], 'a path outside the workspace is never listed');
+  assert.deepEqual(session.todos, [{ title: 'Profile', status: 'completed' }]);
+  assert.equal(session.turns, 2);
+  assert.ok(!session.events.some(event => event.title === 'no time'), 'an event without a time is skipped');
+  assert.deepEqual([session.status, session.current.detail], ['waiting', 'Ran a command']);
 });
 
 test('ten quiet minutes make a session idle and unfinished calls show as stopped', t => {
@@ -175,7 +185,9 @@ test('research telemetry tokens are summed per model for this session only', t =
   fs.writeFileSync(file, span(SESSION, 'claude-opus-5.5', 1000, 50) + span(SESSION, 'claude-opus-5.5', 2000, 70)
     + span(SESSION, 'gpt-4o-mini', 300, 5) + span('another-session', 'claude-opus-5.5', 9999, 999) + JSON.stringify({ body: 'log record' }) + '\n'
     + JSON.stringify({ name: 'chat claude-opus-5.5', status: { code: 2, message: 'The operation was aborted' },
-      attributes: { 'gen_ai.conversation.id': SESSION, 'gen_ai.request.model': 'claude-opus-5.5' } }) + '\n');
+      attributes: { 'gen_ai.conversation.id': SESSION, 'gen_ai.request.model': 'claude-opus-5.5' } }) + '\n'
+    + 'not json\n' + JSON.stringify({ name: 'chat claude-opus-5.5', attributes: null }) + '\n'
+    + JSON.stringify({ name: 'chat unknown', attributes: { 'gen_ai.conversation.id': SESSION } }) + '\n');
   const { tokens } = activity(root, chat, file, START + 60_000);
   assert.deepEqual(tokens.models[0], { model: 'claude-opus-5.5', calls: 3, failed: 1, input: 3000, output: 120, cached: 200, reasoning: 0 });
   assert.equal(tokens.models[1].model, 'gpt-4o-mini');
@@ -183,7 +195,7 @@ test('research telemetry tokens are summed per model for this session only', t =
   assert.equal(activity(root, chat, path.join(path.dirname(root), 'elsewhere.jsonl'), START).tokens, null);
 });
 
-test('an unfinished last line is read once complete and malformed lines fail explicitly', t => {
+test('an unfinished last line is read once complete and a line that is not JSON is skipped', t => {
   const { root, chat, write } = setup(t);
   const file = write(busy(root));
   const partial = JSON.stringify(row('assistant.message', 40, { content: 'Almost there.' }));
@@ -192,7 +204,7 @@ test('an unfinished last line is read once complete and malformed lines fail exp
   fs.appendFileSync(file, partial.slice(20) + '\n');
   assert.equal(activity(root, chat, null, START).session.events[0].title, 'Almost there.');
   fs.writeFileSync(file, '{"type":\n' + JSON.stringify(row('assistant.turn_start', 1)) + '\n');
-  assert.throws(() => activity(root, chat, null, START), /Invalid JSON on line 1/);
+  assert.equal(activity(root, chat, null, START).session.turns, 1);
 });
 
 test('tool calls are described in plain words with every edited file', () => {

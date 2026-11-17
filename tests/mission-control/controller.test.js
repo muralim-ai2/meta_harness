@@ -108,16 +108,20 @@ test('files open beside Mission Control only when it lists them', async t => {
   await assert.rejects(fixture.controls.provider.execute({ action: 'openFile', path: 'node_modules/pkg/secret.txt' }), /not listed/);
 });
 
-test('an unreadable transcript shows as an activity error while the task view keeps working', async t => {
+test('a chat log line Mission Control cannot read is skipped and noted in the output channel while Live keeps working (D-068)', async t => {
   const fixture = mission(t);
   project(fixture.root);
-  fs.mkdirSync(fixture.transcripts, { recursive: true });
-  fs.writeFileSync(path.join(fixture.transcripts, 'session-1.jsonl'), '{"type":\n');
+  const patch = `*** Begin Patch\n*** Update File: ${path.join(fixture.root, 'policy.js')}\n@@\n-a\n+b\n*** End Patch`;
+  transcript(fixture.transcripts, [{ type: 'user.message', data: { content: 'Fix the policy checker' } }, { type: 'assistant.turn_start', data: {} },
+    { type: 'tool.execution_start', data: { toolCallId: 'p', toolName: 'apply_patch', arguments: patch } }]);
+  fs.appendFileSync(path.join(fixture.transcripts, 'session-1.jsonl'), '{"type":\n');
   const result = await fixture.controls.commands.get('frontierHve.refreshMissionControl')();
   assert.ok(result.ask);
   const model = fixture.controls.commands.get('frontierHve.missionControlModel')();
-  assert.match(model.activityError, /Invalid chat event on line 1/);
-  assert.equal(model.activity, null);
+  assert.equal(model.activityError, null);
+  assert.equal(model.activity.session.current.title, 'Edited policy.js', 'a raw-text apply_patch call reads as an edit of the files it names');
+  assert.deepEqual(fixture.controls.calls.filter(call => call[0] === 'log' && /unreadable/.test(call[1])).map(call => call[1]),
+    ['Live activity: skipped 1 unreadable line(s) in chat session-1; Copilot\'s log format is read best-effort (D-068).']);
 });
 
 test('Continue in Chat is gone: no command, no action and no Chat draft', async t => {

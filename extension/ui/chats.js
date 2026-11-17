@@ -2,7 +2,8 @@
 /** Index this window's Copilot Chat sessions incrementally and link each one to the asks it created, reopened, edited or was opened for. */
 const fs = require('node:fs');
 const path = require('node:path');
-const { record, text, errorText } = require('./validate');
+const { record, text } = require('./validate');
+const { jsonObject, objects, str, event: logEvent, toolArgs } = require('./copilot-log');
 const { describe, headline, status, stillRunning, requested, awaiting } = require('./activity');
 const { ASK, askTime } = require('./asks');
 const { BRAND } = require('../brand');
@@ -19,8 +20,8 @@ const ASK_PATH = new RegExp(`(?:^|[\\\\/])${STATE.replace('.', '\\.')}[\\\\/]ask
 const STARTER_ASK = new RegExp(`work in the ask ${STATE.replace('.', '\\.')}/asks/(\\d{8}-\\d{4}-[a-z0-9][a-z0-9-]{0,40})\\b`, 'i');
 const HOW = ['started', 'linked', 'continued'];
 
-/** @typedef {{offset: number, size: number, mtime: number, lines: number, id: string, model: string | null, title: string | null, started: string, lastAt: string,
- *   turnOpen: boolean, running: Map<string, {tool: string, at: string}>, requested: Map<string, import('./types').ActivityEvent>,
+/** @typedef {{offset: number, size: number, mtime: number, lines: number, skipped: number, oversized: boolean, id: string, model: string | null, title: string | null,
+ *   started: string, lastAt: string, turnOpen: boolean, running: Map<string, {tool: string, at: string}>, requested: Map<string, import('./types').ActivityEvent>,
  *   contracts: {slug: string, at: number}[], opened: Set<string>, edited: Set<string>}} Scan */
 /** @type {Map<string, Scan>} */
 const scans = new Map();
@@ -99,35 +100,34 @@ function copilotDigest(workspace, copilotRoot = null) {
     .map(row => `${row.id}:${row.size}:${Math.round(row.mtime)}`).join('|');
 }
 
-/** Apply one transcript event to a chat's scan.
+/** Apply one transcript event to a chat's scan; an event without a type or time counts as skipped, and fields of an unexpected shape are ignored.
  * @param {Scan} s
  * @param {Record<string, unknown>} row
  * @param {string} workspace
  * @returns {void}
  */
 function apply(s, row, workspace) {
-  const type = text(row.type, 'Transcript event type');
-  const at = text(row.timestamp, `${type} timestamp`);
-  const data = record(row.data, `${type} data`);
+  const ev = logEvent(row);
+  if (!ev) {
+    s.skipped += 1;
+    return;
+  }
+  const { type, at, data } = ev;
   s.started ||= at;
   s.lastAt = at;
   if (type === 'session.start') {
-    s.started = text(data.startTime, 'Session start time');
+    if (str(data.startTime)) s.started = str(data.startTime);
     if (typeof data.selectedModel === 'string' && data.selectedModel) s.model = data.selectedModel;
   } else if (type === 'user.message') {
     s.running.clear();
     s.requested.clear();
-    const content = text(data.content, 'Your message', true);
+    const content = str(data.content);
     if (content.trim()) s.title ||= headline(content);
     const starter = STARTER_ASK.exec(content);
     if (starter) s.opened.add(starter[1]);
-    if (Array.isArray(data.attachments)) {
-      for (const item of data.attachments) {
-        const file = item && typeof item === 'object' && typeof /** @type {Record<string, unknown>} */ (item).path === 'string'
-          ? /** @type {string} */ (/** @type {Record<string, unknown>} */ (item).path) : '';
-        const match = ASK_PATH.exec(file);
-        if (match) s.opened.add(match[1]);
-      }
+    for (const item of objects(data.attachments)) {
+      const match = ASK_PATH.exec(str(item.path));
+      if (match) s.opened.add(match[1]);
     }
   } else if (type === 'assistant.turn_start') s.turnOpen = true;
   else if (type === 'assistant.turn_end') s.turnOpen = false;
@@ -137,11 +137,12 @@ function apply(s, row, workspace) {
     if (typeof data.model === 'string' && data.model) s.model = data.model;
     s.requested = requested(data, workspace, at);
   } else if (type === 'tool.execution_start') {
-    const tool = text(data.toolName, 'Tool name');
-    s.requested.delete(text(data.toolCallId, 'Tool call id'));
-    const rawArgs = typeof data.arguments === 'string' ? JSON.parse(data.arguments) : data.arguments;
-    const args = rawArgs === undefined ? {} : record(rawArgs, `${tool} arguments`);
-    s.running.set(text(data.toolCallId, 'Tool call id'), { tool, at });
+    const tool = str(data.toolName);
+    const callId = str(data.toolCallId);
+    if (!tool || !callId) return;
+    s.requested.delete(callId);
+    const args = toolArgs(data.arguments);
+    s.running.set(callId, { tool, at });
     const command = SHELL_TOOLS.has(tool) && typeof args.command === 'string' ? args.command : '';
     if (/lifecycle\.py/.test(command)) {
       for (const match of command.matchAll(CONTRACT)) s.contracts.push({ slug: match[1], at: Date.parse(at) });
@@ -152,10 +153,11 @@ function apply(s, row, workspace) {
       const match = ASK_PATH.exec(file);
       if (match) s.edited.add(match[1]);
     }
-  } else if (type === 'tool.execution_complete') s.running.delete(text(data.toolCallId, 'Tool call id'));
+  } else if (type === 'tool.execution_complete') s.running.delete(str(data.toolCallId));
 }
 
-/** Return a transcript's scan, reading only the complete lines added since the last call.
+/** Return a transcript's scan, reading only the complete lines added since the last call; lines that are not JSON objects, events without a
+ * type or time, and lines longer than 4 MB are skipped and counted.
  * @param {string} file
  * @param {string} workspace
  * @returns {Scan}
@@ -166,8 +168,8 @@ function scan(file, workspace) {
   const stat = fs.statSync(file);
   let s = scans.get(file);
   if (!s || stat.size < s.offset) {
-    s = { offset: 0, size: -1, mtime: 0, lines: 0, id, model: null, title: null, started: '', lastAt: '', turnOpen: false, running: new Map(), requested: new Map(), contracts: [],
-      opened: new Set(), edited: new Set() };
+    s = { offset: 0, size: -1, mtime: 0, lines: 0, skipped: 0, oversized: false, id, model: null, title: null, started: '', lastAt: '', turnOpen: false,
+      running: new Map(), requested: new Map(), contracts: [], opened: new Set(), edited: new Set() };
     scans.set(file, s);
   }
   if (s.size === stat.size && s.mtime === stat.mtimeMs) return s;
@@ -175,21 +177,33 @@ function scan(file, workspace) {
   try {
     while (s.offset < stat.size) {
       const buffer = Buffer.alloc(Math.min(CHUNK_BYTES, stat.size - s.offset));
-      const read = fs.readSync(handle, buffer, 0, buffer.length, s.offset);
-      const end = buffer.subarray(0, read).lastIndexOf(0x0a);
-      if (end < 0) {
-        if (read === CHUNK_BYTES) throw new Error(`Line ${s.lines + 1} of ${path.basename(file)} is longer than 4 MB.`);
-        break;
+      const chunk = buffer.subarray(0, fs.readSync(handle, buffer, 0, buffer.length, s.offset));
+      if (s.oversized) {
+        const newline = chunk.indexOf(0x0a);
+        if (newline < 0) {
+          if (chunk.length < CHUNK_BYTES) break;
+          s.offset += chunk.length;
+          continue;
+        }
+        s.oversized = false;
+        s.lines += 1;
+        s.skipped += 1;
+        s.offset += newline + 1;
+        continue;
       }
-      for (const line of buffer.toString('utf8', 0, end).split('\n')) {
+      const end = chunk.lastIndexOf(0x0a);
+      if (end < 0) {
+        if (chunk.length < CHUNK_BYTES) break;
+        s.oversized = true;
+        s.offset += chunk.length;
+        continue;
+      }
+      for (const line of chunk.toString('utf8', 0, end).split('\n')) {
         s.lines += 1;
         if (!line.trim()) continue;
-        try {
-          apply(s, record(JSON.parse(line), `${path.basename(file)} line ${s.lines}`), workspace);
-        } catch (error) {
-          scans.delete(file);
-          throw new Error(`Invalid chat event on line ${s.lines} of ${path.basename(file)} in chat ${id}: ${errorText(error)}`, { cause: error });
-        }
+        const row = jsonObject(line);
+        if (row) apply(s, row, workspace);
+        else s.skipped += 1;
       }
       s.offset += end + 1;
     }
@@ -199,6 +213,13 @@ function scan(file, workspace) {
   s.size = stat.size;
   s.mtime = stat.mtimeMs;
   return s;
+}
+
+/** Return the scanned chats that had lines Mission Control could not read, with how many.
+ * @returns {{id: string, skipped: number}[]}
+ */
+function unreadable() {
+  return [...scans.values()].filter(s => s.skipped > 0).map(s => ({ id: s.id, skipped: s.skipped }));
 }
 
 /** Return the asks a chat works on: the one it was opened for, then those it created, reopened or edited files in.
@@ -385,4 +406,4 @@ function chatSessionUri(id) {
   return `vscode-chat-session://local/${Buffer.from(id, 'utf8').toString('base64url')}`;
 }
 
-module.exports = { SESSION, chatList, shownChat, claimsFrom, pendingFrom, chatMeta, chatSessionUri, transcriptPath, isLocalChat, copilotDigest };
+module.exports = { SESSION, chatList, shownChat, claimsFrom, pendingFrom, chatMeta, chatSessionUri, transcriptPath, isLocalChat, copilotDigest, unreadable };

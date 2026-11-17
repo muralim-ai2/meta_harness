@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { Reader } = require('./file-access');
 const { record, text, list, flag, integer } = require('./validate');
+const { looseLines, object, objects, str, count, event: logEvent, toolArgs } = require('./copilot-log');
 const { otelUsage } = require('./insights');
 const { BRAND } = require('../brand');
 const STATE = BRAND.state_dir;
@@ -114,10 +115,8 @@ function arg(args, key) {
  * @returns {string[]}
  */
 function editedFiles(tool, args) {
-  if (tool === 'multi_replace_string_in_file') {
-    return [...new Set(list(args.replacements, 'Replacements').map(row => text(record(row, 'Replacement').filePath, 'Replacement file')))];
-  }
-  if (tool === 'apply_patch') return [...text(args.input, 'Patch').matchAll(/^\*\*\* (?:(?:Add|Update|Delete) File|Move to): (.+)$/gm)].map(match => match[1].trim());
+  if (tool === 'multi_replace_string_in_file') return [...new Set(objects(args.replacements).map(row => str(row.filePath)).filter(Boolean))];
+  if (tool === 'apply_patch') return [...str(args.input).matchAll(/^\*\*\* (?:(?:Add|Update|Delete) File|Move to): (.+)$/gm)].map(match => match[1].trim());
   const file = arg(args, 'filePath') || arg(args, 'path');
   return file ? [file] : [];
 }
@@ -139,7 +138,7 @@ function describe(tool, args, workspace, at) {
     case 'create_file': case 'create': return event('edit', file ? `Created ${shown(file, workspace)}` : 'Created a file', '', file ? [file] : []);
     case 'replace_string_in_file': case 'insert_edit_into_file': case 'edit_notebook_file': case 'multi_replace_string_in_file': case 'apply_patch': case 'edit': {
       const files = editedFiles(tool, args);
-      return event('edit', files.length === 1 ? `Edited ${shown(files[0], workspace)}` : `Edited ${files.length} files`,
+      return event('edit', files.length === 1 ? `Edited ${shown(files[0], workspace)}` : files.length ? `Edited ${files.length} files` : 'Edited files',
         files.length > 1 ? files.map(name => shown(name, workspace)).join(', ') : arg(args, 'explanation') || '', files);
     }
     case 'create_directory': return event('edit', `Created folder ${shown(arg(args, 'dirPath') || '.', workspace)}`);
@@ -157,7 +156,7 @@ function describe(tool, args, workspace, at) {
       if (!Array.isArray(args.questions) && typeof args.message === 'string') {
         return event('ask', 'Asked you a question', clip(args.message, 120), referenced(args.message, workspace));
       }
-      const questions = Array.isArray(args.questions) ? args.questions.map(row => record(row, 'Question')) : [];
+      const questions = objects(args.questions);
       return event('ask', `Asked you ${questions.length || 'a'} question${questions.length === 1 ? '' : 's'}`,
         questions.map(row => arg(row, 'header') || arg(row, 'question') || '').filter(Boolean).join(' · '),
         referenced(questions.flatMap(row => ['question', 'message'].map(key => arg(row, key) || '')).join('\n'), workspace));
@@ -172,17 +171,13 @@ function describe(tool, args, workspace, at) {
   }
 }
 
-/** Return the agent's to-do list from a manage_todo_list call.
+/** Return the agent's to-do list from a manage_todo_list call; items without a title or with an unknown status are left out.
  * @param {Record<string, unknown>} args
  * @returns {import('./types').Todo[]}
  */
 function todoList(args) {
-  return list(args.todoList, 'To-do list').map(value => {
-    const row = record(value, 'To-do item');
-    const status = text(row.status, 'To-do status');
-    if (!TODO_STATES.includes(status)) throw new Error(`Unknown to-do status: ${status}`);
-    return { title: text(row.title, 'To-do title'), status: /** @type {import('./types').Todo['status']} */ (status) };
-  });
+  return objects(args.todoList).filter(row => str(row.title) && TODO_STATES.includes(str(row.status)))
+    .map(row => ({ title: str(row.title), status: /** @type {import('./types').Todo['status']} */ (row.status) }));
 }
 
 /** Mark tool calls that never reported a result as stopped once the conversation moved on: the agent answered or you wrote again.
@@ -202,20 +197,8 @@ function settle(running) {
  * @returns {Map<string, ActivityEvent>}
  */
 function requested(data, workspace, at) {
-  const rows = data.toolRequests === undefined ? [] : list(data.toolRequests, 'Tool requests').map(value => record(value, 'Tool request'));
-  return new Map(rows.map(row => {
-    const tool = text(row.name, 'Requested tool');
-    /** @type {ActivityEvent} */
-    let event;
-    // Requested arguments are the model's unchecked output, which Copilot rejects when malformed, so a bad shape names the tool only.
-    try {
-      const raw = typeof row.arguments === 'string' ? JSON.parse(row.arguments) : row.arguments;
-      event = describe(tool, raw === undefined ? {} : record(raw, `${tool} request arguments`), workspace, at);
-    } catch {
-      event = { at, kind: 'tool', title: `Requested ${tool} with malformed arguments`, detail: '', files: [], state: 'pending' };
-    }
-    return [text(row.toolCallId, 'Requested tool call id'), { ...event, state: /** @type {const} */ ('pending') }];
-  }));
+  return new Map(objects(data.toolRequests).filter(row => str(row.name) && str(row.toolCallId)).map(row =>
+    [str(row.toolCallId), { ...describe(str(row.name), toolArgs(row.arguments), workspace, at), state: /** @type {const} */ ('pending') }]));
 }
 
 /** Return the newest requested call that has not started for a few seconds: it waits for your approval in Chat. After an hour it is no longer
@@ -309,16 +292,16 @@ function parse(file, workspace) {
   const subStack = [];
   /** @type {Map<string, {event: ActivityEvent, tool: string}>} */
   const running = new Map();
-  for (const row of jsonLines(tail(file, TAIL_BYTES), path.basename(file))) {
-    const type = text(row.type, 'Transcript event type');
-    const at = text(row.timestamp, `${type} timestamp`);
-    const data = record(row.data, `${type} data`);
+  for (const row of looseLines(tail(file, TAIL_BYTES)).rows) {
+    const ev = logEvent(row);
+    if (!ev) continue;
+    const { type, at, data } = ev;
     const activeSub = subStack.at(-1) || null;
     if (s.lastAt && (!s.gap || Date.parse(at) - Date.parse(s.lastAt) > Date.parse(s.gap.to) - Date.parse(s.gap.from))) s.gap = { from: s.lastAt, to: at };
     s.started ||= at;
     s.lastAt = at;
     if (type === 'session.start') {
-      s.started = text(data.startTime, 'Session start time');
+      if (str(data.startTime)) s.started = str(data.startTime);
       if (typeof data.selectedModel === 'string' && data.selectedModel) s.model = cleanModel(data.selectedModel);
     }
     else if (type === 'user.message') {
@@ -328,7 +311,7 @@ function parse(file, workspace) {
       subStack.length = 0;
       settle(running);
       s.requested.clear();
-      const content = text(data.content, 'Your message', true);
+      const content = str(data.content);
       s.chars.user += content.length;
       if (content.trim()) {
         s.title ||= headline(content);
@@ -345,16 +328,13 @@ function parse(file, workspace) {
     } else if (type === 'skill.invoked' && typeof data.name === 'string') {
       const skPath = typeof data.path === 'string' && fs.existsSync(data.path) ? fs.statSync(data.path).size : 0;
       if (!s.skills.has(data.name)) s.skills.set(data.name, skPath);
-    } else if (type === 'session.usage_record' && data.usage && typeof data.usage === 'object') {
-      const u = record(data.usage, 'Session usage');
-      const m = text(u.responseModel ?? u.modelDisplayName ?? u.model, 'Usage model');
+    } else if (type === 'session.usage_record' && object(data.usage)) {
+      const u = /** @type {Record<string, unknown>} */ (object(data.usage));
+      const m = str(u.responseModel) || str(u.modelDisplayName) || str(u.model);
+      if (!m) continue;
       s.model ||= cleanModel(m);
-      const inp = u.inputTokens === undefined ? 0 : integer(u.inputTokens, 'Input tokens');
-      const out = u.outputTokens === undefined ? 0 : integer(u.outputTokens, 'Output tokens');
-      const cac = u.cacheReadTokens === undefined ? 0 : integer(u.cacheReadTokens, 'Cached tokens');
-      const rea = u.reasoningTokens === undefined ? 0 : integer(u.reasoningTokens, 'Thinking tokens');
-      const cu = u.copilotUsage && typeof u.copilotUsage === 'object' ? /** @type {Record<string, unknown>} */ (u.copilotUsage) : null;
-      const callNano = cu && cu.totalNanoAiu !== undefined ? integer(cu.totalNanoAiu, 'AI units') : 0;
+      const inp = count(u.inputTokens), out = count(u.outputTokens), cac = count(u.cacheReadTokens), rea = count(u.reasoningTokens);
+      const callNano = count(object(u.copilotUsage)?.totalNanoAiu);
       const use = models.get(m) || { model: m, calls: 0, failed: 0, input: 0, output: 0, cached: 0, reasoning: 0 };
       use.calls += 1; use.input += inp; use.output += out; use.cached += cac; use.reasoning += rea;
       models.set(m, use);
@@ -370,15 +350,15 @@ function parse(file, workspace) {
         s.requested = requested(data, workspace, at);
         if (msgModel) s.model = msgModel;
       }
-      const content = text(data.content, 'Agent message', true);
+      const content = str(data.content);
       if (!activeSub) s.chars.agent += content.length;
       if (content.trim()) s.events.push({ at, kind: 'message', title: clip(content, 160), detail: '', files: [], state: 'ok' });
     } else if (type === 'tool.execution_start') {
-      const tool = text(data.toolName, 'Tool name');
-      const callId = text(data.toolCallId, 'Tool call id');
+      const tool = str(data.toolName);
+      const callId = str(data.toolCallId);
+      if (!tool || !callId) continue;
       s.requested.delete(callId);
-      const rawArgs = typeof data.arguments === 'string' ? JSON.parse(data.arguments) : data.arguments;
-      const args = rawArgs === undefined ? {} : record(rawArgs, `${tool} arguments`);
+      const args = toolArgs(data.arguments);
       const event = describe(tool, args, workspace, at);
       const key = `${tool} ${JSON.stringify(args)}`;
       s.calls.set(key, { title: event.title, count: (s.calls.get(key)?.count || 0) + 1 });
@@ -420,7 +400,7 @@ function parse(file, workspace) {
       s.events.push(event);
       running.set(callId, { event, tool });
     } else if (type === 'tool.execution_complete') {
-      const callId = text(data.toolCallId, 'Tool call id');
+      const callId = str(data.toolCallId);
       const call = running.get(callId);
       if (call) {
         running.delete(callId);
@@ -546,7 +526,7 @@ function activity(workspace, file, telemetryFile, now) {
   const current = session(raw, now);
   const run = runFiles(workspace, current.id);
   current.events = [...current.events, ...run.guards].sort((a, b) => b.at.localeCompare(a.at)).slice(0, EVENT_LIMIT);
-  const otel = telemetryFile ? otelUsage(workspace, telemetryFile, current.id, { tail, jsonLines, inside }) : null;
+  const otel = telemetryFile ? otelUsage(workspace, telemetryFile, current.id, { tail, lines: content => looseLines(content).rows, inside }) : null;
   return { session: current, errors: run.errors, loadout: run.loadout, tokens: otel || raw.tokens };
 }
 
