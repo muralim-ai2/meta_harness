@@ -2,36 +2,36 @@
 
 ## Agents in the extension
 
-Pick these in a new chat. In VS Code the extension's agents and their agent-scoped hooks work with Session Target **Local** or **Copilot**, and Copilot CLI loads the same plugin; for Claude Code, Codex, Cursor and the Copilot cloud agent run **ARIA: Install for other harnesses** ([Adapters](Adapters.md)).
+Pick these in a new chat. In VS Code the extension's agents and their agent-scoped hooks work with Session Target **Local** or **Copilot**, and Copilot CLI loads the same plugin; for Claude Code, Codex, Cursor and the Copilot cloud agent run **Frontier-HVE: Install for other harnesses** ([Adapters](Adapters.md)).
 
-Since 0.15.0 the picker shows only the delivery agents (D-055), and since 0.15.3 `ARIA Lite` again (D-058; named `HVE creator` until 0.22.1; asks created before keep that name in their contract). They ask VS Code for a top model in this order: GPT-6 Astra, Gemini 4 Argon, Claude Fable 5, Claude Opus 5.5 (the first one available is used), with `reasoning-effort: high`. VS Code does not apply `reasoning-effort` from agent files (D-020), so also set the effort to high in the model picker. Every deliverable a user sees ends with the **wow uplift** loop (`wow-uplift` skill): a top-model judge (`ARIA uplift-judge`) names two or three targeted UI/UX or presentation improvements, the agent applies them, re-runs the checks and captures before and after images, and the judge looks again, up to 3 rounds or until it says done. Any deck follows the `presentation-deck` skill (NorthStar style, discovery form, python-pptx build, lint and previews); when the user picks web slides it routes to `frontend-slides` (animated single-file HTML decks, D-059).
-
-| Agent | Use it for | Guard hooks | Needs Python |
-|---|---|---|---|
-| `ARIA Auto` (`auto`, autonomous; formerly Frontier E2E Delivery) | End-to-end delivery along a lifecycle (SDLC, team delivery, consulting or a plugin/workspace one), pausing only after the milestones you tick in the plan; build stages run as feature loops with their persona. E.g. a leave app from discovery to release with one review after design | as creator | Yes |
-| `ARIA Collab` (`collab`, collaborative; formerly Frontier BYOW) | Come in at any stage and run one, several or all stages of `team-delivery` with the right persona, each visit its own ask with a project ledger; a pack lifecycle can run in place of a stage; or sprints along your team's agile overlay. E.g. data architecture and build with the Oracle pack now, a design review next week | as creator | Yes |
-| `ARIA Prototype Creator` (`prototype-creator`) | Fast UI/UX clickthrough (HTML or TypeScript) in the ask folder's `prototype/`, self-checked (`tools/prototype/check.py`) with a screenshot per screen; no loop; output evaluation on request. E.g. three screens of a leave request flow for a stakeholder demo | loop (safety only) | Yes |
-| `ARIA Lite` | Build software: verified feature loop, then output evaluation ([Evaluation](Evaluation.md)) | loop, module, error, prototype, template, skill, profile, compaction, choice | Yes |
-
-The extension's rendered plugin installs only the four main user-facing agents above (`ARIA Auto`, `ARIA Collab`, `ARIA Prototype Creator`, `ARIA Lite`); specialist personas and reviewers below remain in `extension/agents/` for client exports and are carried into general sub-agents by `lifecycle.py brief`. In this repository the research arms in `.github/agents/` (`minimal`, `single`, `creator`, `creator-flow`, `creator-github`) are the user-invocable benchmark versions.
+Since 0.15.0 the picker shows only the delivery agents (D-055), and since 0.15.3 `Frontier-HVE Lite` again (D-058; named `HVE creator` until 0.22.1; asks created before keep that name in their contract). They ask VS Code for a top model in this order: GPT-6 Astra, Gemini 4 Argon, Claude Fable 5, Claude Opus 5.5 (the first one available is used), with `reasoning-effort: high`. VS Code does not apply `reasoning-effort` from agent files (D-020), so also set the effort to high in the model picker. Every deliverable a user sees ends with the **wow uplift** loop (`wow-uplift` skill): a top-model judge (`Frontier-HVE uplift-judge`) names two or three targeted UI/UX or presentation improvements, the agent applies them, re-runs the checks and captures before and after images, and the judge looks again, up to 3 rounds or until it says done. Any deck follows the `presentation-deck` skill (NorthStar style, discovery form, python-pptx build, lint and previews); when the user picks web slides it routes to `frontend-slides` (animated single-file HTML decks, D-059).
 
 | Agent | Use it for | Guard hooks | Needs Python |
 |---|---|---|---|
-| `ARIA creator-flow` | Build through the graph workflow (Designer → ... → Maintainer) | as creator; stage agents add the stage guard | Yes |
-| `ARIA creator-github` | Product work on GitHub: stacked branches, options you pick, PRs pushed only when you tick them | as creator | Yes |
-| `ARIA product-manager` | Research, PRD in the configured template, backlog ([Product Manager](Product-Manager.md)); the product manager persona of Auto and Collab | template (PRD only), skill (`prd` always loaded), profile, compaction | Yes |
-| `ARIA single` | One agent with file, search and terminal tools | template | Yes |
-| `ARIA minimal` | Baseline answer, no tools | none | No |
-| `ARIA skill-evaluator` | Onboard a skill with evidence ([Skills](Skills.md)) | none | Yes (tools) |
-| `ARIA azure-devops` | Azure DevOps work items, PRs and builds ([Adapters](Adapters.md)) | none | Yes (MCP setup command) |
+| `Frontier-HVE Auto` (`auto`, autonomous; formerly Frontier E2E Delivery) | End-to-end delivery along a lifecycle (SDLC, team delivery, consulting or a plugin/workspace one), pausing only after the milestones you tick in the plan; build stages run as feature loops with their persona. E.g. a leave app from discovery to release with one review after design | as creator | Yes |
+| `Frontier-HVE Collab` (`collab`, collaborative; formerly Frontier BYOW) | Come in at any stage and run one, several or all stages of `team-delivery` with the right persona, each visit its own ask with a project ledger; a pack lifecycle can run in place of a stage; or sprints along your team's agile overlay. E.g. data architecture and build with the Oracle pack now, a design review next week | as creator | Yes |
+| `Frontier-HVE Prototype Creator` (`prototype-creator`) | Fast UI/UX clickthrough (HTML or TypeScript) in the ask folder's `prototype/`, self-checked (`tools/prototype/check.py`) with a screenshot per screen; no loop; output evaluation on request. E.g. three screens of a leave request flow for a stakeholder demo | loop (safety only) | Yes |
+| `Frontier-HVE Lite` | Build software: verified feature loop, then output evaluation ([Evaluation](Evaluation.md)) | loop, module, error, prototype, template, skill, profile, compaction, choice | Yes |
 
-Other hidden helpers: `ARIA council` and `ARIA evaluation-reviewer` (read-only reviewers), `ARIA uplift-judge` (read-only wow-uplift judge on a top model), `HVE flow-*` (stages), `ARIA engineer` (one feature to its check), `ARIA skill-worker` and `ARIA skill-judge`.
+The extension's rendered plugin installs only the four main user-facing agents above (`Frontier-HVE Auto`, `Frontier-HVE Collab`, `Frontier-HVE Prototype Creator`, `Frontier-HVE Lite`); specialist personas and reviewers below remain in `extension/agents/` for client exports and are carried into general sub-agents by `lifecycle.py brief`. In this repository the research arms in `.github/agents/` (`minimal`, `single`, `creator`, `creator-flow`, `creator-github`) are the user-invocable benchmark versions.
 
-**Tool lists.** Working agents have no `tools:` list, so they see every tool the harness offers, including your MCP servers. Only `ARIA council`, `ARIA evaluation-reviewer`, `ARIA uplift-judge`, `ARIA flow-architect`, `ARIA flow-maintainer` (read-only), `ARIA skill-judge`, `ARIA skill-worker` (blind) and `ARIA minimal` (baseline) keep a fixed list. Token cost stays visible instead of being capped: the ask contract records each harness's MCP servers with an estimated tool-definition load (1,500 tokens per server, warning over 6,000; `skills/categories.json` → `context_load`), and the plan and chat flag it.
+| Agent | Use it for | Guard hooks | Needs Python |
+|---|---|---|---|
+| `Frontier-HVE creator-flow` | Build through the graph workflow (Designer → ... → Maintainer) | as creator; stage agents add the stage guard | Yes |
+| `Frontier-HVE creator-github` | Product work on GitHub: stacked branches, options you pick, PRs pushed only when you tick them | as creator | Yes |
+| `Frontier-HVE product-manager` | Research, PRD in the configured template, backlog ([Product Manager](Product-Manager.md)); the product manager persona of Auto and Collab | template (PRD only), skill (`prd` always loaded), profile, compaction | Yes |
+| `Frontier-HVE single` | One agent with file, search and terminal tools | template | Yes |
+| `Frontier-HVE minimal` | Baseline answer, no tools | none | No |
+| `Frontier-HVE skill-evaluator` | Onboard a skill with evidence ([Skills](Skills.md)) | none | Yes (tools) |
+| `Frontier-HVE azure-devops` | Azure DevOps work items, PRs and builds ([Adapters](Adapters.md)) | none | Yes (MCP setup command) |
+
+Other hidden helpers: `Frontier-HVE council` and `Frontier-HVE evaluation-reviewer` (read-only reviewers), `Frontier-HVE uplift-judge` (read-only wow-uplift judge on a top model), `HVE flow-*` (stages), `Frontier-HVE engineer` (one feature to its check), `Frontier-HVE skill-worker` and `Frontier-HVE skill-judge`.
+
+**Tool lists.** Working agents have no `tools:` list, so they see every tool the harness offers, including your MCP servers. Only `Frontier-HVE council`, `Frontier-HVE evaluation-reviewer`, `Frontier-HVE uplift-judge`, `Frontier-HVE flow-architect`, `Frontier-HVE flow-maintainer` (read-only), `Frontier-HVE skill-judge`, `Frontier-HVE skill-worker` (blind) and `Frontier-HVE minimal` (baseline) keep a fixed list. Token cost stays visible instead of being capped: the ask contract records each harness's MCP servers with an estimated tool-definition load (1,500 tokens per server, warning over 6,000; `skills/categories.json` → `context_load`), and the plan and chat flag it.
 
 ## Ask contract (every agent, every harness)
 
-Every working agent starts with `lifecycle.py where .aria/asks/request.md`: it prints the workspace's project, the open ask with its paths, and a verdict (`continue`, `new-ask`, `new-workspace` or `new-project`) that the agent confirms with you in one form. To continue it runs `lifecycle.py open <ask>`; for a new ask, `lifecycle.py contract <lifecycle> <slug> "<agent>" .aria/asks/request.md` (`direct` for agents without a lifecycle; `+<skill>` requires a skill, as `ARIA product-manager` does with `+prd`). Both are terminal commands, so they work with or without hooks. One workspace holds one project; each ask gets its own timestamped folder (UTC), so nothing from one ask clutters the workspace root or another ask:
+Every working agent starts with `lifecycle.py where .aria/asks/request.md`: it prints the workspace's project, the open ask with its paths, and a verdict (`continue`, `new-ask`, `new-workspace` or `new-project`) that the agent confirms with you in one form. To continue it runs `lifecycle.py open <ask>`; for a new ask, `lifecycle.py contract <lifecycle> <slug> "<agent>" .aria/asks/request.md` (`direct` for agents without a lifecycle; `+<skill>` requires a skill, as `Frontier-HVE product-manager` does with `+prd`). Both are terminal commands, so they work with or without hooks. One workspace holds one project; each ask gets its own timestamped folder (UTC), so nothing from one ask clutters the workspace root or another ask:
 
 ```
 .aria/project/                      project.json, feature_list.json (+ feature_list.add.json), progress.txt, tracker.json, state.json
@@ -50,7 +50,7 @@ The contract prints `paths` (ask, plan, loop, evidence, project, feature list, f
 | `stages` | Milestones with agent, skills, plugin skills, templates and exit gate |
 | `personas` | Who owns which stages |
 | `tasks` | The features this ask added to the project's feature list (`lifecycle.py tasks-sync`) with milestone, persona, skills and pass state |
-| `environment` | Harness, MCP servers per harness with tool load, ARIA hook files, plugin skills |
+| `environment` | Harness, MCP servers per harness with tool load, Frontier-HVE hook files, plugin skills |
 | `delegations`, `reported` | Each sub-agent brief and the `SKILLS-USED` line it returned |
 | `previous_ask` | The ask open before this one, with the new-workspace recommendation when this ask starts a different project |
 | `checklist` | Your sign-off of each option (`opt:evaluation`), milestone (`stage:<name>`) and task (`task:<feature>`): value, note, and whether it came from the agent's form or a tick in `plan.md` ([Ways of working](Ways-of-Working.md#what-you-are-asked-and-why)) |
@@ -65,7 +65,7 @@ When another ask is still open (milestones not done, or an evaluation you asked 
 
 ## Lifecycles
 
-`ARIA Auto` and `ARIA Collab` start with `tools/loop/lifecycle.py route <request-file>` (expertise packs routed by the request, then lifecycles with matched packs' overlays first), show the stages and ask which lifecycle, which stages to skip and, when packs match, which packs to use; the practitioner's call wins. A stage with `loop: true` is a feature loop the orchestrator runs itself, each feature delegated to the stage's agent (`ARIA engineer`, `ARIA db-engineer`, `ARIA ui-engineer`, `ARIA test-engineer`, `ARIA devops-engineer`). Lifecycles are JSON files with stages (goal, agent, library skills, plugin skills, templates, exit gate, when to skip, and optionally `loop`, `evidence` checked before the stage is done and a capped `rework` step back):
+`Frontier-HVE Auto` and `Frontier-HVE Collab` start with `tools/loop/lifecycle.py route <request-file>` (expertise packs routed by the request, then lifecycles with matched packs' overlays first), show the stages and ask which lifecycle, which stages to skip and, when packs match, which packs to use; the practitioner's call wins. A stage with `loop: true` is a feature loop the orchestrator runs itself, each feature delegated to the stage's agent (`Frontier-HVE engineer`, `Frontier-HVE db-engineer`, `Frontier-HVE ui-engineer`, `Frontier-HVE test-engineer`, `Frontier-HVE devops-engineer`). Lifecycles are JSON files with stages (goal, agent, library skills, plugin skills, templates, exit gate, when to skip, and optionally `loop`, `evidence` checked before the stage is done and a capped `rework` step back):
 
 | Source | Folder | Wins over |
 |---|---|---|
@@ -80,28 +80,28 @@ The repository's `.github/agents/` holds the research arms (`minimal`, `single`,
 
 ## Personas, Collab stage entry and Auto gates
 
-**Personas.** `templates/personas/catalog.json` lists 18 personas. Two are existing agents: TPM is `ARIA product-manager` and Engineer is `ARIA engineer`. The other 16 are rendered by `tools/loop/personas.py` from one template per kind when `extension/build.py` runs, so edit the catalog, not the generated `hve-<id>.agent.md` files:
+**Personas.** `templates/personas/catalog.json` lists 18 personas. Two are existing agents: TPM is `Frontier-HVE product-manager` and Engineer is `Frontier-HVE engineer`. The other 16 are rendered by `tools/loop/personas.py` from one template per kind when `extension/build.py` runs, so edit the catalog, not the generated `hve-<id>.agent.md` files:
 
 | Kind | Personas | Works how |
 |---|---|---|
-| builder | `ARIA db-engineer`, `ARIA devops-engineer`, `ARIA test-engineer`, `ARIA ui-engineer` | One feature at a time inside the feature loop, to its locked check |
-| designer | `ARIA data-scientist`, `ARIA solution-architect`, `ARIA db-architect`, `ARIA security-architect`, `ARIA test-architect`, `ARIA ux-designer` | One stage's document in the ask folder (through the template manager when the stage names a template), decisions and risks explicit |
-| reviewer | `ARIA code-reviewer`, `ARIA architecture-reviewer`, `ARIA security-reviewer`, `ARIA ux-reviewer`, `ARIA test-reviewer`, `ARIA product-reviewer` | `<ask>/<stage>/review.md` with a verdict and findings by severity; never edits the work |
+| builder | `Frontier-HVE db-engineer`, `Frontier-HVE devops-engineer`, `Frontier-HVE test-engineer`, `Frontier-HVE ui-engineer` | One feature at a time inside the feature loop, to its locked check |
+| designer | `Frontier-HVE data-scientist`, `Frontier-HVE solution-architect`, `Frontier-HVE db-architect`, `Frontier-HVE security-architect`, `Frontier-HVE test-architect`, `Frontier-HVE ux-designer` | One stage's document in the ask folder (through the template manager when the stage names a template), decisions and risks explicit |
+| reviewer | `Frontier-HVE code-reviewer`, `Frontier-HVE architecture-reviewer`, `Frontier-HVE security-reviewer`, `Frontier-HVE ux-reviewer`, `Frontier-HVE test-reviewer`, `Frontier-HVE product-reviewer` | `<ask>/<stage>/review.md` with a verdict and findings by severity; never edits the work |
 
 Each persona has a goal, a focus (what it checks), library and plugin skills, and keywords. `personas.py match "<text>"` ranks personas for a request, and the brief tells the sub-agent its role. Expertise packs extend a persona's stage with their skills, knowledge and `<pack>:<agent>` agents. MCP servers configured in the workspace are listed in every brief.
 
 **Team delivery.** The `team-delivery` lifecycle has one stage per persona: requirements, ux-design, solution-architecture, security-architecture, data-architecture, architecture-review, data-build, build, ui-build, data-science, test-strategy, test, devops, and the code, security, UX, test and product reviews.
 
-**ARIA Collab** lets people come in at any stage:
+**Frontier-HVE Collab** lets people come in at any stage:
 
 1. `lifecycle.py ledger` shows every stage of the project as done, active or not started, with the ask that did it.
 2. The user picks the stages for this visit, or all remaining stages.
-3. Each visit is a new ask: `lifecycle.py contract team-delivery <slug> "ARIA Collab" <request> only=<stage,stage>`.
-4. When an expertise pack has a lifecycle for the stage (for example Oracle migration for data-architecture or data-build), it runs in place of the stage plan: `contract oracle-offering:oracle-migration <slug> "ARIA Collab" <request> for=team-delivery:data-build @oracle-offering`. The ledger then shows the stage delivered through that pack lifecycle.
+3. Each visit is a new ask: `lifecycle.py contract team-delivery <slug> "Frontier-HVE Collab" <request> only=<stage,stage>`.
+4. When an expertise pack has a lifecycle for the stage (for example Oracle migration for data-architecture or data-build), it runs in place of the stage plan: `contract oracle-offering:oracle-migration <slug> "Frontier-HVE Collab" <request> for=team-delivery:data-build @oracle-offering`. The ledger then shows the stage delivered through that pack lifecycle.
 
 Example: a team with a partial build runs data-architecture and data-build with the Oracle pack in one visit, and comes back days later for architecture-review and security-review in another.
 
-**ARIA Auto** contracts with `gates=ticked`. The plan form asks which milestones to pause after (`gate:<stage>` items in the checklist, ticked in the form or in `plan.md`); the other stages run without stopping. Escalations, evidence that does not hold, a reviewer's reject or blocker, and decisions the plan did not cover still stop and ask.
+**Frontier-HVE Auto** contracts with `gates=ticked`. The plan form asks which milestones to pause after (`gate:<stage>` items in the checklist, ticked in the form or in `plan.md`); the other stages run without stopping. Escalations, evidence that does not hold, a reviewer's reject or blocker, and decisions the plan did not cover still stop and ask.
 
 ## Guardrails
 
@@ -117,7 +117,7 @@ Example: a team with a partial build runs data-architecture and data-build with 
 | compaction | `hooks/compaction.py` | sub-agent start | Sub-agents return short summaries, not raw tool output; inside an ask, they get its folder, evidence path, skills and the `SKILLS-USED` rule |
 | choice | `scripts/choice_recorder.py` | after ask-questions | Records your ticks (options, manual checks, PRs to push) |
 | stage | `hooks/flow_guard.py` | stage agent stop | A flow stage may not finish without moving the flow along an edge |
-| plan check | `hooks/plan_check.py` | prompt, before tools (`ARIA Auto`, `ARIA Collab`) | When the ask's `plan.md` changed since `lifecycle.py plan-sync`, adds a reconcile instruction to each prompt and holds `loop.py init/next/amend` and `lifecycle.py stage` until the agent reconciles and syncs |
+| plan check | `hooks/plan_check.py` | prompt, before tools (`Frontier-HVE Auto`, `Frontier-HVE Collab`) | When the ask's `plan.md` changed since `lifecycle.py plan-sync`, adds a reconcile instruction to each prompt and holds `loop.py init/next/amend` and `lifecycle.py stage` until the agent reconciles and syncs |
 | no fallback | `hooks/no_fallback.py` | git pre-commit (set by `loop.py init`) | Rejects swallowed errors and TODOs in committed code |
 
 Every deny, block or stop is logged to `.aria/runs/<session>.interventions.jsonl`.
@@ -126,7 +126,7 @@ Every deny, block or stop is logged to `.aria/runs/<session>.interventions.jsonl
 
 ## Onboard an agent
 
-Until agent composition lands (tracker `N31`), a new agent is a copy: later changes to `ARIA Lite` do not reach it.
+Until agent composition lands (tracker `N31`), a new agent is a copy: later changes to `Frontier-HVE Lite` do not reach it.
 
 1. Copy the closest agent in `extension/agents/`: `lite.agent.md` for agents that build, `product-manager.agent.md` for agents that write documents. Name it `<name>.agent.md` (no prefix: exports add the `prefix` from `brand.json`) with `name: HVE <name>`.
 2. Write hook and tool commands as `python "{{RUNTIME}}/<path>.py"`. Never write an absolute path or `python3`: rendering fills in the runtime folder and this machine's Python launcher, and drops the hooks with a warning when Python is missing. Hidden helpers get `user-invocable: false`.

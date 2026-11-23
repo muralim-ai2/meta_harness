@@ -1,6 +1,6 @@
 # Expertise packs (plugins)
 
-An **expertise pack** puts one practice's tribal knowledge into a form the Frontier agents can use: how the practice works (its process), what it knows (process maps, runbooks, common fixes), who does the work (personas), how it writes things down (templates), and how its work is judged (rubrics). When a request is about that practice, **ARIA Auto** and **ARIA Collab** find the pack, offer it, and run the ask with it.
+An **expertise pack** puts one practice's tribal knowledge into a form the Frontier agents can use: how the practice works (its process), what it knows (process maps, runbooks, common fixes), who does the work (personas), how it writes things down (templates), and how its work is judged (rubrics). When a request is about that practice, **Frontier-HVE Auto** and **Frontier-HVE Collab** find the pack, offer it, and run the ask with it.
 
 The idea in one line: **the agent reads the pack's manifest, never the whole folder.** The manifest holds the routing rules and an index of everything in the pack, with a one-line "use when" for each knowledge document. Only what a stage needs is opened, and the plan and provenance show how many tokens each pack added.
 
@@ -9,7 +9,7 @@ Packs are the product name for the plugin architecture planned on branch `plugin
 - [Why packs](#why-packs)
 - [What is in a pack](#what-is-in-a-pack)
 - [How it works: the flows](#how-it-works-the-flows)
-- [Worked example: an Oracle migration with ARIA Collab](#worked-example-an-oracle-migration-with-frontier-hve-collab)
+- [Worked example: an Oracle migration with Frontier-HVE Collab](#worked-example-an-oracle-migration-with-frontier-hve-collab)
 - [More examples](#more-examples)
 - [Token load: what a pack costs in context](#token-load-what-a-pack-costs-in-context)
 - [Writing a pack](#writing-a-pack)
@@ -87,7 +87,7 @@ oracle-offering/
   "version": "1.0.0",
   "publisher": "contoso-oracle-practice",
   "harness": {"apiVersion": 1, "frontierHve": ">=0.8.0 <1.0.0"},
-  "description": "Oracle database architecture, engineering and migration assets for ARIA.",
+  "description": "Oracle database architecture, engineering and migration assets for Frontier-HVE.",
   "routing": {
     "domains": ["oracle", "database"],
     "keywords": ["oracle", "pl/sql", "plsql", "exadata", "goldengate", "data guard"],
@@ -134,7 +134,7 @@ oracle-offering/
      "exit": "The user accepts the assessment and its recommendation.", "skip_when": "An accepted assessment already exists.",
      "evidence": [{"type": "template-valid", "kind": "oracle-offering:assessment"}]},
     {"name": "design", "...": "technicalDesign, evidence template-valid technicalDesign"},
-    {"name": "build", "agent": "ARIA engineer", "...": "evidence feature-checks"},
+    {"name": "build", "agent": "Frontier-HVE engineer", "...": "evidence feature-checks"},
     {"name": "validate", "goal": "Prove data integrity and a rehearsed rollback; write the runbook.", "agent": "oracle-offering:oracle-engineer",
      "skills": ["oracle-offering:oracle-performance-tuning"], "plugin_skills": [], "templates": ["oracle-offering:migrationRunbook"],
      "exit": "The user accepts the validation evidence and the runbook.", "skip_when": "Never: cutover needs this evidence.",
@@ -146,7 +146,7 @@ oracle-offering/
 }
 ```
 
-Names inside a pack overlay follow one rule: **pack assets carry the `<pack>:` prefix, core assets do not.** `oracle-offering:oracle-db-architect` is the pack's persona, `ARIA engineer` is the core one; `oracle-offering:oracle-schema-design` is a pack skill, `build-approach` a library skill; `oracle-offering:assessment` is a pack template, `technicalDesign` the core kind.
+Names inside a pack overlay follow one rule: **pack assets carry the `<pack>:` prefix, core assets do not.** `oracle-offering:oracle-db-architect` is the pack's persona, `Frontier-HVE engineer` is the core one; `oracle-offering:oracle-schema-design` is a pack skill, `build-approach` a library skill; `oracle-offering:assessment` is a pack template, `technicalDesign` the core kind.
 
 ### Stage evidence and rework
 
@@ -167,7 +167,7 @@ Paths are workspace-relative; `{ask}` stands for the ask folder (`.aria/asks/<id
 ```mermaid
 sequenceDiagram
     actor U as User
-    participant A as ARIA Collab / Auto
+    participant A as Frontier-HVE Collab / Auto
     participant L as lifecycle.py
     participant S as Pack store and workspace plugins/
     participant P as Pack agent
@@ -273,7 +273,7 @@ flowchart LR
 
 On every start the extension cleans up the store, disables packs revoked in the index or changed on disk, offers missing required packs, renders the agents of every available pack and offers a reload when they changed.
 
-## Worked example: an Oracle migration with ARIA Collab
+## Worked example: an Oracle migration with Frontier-HVE Collab
 
 The workspace has the sample committed as `plugins/oracle-offering/`. The request:
 
@@ -323,7 +323,7 @@ ValueError: packs ['oracle-offering'] match this ask: ask the user and pass @<pa
 With the user's choice recorded:
 
 ```text
-lifecycle.py contract oracle-offering:oracle-migration ora "ARIA Collab" .aria/asks/request.md @oracle-offering
+lifecycle.py contract oracle-offering:oracle-migration ora "Frontier-HVE Collab" .aria/asks/request.md @oracle-offering
 ```
 
 `contract.json` now holds the pack record:
@@ -368,7 +368,7 @@ Expertise packs (1,664 tokens always loaded, 15.0% of this ask's 11,092-token co
 For the assess stage Collab runs `lifecycle.py brief "oracle-offering:oracle-db-architect" stage=assess` and passes it verbatim:
 
 ```text
-ARIA brief: ask 20261023-0302-ora, stage assess
+Frontier-HVE brief: ask 20261023-0302-ora, stage assess
 - Ask folder: .aria/asks/20261023-0302-ora/ (prototypes and drafts go there, never in the workspace root)
 - Read and follow before you start: .aria/skills/oracle-offering__oracle-schema-design/SKILL.md, .aria/skills/oracle-offering__oracle-performance-tuning/SKILL.md, ...
 - Plugin skills you may use: feature-checklist, explain-walkthrough
@@ -428,7 +428,7 @@ Both `oracle-offering` and `postgres-offering` match. The form asks **Expertise 
 
 > Use the mysql-offering plugin to migrate the billing schema
 
-`route` returns `"missing": ["mysql-offering"]`. The agent stops and tells the user to install or enable the pack (**ARIA: Install plugin**), or commit it as `plugins/mysql-offering/`. It does not continue with the core harness instead.
+`route` returns `"missing": ["mysql-offering"]`. The agent stops and tells the user to install or enable the pack (**Frontier-HVE: Install plugin**), or commit it as `plugins/mysql-offering/`. It does not continue with the core harness instead.
 
 ### The user prefers core only
 
@@ -491,7 +491,7 @@ Pick keywords people actually type, a task pattern for the unambiguous terms, an
 
 ### 3. Capture the process as an overlay
 
-Write the practice's stages in `lifecycles/<name>.json`. Use your personas for the expert stages, `ARIA engineer` for build stages (the orchestrator runs them as a verified feature loop), and `self` for reviews the lead agent runs. Add `evidence` where "done" must be provable and `rework` where work typically goes back.
+Write the practice's stages in `lifecycles/<name>.json`. Use your personas for the expert stages, `Frontier-HVE engineer` for build stages (the orchestrator runs them as a verified feature loop), and `self` for reviews the lead agent runs. Add `evidence` where "done" must be provable and `rework` where work typically goes back.
 
 ### 4. Capture the knowledge
 
@@ -532,14 +532,14 @@ python <tools>/plugins/plugin.py pack plugin/ --out dist
 | `... rework cap must be an integer from 1 to 3` | Lower the cap |
 | `knowledge[0] needs exactly a kebab-case id, file, title, kind, use_when and stages` | Add the missing field (`stages: []` for every stage) |
 | `tools [...] are not in the manifest tools the user consents to` | Add the tool to the manifest `tools` or remove it from the agent |
-| `plugin needs ARIA >=9.0.0; this core is 0.16.0` | Widen `harness.frontierHve` |
+| `plugin needs Frontier-HVE >=9.0.0; this core is 0.16.0` | Widen `harness.frontierHve` |
 
 ## Sharing and installing packs
 
 | Way | How | Good for |
 |---|---|---|
 | **Workspace** | Commit the pack as `plugins/<pack>/` in the repository | One team, one repository; reviewed in pull requests like code; validated each time it is used; wins over an installed copy |
-| **Installed** | **ARIA: Install plugin**: organization index (`name@version`), folder, `.hveplugin` file, or https git URL ending in `.git` | A practice used across many repositories; installed once per machine into `~/.frontier-hve` |
+| **Installed** | **Frontier-HVE: Install plugin**: organization index (`name@version`), folder, `.hveplugin` file, or https git URL ending in `.git` | A practice used across many repositories; installed once per machine into `~/.frontier-hve` |
 | **Required** | Commit `frontier-hve.plugins.json` | A repository that needs specific packs; the extension offers to install missing ones on start |
 
 ```json
@@ -554,7 +554,7 @@ The organization index (setting `frontierHve.pluginIndex`, a path or https URL):
 ]}
 ```
 
-**ARIA: Manage plugins** enables, disables or uninstalls an installed pack. A version installed outside a workspace's required range is reported, never changed, because other workspaces share the install.
+**Frontier-HVE: Manage plugins** enables, disables or uninstalls an installed pack. A version installed outside a workspace's required range is reported, never changed, because other workspaces share the install.
 
 ## Trust and governance
 
@@ -572,7 +572,7 @@ The organization index (setting `frontierHve.pluginIndex`, a path or https URL):
 
 ## Auto and Collab compared
 
-| | ARIA Auto | ARIA Collab |
+| | Frontier-HVE Auto | Frontier-HVE Collab |
 |---|---|---|
 | Routing | `lifecycle.py route` | `lifecycle.py route` |
 | Lifecycle shown | Top two, pack overlays first | Top two; prefers an overlay from a matched pack, a plugin or the workspace |
@@ -646,6 +646,6 @@ The organization index (setting `frontierHve.pluginIndex`, a path or https URL):
 ## Not yet
 
 - Pack agents are not exported to Claude Code, Cursor or Codex; there the brief names the agent's instruction file to follow.
-- The creator agents (ARIA Lite, creator-flow, creator-github) do not route packs per prompt; creator-flow's graph format is not a pack format.
+- The creator agents (Frontier-HVE Lite, creator-flow, creator-github) do not route packs per prompt; creator-flow's graph format is not a pack format.
 - No publisher signatures beyond the index hash, no packs that depend on other packs, no sandbox for pack agents beyond their declared tools.
 - Live use is not yet verified (tracker N43).

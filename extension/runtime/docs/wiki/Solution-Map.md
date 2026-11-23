@@ -10,7 +10,7 @@ It works on any repository. Nothing in `tools/map/` is specific to this repo; re
 
 ## Create or refresh the map
 
-**In chat** (ARIA extension 0.17.0 or later):
+**In chat** (Frontier-HVE extension 0.17.0 or later):
 
 ```
 /solution-map create
@@ -49,7 +49,7 @@ The script lives in `tools\map\`; `.aria\map\` holds only the output. Running `p
 4. It offers to open the explorer filtered to the concept, or to show what a change would touch (`impact`).
 5. When no concept matches, it lists the closest files and offers to add a concept.
 
-ARIA Auto, ARIA Collab and ARIA Lite follow the skill whenever you ask how code works. During coding asks on medium and large repositories (`lifecycle.py contract`), ARIA also builds or refreshes `.aria/map/` automatically, appends matching source and test touchpoints to `lifecycle.py brief`, re-hydrates a compact module anchor after context compaction (`PreCompact`), and blocks direct reads of raw `map.json` in favour of `overview.md` and `solution_map.py`.
+Frontier-HVE Auto, Frontier-HVE Collab and Frontier-HVE Lite follow the skill whenever you ask how code works. During coding asks on medium and large repositories (`lifecycle.py contract`), Frontier-HVE also builds or refreshes `.aria/map/` automatically, appends matching source and test touchpoints to `lifecycle.py brief`, re-hydrates a compact module anchor after context compaction (`PreCompact`), and blocks direct reads of raw `map.json` in favour of `overview.md` and `solution_map.py`.
 
 **From a terminal:**
 

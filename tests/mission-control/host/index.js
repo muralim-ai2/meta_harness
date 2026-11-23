@@ -53,7 +53,7 @@ async function run() {
   const state = await vscode.commands.executeCommand('frontierHve.openMissionControl');
   assert.match(state.ask.id, /-pawstagram$/);
   assert.equal(state.ask.agent, 'ARIA Lite');
-  assert.ok(vscode.window.tabGroups.all.some(group => group.tabs.some(tab => tab.label === 'ARIA Mission Control')), 'Mission Control editor must open.');
+  assert.ok(vscode.window.tabGroups.all.some(group => group.tabs.some(tab => tab.label === 'Frontier-HVE Mission Control')), 'Mission Control editor must open.');
   assert.equal(snapshot(folder.uri.fsPath).revision, before, 'Opening Mission Control must not change project state.');
   const opened = await vscode.commands.executeCommand('frontierHve.missionControlModel');
   assert.ok(opened.asks.some(ask => ask.id === state.ask.id && ask.active), 'The ask dropdown must list the active ask.');

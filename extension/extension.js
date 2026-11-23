@@ -515,11 +515,11 @@ async function offerCopilotCleanup(context, python) {
 async function activate(context) {
   if (DEFAULT_ARIA && vscode.extensions.getExtension(LEGACY_EXTENSION)) {
     // Both copies register the same commands, so this one stays inactive until the old publisher's copy is gone.
-    const choice = await vscode.window.showWarningMessage('ARIA is now published by pwc. Uninstall the old ARIA (muralim-ai2) and reload '
-      + 'to finish the update; until then the new ARIA stays off.', 'Uninstall old ARIA');
+    const choice = await vscode.window.showWarningMessage(`${BRAND.product} is now published by pwc. Uninstall the old version (muralim-ai2) `
+      + `and reload to finish the update; until then the new ${BRAND.product} stays off.`, 'Uninstall old version');
     if (choice) {
       await vscode.commands.executeCommand('workbench.extensions.uninstallExtension', LEGACY_EXTENSION);
-      await offerReload('The old ARIA is uninstalled.');
+      await offerReload('The old version is uninstalled.');
     }
     return;
   }

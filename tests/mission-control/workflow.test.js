@@ -25,7 +25,7 @@ test('new ask creates a real ask only after a confirmation, then opens an empty 
   const fixture = mission(t);
   const state = await create(fixture, 'onboarding');
   assert.match(state.ask.id, /-onboarding$/);
-  assert.equal(state.ask.agent, 'ARIA Lite');
+  assert.equal(state.ask.agent, 'Frontier-HVE Lite');
   assert.ok(fixture.controls.calls.some(call => call[0] === 'confirmation' && call[1].includes(path.basename(fixture.root))));
   const chat = fixture.controls.calls.filter(call => String(call[0]).startsWith('workbench.action.chat.'));
   assert.deepEqual(chat.map(call => call[0]), ['workbench.action.chat.open', 'workbench.action.chat.newLocalChat', 'workbench.action.chat.open']);
@@ -76,7 +76,7 @@ test('Refine on a done stage reopens it and hands the request to the ask\'s agen
   assert.match(calls.find(call => call[0] === 'confirmation')[2].detail, /sets the stage back to active and opens the ask's chat/);
   const chat = calls.filter(call => call[0] === 'workbench.action.chat.open').at(-1)[1];
   assert.equal(chat.isPartialQuery, true, 'filled in, never sent for the user');
-  assert.equal(chat.mode, 'ARIA Lite');
+  assert.equal(chat.mode, 'Frontier-HVE Lite');
   assert.match(chat.query, new RegExp(`^Changes requested on stage:deliver \\(“[^”]+”\\) of ask ${state.ask.id}: Add a review stage before delivery`));
   assert.match(chat.query, /update plan\.md, run `lifecycle\.py plan-sync`[\s\S]*lifecycle\.py stage deliver done/);
   assert.ok(chat.attachFiles.some(file => file.fsPath.endsWith('request.md')));

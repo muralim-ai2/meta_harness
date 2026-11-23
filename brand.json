@@ -1,7 +1,7 @@
 {
-  "product": "ARIA",
+  "product": "Frontier-HVE",
   "prefix": "aria",
   "state_dir": ".aria",
   "logo": "extension/ui/media/aria.png",
-  "activity_icon": "extension/ui/media/aria.svg"
+  "activity_icon": "extension/ui/media/hve.svg"
 }

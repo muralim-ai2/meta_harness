@@ -23,13 +23,13 @@ def raises(fn: object, *args: object) -> str:
 
 
 def test_brand_file_is_valid() -> None:
-    """The repository brand loads and names ARIA with the aria prefix, .aria state folder, and ARIA logo and Activity Bar icon."""
+    """The repository brand loads and names Frontier-HVE with the aria prefix, .aria state folder, ARIA logo and HVE Activity Bar icon."""
     assert brand.BRAND == {
-        "product": "ARIA",
+        "product": "Frontier-HVE",
         "prefix": "aria",
         "state_dir": ".aria",
         "logo": "extension/ui/media/aria.png",
-        "activity_icon": "extension/ui/media/aria.svg",
+        "activity_icon": "extension/ui/media/hve.svg",
     }, brand.BRAND
 
 
@@ -133,6 +133,8 @@ def test_two_separate_branded_vsix_builds() -> None:
             assert "name: NOVA Lite" in lite and ".nova/" in lite
             engineer = zf.read("extension/agents/engineer.agent.md").decode()
             assert "name: NOVA engineer" in engineer and "Frontier HVE" not in engineer
+            sdlc = json.loads(zf.read("extension/runtime/templates/lifecycles/sdlc.json"))
+            assert {s["agent"] for s in sdlc["stages"]} >= {"NOVA engineer", "NOVA solution-architect"}, sdlc["stages"]
 
 
 if __name__ == "__main__":

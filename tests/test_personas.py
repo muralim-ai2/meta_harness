@@ -32,11 +32,12 @@ def test_catalog_renders_every_persona_and_lifecycles_name_real_agents() -> None
     found = personas.load()
     assert len(found) == 18 and sum(p["kind"] == "existing" for p in found) == 2
     assert personas.stale() == [], "run extension/build.py (or personas.py render) after editing the catalog"
-    agents = {NAME.search(p.read_text(encoding="utf-8"))[1].strip() for p in (REPO / "extension" / "agents").glob("*.agent.md")}
-    assert {p["agent"] for p in found} <= agents
+    installed = lambda name: re.sub(r"\bARIA\b", personas.BRAND["product"], name)  # noqa: E731
+    agents = {installed(NAME.search(p.read_text(encoding="utf-8"))[1].strip()) for p in (REPO / "extension" / "agents").glob("*.agent.md")}
+    assert {installed(p["agent"]) for p in found} <= agents
     for lifecycle in (c for c in catalog().values() if "pack" not in c):
         for stage in lifecycle["stages"]:
-            assert stage["agent"] == "self" or stage["agent"] in agents, (lifecycle["name"], stage["name"], stage["agent"])
+            assert stage["agent"] == "self" or installed(stage["agent"]) in agents, (lifecycle["name"], stage["name"], stage["agent"])
     team = catalog()["team-delivery"]["stages"]
     assert [s["name"] for s in team if s.get("loop")] == ["data-build", "build", "ui-build", "test", "devops"]
     assert personas.match("design the oracle database schema and migration")[0]["id"] == "db-architect"

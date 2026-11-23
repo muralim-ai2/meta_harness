@@ -12,7 +12,7 @@
      "skills": ["oracle-offering:oracle-schema-design"], "plugin_skills": [], "templates": ["technicalDesign"],
      "exit": "The user accepts the technical design.", "skip_when": "The design is already approved.",
      "evidence": [{"type": "template-valid", "kind": "technicalDesign"}]},
-    {"name": "build", "goal": "Build the migration as verified features.", "agent": "ARIA engineer",
+    {"name": "build", "goal": "Build the migration as verified features.", "agent": "Frontier-HVE engineer",
      "skills": ["oracle-offering:oracle-performance-tuning", "build-approach"], "plugin_skills": ["feature-checklist"], "templates": [],
      "exit": "Every migration feature check passes.", "skip_when": "Never: this is the migration.",
      "evidence": [{"type": "feature-checks"}]},

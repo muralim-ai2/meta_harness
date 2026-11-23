@@ -1,19 +1,19 @@
 # Product Manager
 
-`ARIA product-manager` turns a product idea into a validated PRD and a backlog. It does not write code, technical designs, test strategies or UX designs; use `ARIA Lite` for those.
+`Frontier-HVE product-manager` turns a product idea into a validated PRD and a backlog. It does not write code, technical designs, test strategies or UX designs; use `Frontier-HVE Lite` for those.
 
 ## What it does
 
 1. **Discovery.** If the problem, success metric, persona, constraints or stack are unclear, it asks 2-4 questions at once. Otherwise it records unknowns as `TBD` open questions.
 2. **Research.** Up to 3 parallel sub-agents research prior art, standards and compliance, and user evidence, with cited URLs (`web/fetch`).
-3. **Council.** For epic-scale or contested work, or AI-bearing requirements, the hidden `ARIA council` agent challenges the scope three times: analyst, strategist and skeptic. Each call requests a model from a different vendor (see below).
+3. **Council.** For epic-scale or contested work, or AI-bearing requirements, the hidden `Frontier-HVE council` agent challenges the scope three times: analyst, strategist and skeptic. Each call requests a model from a different vendor (see below).
 4. **PRD.** Written in the workspace's configured PRD template through the template manager (see [Templates](Templates.md)): `init` for a new PRD, edit in place plus `register` for an existing one. It is validated before handoff, and the Stop hook blocks an invalid PRD once. Requirements get stable IDs (`FR-n`, `NFR-n`, `AC-n`).
 5. **Backlog.** Never in the PRD. The agent asks where it goes:
 
 | Target | What happens |
 |---|---|
 | Local JSON | `docs/product/BACKLOG-<slug>.json`, checked by `python <tools>/backlog/backlog.py validate <file>` |
-| Azure DevOps | The agent shows the backlog; the **Create work items in Azure DevOps** handoff opens `ARIA azure-devops`, which maps types to the project's process and writes only the items you tick (see [Adapters](Adapters.md) for setup) |
+| Azure DevOps | The agent shows the backlog; the **Create work items in Azure DevOps** handoff opens `Frontier-HVE azure-devops`, which maps types to the project's process and writes only the items you tick (see [Adapters](Adapters.md) for setup) |
 | GitHub | The agent shows the planned issues, creates only the ones you tick through the GitHub MCP server, and links children as sub-issues |
 
 For Azure DevOps and GitHub, a ticked item's parent and dependencies must also be ticked or already exist, and they are created first so every link has a target.

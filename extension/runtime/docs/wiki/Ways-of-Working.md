@@ -19,7 +19,7 @@ A workspace holds one **project**. Every piece of work you give a working agent 
     contract.json                  skills, stages, personas, tasks, environment, delegations, decisions
     plan.md                        this ask's plan, with generated skills-and-tools and sign-off checklist blocks
     provenance.md                  expected against used, written at the end
-    prototype/                     ARIA Prototype Creator output
+    prototype/                     Frontier-HVE Prototype Creator output
     loop/                          attempts/, evidence/<feature>/ (and evidence/prototype/), prs/, choices/, checks/, tool_log.jsonl
 ```
 
@@ -53,11 +53,11 @@ flowchart LR
 
 | Agent | Lifecycle | Where you are asked |
 |---|---|---|
-| `ARIA Lite` | `direct` | Skill choice, plan and dependencies with the telemetry option, escalations, feature sign-off, human review of the evaluation |
-| `ARIA Auto` (`auto`) | You pick (`sdlc`, `team-delivery`, `consulting-delivery`, `document`, or a plugin or workspace one) and skip stages | Lifecycle and skips, skill choice, plan with the telemetry option and `Pause for my review after` (ticked milestones only); other stages run on |
-| `ARIA Collab` (`collab`) | Any stages of `team-delivery` you pick (each visit a new ask, shown in `lifecycle.py ledger`), a pack lifecycle in place of a stage, or an agile overlay | Stages for this visit, pack lifecycle offer, skill choice, plan with evaluation and telemetry options, a hand-off review after each persona |
-| `ARIA Prototype Creator` (`prototype-creator`) | `direct` when you run it; none as Collab's designer (it works in Collab's ask) | Screens, skill choice and options in one form; sign-off of the self-checked clickthrough with its screenshots |
-| `ARIA product-manager` | `direct`, `prd` required (none as Auto's or Collab's persona) | Skill choice, options, research questions, backlog target, PRD sign-off |
+| `Frontier-HVE Lite` | `direct` | Skill choice, plan and dependencies with the telemetry option, escalations, feature sign-off, human review of the evaluation |
+| `Frontier-HVE Auto` (`auto`) | You pick (`sdlc`, `team-delivery`, `consulting-delivery`, `document`, or a plugin or workspace one) and skip stages | Lifecycle and skips, skill choice, plan with the telemetry option and `Pause for my review after` (ticked milestones only); other stages run on |
+| `Frontier-HVE Collab` (`collab`) | Any stages of `team-delivery` you pick (each visit a new ask, shown in `lifecycle.py ledger`), a pack lifecycle in place of a stage, or an agile overlay | Stages for this visit, pack lifecycle offer, skill choice, plan with evaluation and telemetry options, a hand-off review after each persona |
+| `Frontier-HVE Prototype Creator` (`prototype-creator`) | `direct` when you run it; none as Collab's designer (it works in Collab's ask) | Screens, skill choice and options in one form; sign-off of the self-checked clickthrough with its screenshots |
+| `Frontier-HVE product-manager` | `direct`, `prd` required (none as Auto's or Collab's persona) | Skill choice, options, research questions, backlog target, PRD sign-off |
 
 Every agent that opens asks also asks first whether to continue the open ask, start a new one in the project, or move to a new workspace.
 
@@ -74,20 +74,20 @@ Every agent that opens asks also asks first whether to continue the open ask, st
   **Options**
   - [ ] opt:evaluation — Output evaluation when the work is done ...
   **Milestones**
-  - [ ] stage:requirements — Agree the problem ... (persona ARIA product-manager; skills prd; templates prd; gate: ...; status planned)
+  - [ ] stage:requirements — Agree the problem ... (persona Frontier-HVE product-manager; skills prd; templates prd; gate: ...; status planned)
   - stage:test — skipped: checks cover it
   **Tasks** (evidence from each check)
-  - [ ] task:feed — build, ARIA engineer; check passes; evidence `.aria/asks/<id>/loop/evidence/feed/`
+  - [ ] task:feed — build, Frontier-HVE engineer; check passes; evidence `.aria/asks/<id>/loop/evidence/feed/`
   ```
 
   After each milestone the agent asks: *Reviewed - accept*, *Continue without reviewing* (fine, recorded as such) or *Needs changes*; it skips the question when you already ticked the item. `lifecycle.py tick <item> <value> "<note>"` records an answer, `lifecycle.py checklist` takes in your ticks from `plan.md` and lists what is still open. Ticking inside the generated block does not trigger the plan check. A stage set back to planned (a new sprint, a change of direction) loses its sign-off.
-- **Persona hand-offs** (`ARIA Collab`): after each persona's step (product manager, designer, engineer) the agent pauses, says what was delivered and where, names the next persona, and asks the sign-off question before switching. A step whose persona is the engineer (sprint build, and the Auto build stage) is a feature loop the orchestrator runs itself, one engineer per feature; an engineer handed a whole stage refuses.
-- **Prototype self-check** (`ARIA Prototype Creator`): before you see it, `tools/prototype/check.py lint` checks the clickthrough (no network calls, external scripts or code from strings, every screen present, no dead `#` links) and `check.py shots` saves a headless Edge or Chrome screenshot of each screen to the ask's `loop/evidence/prototype/`.
-- **UX quality** (every deliverable you see, all three Frontier agents): the always-on `ui-ux-uplift` skill sets the bar (alignment first, then layering and contrast, white space and icons, theme modes, adaptive navigation; the brief and accessibility win). The agent builds to it and self-checks once before the sign-off; there is no judge loop. The older `wow-uplift` loop with `ARIA uplift-judge` stays available when you ask for it. The always-on `clickable-infographic` skill makes a 1920x1080 clickable infographic (also from Mission Control's Visuals tab).
+- **Persona hand-offs** (`Frontier-HVE Collab`): after each persona's step (product manager, designer, engineer) the agent pauses, says what was delivered and where, names the next persona, and asks the sign-off question before switching. A step whose persona is the engineer (sprint build, and the Auto build stage) is a feature loop the orchestrator runs itself, one engineer per feature; an engineer handed a whole stage refuses.
+- **Prototype self-check** (`Frontier-HVE Prototype Creator`): before you see it, `tools/prototype/check.py lint` checks the clickthrough (no network calls, external scripts or code from strings, every screen present, no dead `#` links) and `check.py shots` saves a headless Edge or Chrome screenshot of each screen to the ask's `loop/evidence/prototype/`.
+- **UX quality** (every deliverable you see, all three Frontier agents): the always-on `ui-ux-uplift` skill sets the bar (alignment first, then layering and contrast, white space and icons, theme modes, adaptive navigation; the brief and accessibility win). The agent builds to it and self-checks once before the sign-off; there is no judge loop. The older `wow-uplift` loop with `Frontier-HVE uplift-judge` stays available when you ask for it. The always-on `clickable-infographic` skill makes a 1920x1080 clickable infographic (also from Mission Control's Visuals tab).
 - **Presentations**: any deck follows the `presentation-deck` skill. One discovery form first (format: editable `.pptx` or web slides; kind of deck: informational, analysis, pitch, decision, status or workshop; audience; theme: NorthStar ink with one accent, brand colours or a template; text level; how visual; speaker notes; length; logo), then an outline of takeaway titles, a `python-pptx` build with `deck_kit.py` (header band, cards, chips, chevron flows, layers, metric tiles, one takeaway bar per slide), `check_deck.py lint` and PowerPoint slide previews. Web slides instead follow `frontend-slides` (MIT, from `zarazhangrui/frontend-slides`): three style previews to pick from, then one animated HTML file at `presentation/<slug>/index.html`. Decks are never deployed to a public host.
-- **Output evaluation.** Automatic for `ARIA Lite` and `ARIA Auto`. `ARIA Collab`, `ARIA Prototype Creator`, `ARIA product-manager`, `ARIA creator-flow` and `ARIA creator-github` ask for it as a checkbox in the plan form and run it when ticked (shared `output-evaluation` skill); `ARIA single` never asks and runs it only when your request does. Outputs without a feature loop (a prototype, a PRD, a memo) are scored and judged; the locked checks are marked not applicable with the reason.
-- **Research telemetry** (opt-in, not asked by the agents): turn it on with the switch in [Mission Control](Mission-Control.md) or **ARIA: Turn on research telemetry**; it records full chat content, measures chats started afterwards, and a status bar item stays visible until you turn it off (the switch, **ARIA: Turn off research telemetry**, or click the item). When it recorded an ask, `provenance.md` shows tokens, cost and cache and reminds you to turn it off.
-- **Gates and sprint reviews** (`ARIA Auto`, `ARIA Collab`): continue, change direction, or stop.
+- **Output evaluation.** Automatic for `Frontier-HVE Lite` and `Frontier-HVE Auto`. `Frontier-HVE Collab`, `Frontier-HVE Prototype Creator`, `Frontier-HVE product-manager`, `Frontier-HVE creator-flow` and `Frontier-HVE creator-github` ask for it as a checkbox in the plan form and run it when ticked (shared `output-evaluation` skill); `Frontier-HVE single` never asks and runs it only when your request does. Outputs without a feature loop (a prototype, a PRD, a memo) are scored and judged; the locked checks are marked not applicable with the reason.
+- **Research telemetry** (opt-in, not asked by the agents): turn it on with the switch in [Mission Control](Mission-Control.md) or **Frontier-HVE: Turn on research telemetry**; it records full chat content, measures chats started afterwards, and a status bar item stays visible until you turn it off (the switch, **Frontier-HVE: Turn off research telemetry**, or click the item). When it recorded an ask, `provenance.md` shows tokens, cost and cache and reminds you to turn it off.
+- **Gates and sprint reviews** (`Frontier-HVE Auto`, `Frontier-HVE Collab`): continue, change direction, or stop.
 - **Escalations.** When the loop is stuck (same failure, circular fixes, attempt cap) it stops and asks you one question; only you can resume.
 - **Guard waivers.** After 3 trips of the same guard in a session, the agent asks whether to keep it or lay it down for the session. Loop state, hook bypass, pushes and the plan check are never waivable, and guards are strict again during the output evaluation.
 
@@ -123,13 +123,13 @@ flowchart TD
 | One folder per parallel chat | `git worktree add ../shop-memo -b memo`, open it in a new window | Each folder has its own `.aria/` (ask, loop, evidence, logs); merge the branches when done. Use different feature names: loop branches are shared across worktrees |
 | Two chats in one folder | Prototype in chat 2 while creator plans in chat 1 | Chat 2's `contract` opens its own ask folder and reports `previous_open`; chat 1's skill loader tells it once that the open ask moved, and it runs `lifecycle.py open <its ask>` before going on. Two feature loops at the same time cannot share one checkout |
 
-An ask finishes when its milestones are done (agents end with `lifecycle.py stage deliver done`) and any evaluation you asked for has run. Personas delegated inside an ask (`ARIA product-manager`, `ARIA Prototype Creator`) work in the parent's ask and do not open their own.
+An ask finishes when its milestones are done (agents end with `lifecycle.py stage deliver done`) and any evaluation you asked for has run. Personas delegated inside an ask (`Frontier-HVE product-manager`, `Frontier-HVE Prototype Creator`) work in the parent's ask and do not open their own.
 
 ## Skills, tools and hooks during an ask
 
 - **Skills**: the contract installs the chosen skills to `.aria/skills/`; other library skills are blocked so they cannot leak into context. Sub-agents get them through their brief (`lifecycle.py brief`) and end their reply with `SKILLS-USED: ...`, which the parent records (`lifecycle.py used`).
 - **Tools**: working agents have no fixed tool list, so they see your MCP servers. The contract records each harness's MCP servers with an estimated tool-definition load and warns over 6,000 tokens; disable servers the ask does not need.
-- **Hooks** (VS Code Local runs them per agent; other harnesses after **ARIA: Install for other harnesses**):
+- **Hooks** (VS Code Local runs them per agent; other harnesses after **Frontier-HVE: Install for other harnesses**):
 
 | Hook | Fires | Leaves |
 |---|---|---|
@@ -143,14 +143,14 @@ An ask finishes when its milestones are done (agents end with `lifecycle.py stag
 | `profile_detector` | session start, prompt submit | `.aria/user_profile.json` (build preference, explanation depth) |
 | `metrics` (research arms in `.github/agents/` only) | every event | `.aria/runs/<session>.events.jsonl` and, with research telemetry, `<session>.jsonl` (tokens, cost, cache per model call) |
 
-`ARIA Prototype Creator` runs only `loop_guard` (safety); creator, Auto and Collab run all but `metrics`.
+`Frontier-HVE Prototype Creator` runs only `loop_guard` (safety); creator, Auto and Collab run all but `metrics`.
 
 The ask's `provenance.md` has an **Agents** table built from the ledger, across every session of the ask:
 
 | Agent | Sub-agent | Id | Session | Started | Seconds | Brief: role, skills | Reported skills | Model |
 |---|---|---|---|---|---|---|---|---|
-| HVE e2e | ARIA product-manager | 3434 | 324234 | 06:15:02 | 212 | requirements PM: prd | prd | claude-x (OTel) |
-| HVE e2e | ARIA engineer | 3521 | 324234 | 06:19:40 | 96 | ARIA engineer: build-approach, ui-anti-slop | ui-anti-slop | not measured |
+| HVE e2e | Frontier-HVE product-manager | 3434 | 324234 | 06:15:02 | 212 | requirements PM: prd | prd | claude-x (OTel) |
+| HVE e2e | Frontier-HVE engineer | 3521 | 324234 | 06:19:40 | 96 | Frontier-HVE engineer: build-approach, ui-anti-slop | ui-anti-slop | not measured |
 
 The brief is the one logged just before the sub-agent started; the model comes from the client (Cursor, Codex) or, with research telemetry on, from the sub-agent's calls in its start-stop window. Both joins go by time, so treat them as close, not exact.
 
@@ -180,10 +180,10 @@ Use an empty folder with `git init` and run each prompt in a **new Local chat** 
 
 | # | Agent | Prompt | About |
 |---|---|---|---|
-| 1 | `ARIA Prototype Creator` | `Clickthrough of a leave request flow with three screens: my balance, request form, confirmation. Placeholder data only.` | 1.5 min |
-| 2 | `ARIA Lite` | `Build a colour palette page: pick a base colour, show 5 tints and 5 shades, and a WCAG contrast check of each against white and black. Plain HTML, CSS and JS, no dependencies. Use the feature loop with exactly 3 features whose checks run with node or python only.` Then, in a new chat with the same agent: `Add a copy-to-clipboard button for each tint.` | 5 min |
-| 3 | `ARIA Auto` | `Create a one-page executive memo for the board on the FY27 revenue forecast: base 120m, upside 135m, downside 104m, drivers price and volume. I supply the data, so skip research.` Then, in the same chat: `Build a War of the Worlds timeline app.` | 2.5 min |
-| 4 | `ARIA Collab` | `One sprint for a leave portal. Backlog is ready, skip the backlog step: story 1 "see my leave balance", story 2 "request leave". Sprint 1 takes both stories, UI design only: run sprint-design, skip sprint-build and release, then hold the sprint review and stop.` | 2 min |
+| 1 | `Frontier-HVE Prototype Creator` | `Clickthrough of a leave request flow with three screens: my balance, request form, confirmation. Placeholder data only.` | 1.5 min |
+| 2 | `Frontier-HVE Lite` | `Build a colour palette page: pick a base colour, show 5 tints and 5 shades, and a WCAG contrast check of each against white and black. Plain HTML, CSS and JS, no dependencies. Use the feature loop with exactly 3 features whose checks run with node or python only.` Then, in a new chat with the same agent: `Add a copy-to-clipboard button for each tint.` | 5 min |
+| 3 | `Frontier-HVE Auto` | `Create a one-page executive memo for the board on the FY27 revenue forecast: base 120m, upside 135m, downside 104m, drivers price and volume. I supply the data, so skip research.` Then, in the same chat: `Build a War of the Worlds timeline app.` | 2.5 min |
+| 4 | `Frontier-HVE Collab` | `One sprint for a leave portal. Backlog is ready, skip the backlog step: story 1 "see my leave balance", story 2 "request leave". Sprint 1 takes both stories, UI design only: run sprint-design, skip sprint-build and release, then hold the sprint review and stop.` | 2 min |
 
 What to check after each chat:
 
@@ -192,7 +192,7 @@ What to check after each chat:
 | `.aria/asks/` and `.aria/project/` | One timestamped folder per ask with `request.md`, `contract.json`, `plan.md`; the prototype in its `prototype/` with screenshots in `loop/evidence/prototype/`; creator's `evidence/` in its `loop/`; the feature list, progress, tracker and state in `.aria/project/`. Nothing new in the workspace root except product files |
 | Continuation | The copy-to-clipboard prompt in chat 2's second chat: the agent asks continue / new ask / new workspace (recommended: continue or new ask), and on continue works from the same `plan.md` without searching for it; on new ask the feature joins `.aria/project/feature_list.json` through `loop.py amend` |
 | Skills | Over the guideline, each agent writes `.aria/asks/skill-scores.json`, runs `lifecycle.py skills score` and asks you suggested/all/named with the scores shown; `plan.md` shows each skill with its score and why. `.aria/runs/<session>.skills.json` lists what loaded and was read |
-| Briefs | Collab's call to `ARIA Prototype Creator` and creator's sub-agents start with "ARIA brief"; `contract.json` → `delegations` and `reported` filled |
+| Briefs | Collab's call to `Frontier-HVE Prototype Creator` and creator's sub-agents start with "Frontier-HVE brief"; `contract.json` → `delegations` and `reported` filled |
 | Hooks | `.aria/runs/<session>.skills.json` for creator, Auto and Collab (skill loader); creator's `loop/tool_log.jsonl` has pre and post rows (loop guard); `.aria/user_profile.json` exists (profile detector); `.aria/runs/<session>.interventions.jsonl` only if a guard tripped |
 | Topic switch | The War of the Worlds prompt in chat 3 is recommended a new workspace (in the where form, or as a one-line message) |
 | Git | `git log` shows `[init] scaffold` with the locked checks in its body and one `[progress]` commit per feature |

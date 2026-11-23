@@ -107,8 +107,8 @@ def test_export_structure() -> None:
         agents = {p.stem for p in (ws / ".claude" / "agents").glob("*.md")}
         assert agents == EXPORTED_AGENTS, sorted(agents ^ EXPORTED_AGENTS)
         auto = (ws / ".claude" / "agents" / "aria-auto.md").read_text(encoding="utf-8")
-        assert "## ARIA agent names in this tool" in auto and "- `ARIA engineer` is `aria-engineer`" in auto, auto[-800:]
-        assert "`ARIA research-single`" not in auto
+        assert "## Frontier-HVE agent names in this tool" in auto and "- `Frontier-HVE engineer` is `aria-engineer`" in auto, auto[-800:]
+        assert "`Frontier-HVE research-single`" not in auto
         sys.path.insert(0, str(REPO / "hooks"))
         import agent_compat
         hooks_by_event = claude_hooks(ws)
@@ -143,7 +143,7 @@ def test_export_refuses_foreign_files_and_bad_organizations() -> None:
         assert (ws / ".codex" / "config.toml").read_text().count("[mcp_servers.ado]") == 1
         (ws / ".cursor" / "hooks.json").write_text('{"version": 1, "hooks": {"stop": [{"command": "./mine.sh"}]}}')
         result = subprocess.run([sys.executable, str(EXPORT), "cursor", str(ws)], capture_output=True, text=True)
-        assert result.returncode != 0 and "not written by ARIA" in result.stderr
+        assert result.returncode != 0 and "not written by Frontier-HVE" in result.stderr
         assert "mine.sh" in (ws / ".cursor" / "hooks.json").read_text()
         result = subprocess.run([sys.executable, str(EXPORT), "vscode", str(ws), "--ado", "x; rm -rf /"], capture_output=True, text=True)
         assert result.returncode != 0 and "organization name" in result.stderr
@@ -428,7 +428,7 @@ def test_copilot_user_scope_and_cloud_exports() -> None:
         assert export(cloud, "cloud")["written"] == report["written"], "running the cloud export again is safe"
         (cloud / ".github" / "workflows" / "copilot-setup-steps.yml").write_text("name: mine\n", encoding="utf-8")
         mine = subprocess.run([sys.executable, str(EXPORT), "cloud", str(cloud)], capture_output=True, text=True, env=env)
-        assert mine.returncode != 0 and "not written by ARIA" in mine.stderr, "a setup workflow the user wrote is never overwritten"
+        assert mine.returncode != 0 and "not written by Frontier-HVE" in mine.stderr, "a setup workflow the user wrote is never overwritten"
         assert ".github/aria/runtime/tools/loop/lifecycle.py" in (cloud / ".github" / "agents" / "aria-lite.agent.md").read_text(encoding="utf-8")
         cloud_hooks = json.loads((cloud / ".github" / "hooks" / "aria.json").read_text(encoding="utf-8"))
         assert all(h["bash"].startswith('python3 ".github/aria/runtime/hooks/agent_compat.py" --ask-only copilot') and h["powershell"] == "exit 0"

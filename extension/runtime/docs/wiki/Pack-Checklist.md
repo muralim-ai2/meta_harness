@@ -1,6 +1,6 @@
 # Expertise pack checklist
 
-Use this checklist before authoring, reviewing, packaging or installing an ARIA expertise pack. Open it any time from **Mission Control → Skills & packs → Pack checklist**. Full reference and worked example: [Expertise packs](Plugins.md). Reference implementation: `examples/plugins/oracle-offering/`.
+Use this checklist before authoring, reviewing, packaging or installing an Frontier-HVE expertise pack. Open it any time from **Mission Control → Skills & packs → Pack checklist**. Full reference and worked example: [Expertise packs](Plugins.md). Reference implementation: `examples/plugins/oracle-offering/`.
 
 ## 1. Folder and safety rules
 
@@ -33,7 +33,7 @@ Use this checklist before authoring, reviewing, packaging or installing an ARIA 
 - [ ] **`name`:** lowercase hyphenated (`^[a-z0-9]+(?:-[a-z0-9]+)*$`), not reserved (`frontier-hve`, `hve`, `core`).
 - [ ] **`displayName`, `publisher`, `description`:** non-empty strings (`<publisher>.<name>` becomes the pack ID).
 - [ ] **`version`:** exact `MAJOR.MINOR.PATCH` semantic version (bump version whenever any file changes).
-- [ ] **`harness`:** `{"apiVersion": 1, "frontierHve": ">=0.8.0 <1.0.0"}` compatible with the installed ARIA version.
+- [ ] **`harness`:** `{"apiVersion": 1, "frontierHve": ">=0.8.0 <1.0.0"}` compatible with the installed Frontier-HVE version.
 - [ ] **`routing`:**
   - [ ] `domains`: practice domains (for example `["oracle", "database"]`).
   - [ ] `keywords`: plain terms matched against the ask request.
@@ -44,9 +44,9 @@ Use this checklist before authoring, reviewing, packaging or installing an ARIA 
 
 ## 3. Assets and naming conventions
 
-- [ ] **Prefix rule in lifecycles:** pack assets use `<pack>:<name>` (`oracle-offering:oracle-db-architect`, `oracle-offering:oracle-schema-design`, `oracle-offering:assessment`); core ARIA assets have no prefix (`ARIA engineer`, `build-approach`, `technicalDesign`).
+- [ ] **Prefix rule in lifecycles:** pack assets use `<pack>:<name>` (`oracle-offering:oracle-db-architect`, `oracle-offering:oracle-schema-design`, `oracle-offering:assessment`); core Frontier-HVE assets have no prefix (`Frontier-HVE engineer`, `build-approach`, `technicalDesign`).
 - [ ] **Agents (`agents/*.agent.md`):**
-  - [ ] YAML frontmatter uses only `name`, `description`, `tools`, `agents`, `user-invocable`, `argument-hint` (no `hooks:` block; ARIA injects core guard hooks on render).
+  - [ ] YAML frontmatter uses only `name`, `description`, `tools`, `agents`, `user-invocable`, `argument-hint` (no `hooks:` block; Frontier-HVE injects core guard hooks on render).
   - [ ] Every tool in an agent's `tools: [...]` is listed in `hve-plugin.json` → `tools`.
 - [ ] **Skills (`skills/<name>/SKILL.md`):** listed in `registry.json` with `task_categories` present in core or the pack's `categories.json`.
 - [ ] **Templates (`templates/*.md`):** carry valid `<!-- hve-template: ... -->` and `<!-- hve-section: ... -->` markers; custom kinds use ` camelCase` names (`assessment`, `migrationRunbook`).

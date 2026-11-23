@@ -25,17 +25,17 @@ function posted(controls) {
 
 test('the existing extension contributes Mission Control, keeps its commands and has no Copilot extension dependency', () => {
   assert.equal(manifest.name, 'frontier-hve');
-  assert.equal(manifest.displayName, 'ARIA');
+  assert.equal(manifest.displayName, 'Frontier-HVE');
   assert.ok(fs.statSync(path.join(EXTENSION, manifest.icon)).isFile(), manifest.icon);
   assert.equal(manifest.extensionDependencies, undefined);
   assert.equal(manifest.dependencies, undefined);
   assert.deepEqual(manifest.activationEvents, ['onStartupFinished']);
   assert.deepEqual(manifest.contributes.commands.map(command => command.command), [...ORIGINAL, ...MISSION]);
-  assert.deepEqual(manifest.contributes.viewsContainers.activitybar, [{ id: 'frontierHve', title: 'ARIA', icon: 'ui/media/aria.svg' }]);
+  assert.deepEqual(manifest.contributes.viewsContainers.activitybar, [{ id: 'frontierHve', title: 'Frontier-HVE', icon: 'ui/media/hve.svg' }]);
   assert.deepEqual(manifest.contributes.views.frontierHve, [{ type: 'webview', id: 'frontierHve.missionControl', name: 'Mission Control' },
     { id: 'frontierHve.harnessFiles', name: 'Harness files' }]);
   assert.ok(manifest.contributes.configuration.properties['frontierHve.pluginIndex']);
-  for (const file of ['aria.svg', 'aria.png', 'app.css', 'app.js', 'vnode.js', 'markdown.js', 'views.js', 'pages.js']) {
+  for (const file of ['hve.svg', 'aria.png', 'app.css', 'app.js', 'vnode.js', 'markdown.js', 'views.js', 'pages.js']) {
     assert.ok(fs.statSync(path.join(EXTENSION, 'ui', 'media', file)).isFile(), file);
   }
 });
@@ -160,7 +160,7 @@ test('with the old muralim-ai2 ARIA still installed, activation registers nothin
   const fixture = host([root], storage);
   t.after(() => [root, storage].forEach(removeWorkspace));
   fixture.controls.extensions.push('muralim-ai2.frontier-hve');
-  fixture.controls.confirmations.push('Uninstall old ARIA');
+  fixture.controls.confirmations.push('Uninstall old version');
   await fixture.load('extension.js').activate(fixture.context);
   assert.equal(fixture.controls.commands.size, 0);
   assert.ok(fixture.controls.calls.some(call => call[0] === 'workbench.extensions.uninstallExtension' && call[1] === 'muralim-ai2.frontier-hve'));

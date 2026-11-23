@@ -103,7 +103,7 @@ def test_rendered_plugin_shape() -> None:
         assert (out / "scripts" / "guardrail.py").exists()
         for name in agents:
             text = (out / "com.github.copilot" / "agents" / name).read_text(encoding="utf-8")
-            assert "{{RUNTIME}}" not in text and re.search(r"^name: ARIA ", text, re.M), name
+            assert "{{RUNTIME}}" not in text and re.search(r"^name: Frontier-HVE ", text, re.M), name
             assert not re.search(r"^user-invocable: false", text, re.M), f"{name}: all 4 rendered plugin agents are user-invocable"
             assert re.search(r"^model: \[.*'GPT-6 Astra \(copilot\)'", text, re.M), f"{name}: model pin"
             assert not re.search(r"budget\.py|HARNESS_BUDGET", text), f"{name}: product agents have no time budget"
@@ -187,7 +187,7 @@ def test_product_manager_agent() -> None:
         pm = render_template("product-manager")
         assert pm.count("HVE_TEMPLATE_TYPES: prd") == 3, pm
         assert "HARNESS_REQUIRED_SKILLS: prd" in pm
-        assert "`search_issues`" in pm and "scoped to that repository" in pm and "contract direct <slug> \"ARIA product-manager\"" in pm
+        assert "`search_issues`" in pm and "scoped to that repository" in pm and "contract direct <slug> \"Frontier-HVE product-manager\"" in pm
         assert "+prd" in pm and "The council gets no brief" in pm
         assert "host-selected; actual model unconfirmed" in pm and 'label it "session model"' not in pm
         assert "read `.aria/skills/prd/SKILL.md`" in pm and "skills/admitted/prd/SKILL.md" not in pm

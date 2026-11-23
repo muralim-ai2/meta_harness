@@ -1,6 +1,6 @@
-# Adapters: ARIA in every harness (Copilot, Claude Code, Cursor, Codex, cloud agent) and Azure DevOps
+# Adapters: Frontier-HVE in every harness (Copilot, Claude Code, Cursor, Codex, cloud agent) and Azure DevOps
 
-Use the ARIA agents, skills and guard hooks outside VS Code's Local harness. Connect Azure DevOps through Microsoft's Azure DevOps MCP server.
+Use the Frontier-HVE agents, skills and guard hooks outside VS Code's Local harness. Connect Azure DevOps through Microsoft's Azure DevOps MCP server.
 
 > **Status:** built and protocol-tested (`tests/test_adapters.py`). Live runs verified: VS Code Local, VS Code Copilot mode (10–11 Nov, including Mission Control Live and Telemetry), and Claude Code / Claude mode (11 Nov). Cursor, Codex and the cloud agent have not been run live yet, and the Azure DevOps server has not been started from this setup. Report what fails under tracker issue `N27`. Decisions: `D-042`, `D-050`. Research note: `research/findings/phase-10-adapters.md`.
 
@@ -10,7 +10,7 @@ Use the ARIA agents, skills and guard hooks outside VS Code's Local harness. Con
 
 | Key | Default | Used for |
 |---|---|---|
-| `product` | `ARIA` | Product name in messages and reports |
+| `product` | `Frontier-HVE` | Product name in messages and reports |
 | `prefix` | `aria` | Exported agent names (`aria-lite`, `aria-auto`, `aria-collab`, `aria-prototype-creator`, ...), hook files (`~/.copilot/hooks/aria.json`, `.github/hooks/aria.json`), the cloud runtime (`.github/aria/runtime/`) and the VS Code plugin name (`aria:<skill>`) |
 | `state_dir` | `.aria` | The workspace state folder (asks, project, runs, skills) and the runtime folder (`.aria/runtime/`, `~/.aria/runtime/`); agent and skill text is rewritten to it on export and render |
 
@@ -23,7 +23,7 @@ Agent templates in `extension/agents/` carry no prefix: `lite`, `auto`, `collab`
 - `handoffs:` work only in Local (VS Code docs).
 - Cursor is a separate editor that does not run VS Code chat.
 
-**For the other tools:** run **ARIA: Install for other harnesses**. It installs the agents, the harness skills and the guard hooks in each harness's own folders, from the same agent templates, copies the runtime, checks each install and lists its first-run steps. The agents' ask contract (`lifecycle.py contract`, `brief`, `report`, `status`) is a terminal command, so skills, briefs, provenance and status work even where a hook channel is missing.
+**For the other tools:** run **Frontier-HVE: Install for other harnesses**. It installs the agents, the harness skills and the guard hooks in each harness's own folders, from the same agent templates, copies the runtime, checks each install and lists its first-run steps. The agents' ask contract (`lifecycle.py contract`, `brief`, `report`, `status`) is a terminal command, so skills, briefs, provenance and status work even where a hook channel is missing.
 
 ## At a glance
 
@@ -39,7 +39,7 @@ Agent templates in `extension/agents/` carry no prefix: `lite`, `auto`, `collab`
 
 User scope writes under your home folder (`~/...`) and works in every workspace; nothing is committed. Codex has no user scope: VS Code and Copilot also read `~/.agents/skills`, so a user-wide Codex install loaded every agent and harness skill a second time there. Install also sets `chat.hookFilesLocations` so VS Code's Local harness does not run the Copilot and cloud hook files (current and pre-brand names) on top of the agents' own hooks.
 
-**Which agents each client gets:** the four you pick (`aria-lite`, `aria-auto`, `aria-collab`, `aria-prototype-creator`), `aria-azure-devops`, and every agent those agents, the exported skills or the lifecycles name (engineer, personas, reviewers, council, judges). Research baselines (`minimal`, `single`, `research-*`) and unreferenced helpers (the flow and GitHub creators) stay in VS Code. Each exported agent ends with a short table that maps the VS Code agent names it mentions (`ARIA engineer`) to the names in that tool (`aria-engineer`).
+**Which agents each client gets:** the four you pick (`aria-lite`, `aria-auto`, `aria-collab`, `aria-prototype-creator`), `aria-azure-devops`, and every agent those agents, the exported skills or the lifecycles name (engineer, personas, reviewers, council, judges). Research baselines (`minimal`, `single`, `research-*`) and unreferenced helpers (the flow and GitHub creators) stay in VS Code. Each exported agent ends with a short table that maps the VS Code agent names it mentions (`Frontier-HVE engineer`) to the names in that tool (`aria-engineer`).
 
 **Skills:** the harness skills (`delivery-coach`, `feature-checklist`, `run-tests`, `code-review`, `parallel-options`, `explain-walkthrough`, `prototype-guardrail`, `recommend-skills`, `check-context-load`, `harness-status` and the rest of `extension/skills/`). `pr-push` stays in VS Code because it needs the GitHub Pull Requests extension. Copilot agents lose the Local-only fields (hooks, handoffs) and keep only the read-only and blind agents' tool lists, as Copilot aliases (`read`, `search`, `execute`).
 
@@ -47,7 +47,7 @@ User scope writes under your home folder (`~/...`) and works in every workspace;
 
 ## Before you start
 
-- **ARIA extension 0.27.6 or later:** installed in VS Code. Cursor can install the same VSIX. The exporter and the harness runtime ship inside it, at `<extension folder>/runtime/` (for example `~/.vscode/extensions/pwc.frontier-hve-<version>/runtime/`). In this repository, run `python extension/build.py` first and use `extension/runtime/`.
+- **Frontier-HVE extension 0.27.6 or later:** installed in VS Code. Cursor can install the same VSIX. The exporter and the harness runtime ship inside it, at `<extension folder>/runtime/` (for example `~/.vscode/extensions/pwc.frontier-hve-<version>/runtime/`). In this repository, run `python extension/build.py` first and use `extension/runtime/`.
 - **Python:** 3.11 or newer on `PATH` as `python`. Every hook runs `python` (`python3` in the cloud).
 - **For Azure DevOps:**
   - Node.js 20 or newer.
@@ -56,9 +56,9 @@ User scope writes under your home folder (`~/...`) and works in every workspace;
 
 ## Export
 
-**From chat:** pick an ARIA agent in VS Code and type `/export-harness`. The agent asks which harnesses and scope, and the Azure DevOps organization, runs the exporter and shows how to start each client.
+**From chat:** pick an Frontier-HVE agent in VS Code and type `/export-harness`. The agent asks which harnesses and scope, and the Azure DevOps organization, runs the exporter and shows how to start each client.
 
-**From the Command Palette:** **ARIA: Install for other harnesses** checks Copilot CLI against the extension's plugin (nothing is copied), installs Claude Code and Cursor at user scope, and Codex and the cloud agent into the open workspace (the cloud agent after a confirmation). Every run also removes older user-wide Codex and Copilot copies (`~/.agents/skills`, `~/.codex/hooks.json`, `~/.copilot/agents`, `~/.copilot/skills`, `~/.copilot/hooks`), which VS Code would list a second time. Then it checks each install and opens **ARIA install** in the Output panel with the results and each tool's first-run steps.
+**From the Command Palette:** **Frontier-HVE: Install for other harnesses** checks Copilot CLI against the extension's plugin (nothing is copied), installs Claude Code and Cursor at user scope, and Codex and the cloud agent into the open workspace (the cloud agent after a confirmation). Every run also removes older user-wide Codex and Copilot copies (`~/.agents/skills`, `~/.codex/hooks.json`, `~/.copilot/agents`, `~/.copilot/skills`, `~/.copilot/hooks`), which VS Code would list a second time. Then it checks each install and opens **Frontier-HVE install** in the Output panel with the results and each tool's first-run steps.
 
 **From a terminal**, in the project root:
 
@@ -91,8 +91,8 @@ What it writes:
 - **The client's agent, skill, hook and MCP files**, as listed in the table above.
 
 Safety rules:
-- A hooks file or setup workflow that ARIA did not write is never overwritten. The export stops and names the file; merge it by hand.
-- Removal only touches paths inside the client's own agent, skill, hook and runtime locations, and pre-brand copies only when their text proves ARIA wrote them (the template's description or name, or a runtime reference).
+- A hooks file or setup workflow that Frontier-HVE did not write is never overwritten. The export stops and names the file; merge it by hand.
+- Removal only touches paths inside the client's own agent, skill, hook and runtime locations, and pre-brand copies only when their text proves Frontier-HVE wrote them (the template's description or name, or a runtime reference).
 - MCP files are merged: only the `ado` entry is added or replaced.
 - The organization name must be letters, digits and hyphens.
 - Running the export again is safe.
@@ -102,8 +102,8 @@ Safety rules:
 ## Use the agents
 
 ### Copilot CLI and the VS Code Copilot harness
-1. In VS Code, set Session Target **Copilot** (or **Local**) and pick **ARIA Lite** (Plugin: aria). Its own hooks run in both harnesses.
-2. In Copilot CLI, start `copilot --plugin-dir "$env:APPDATA/Code/User/globalStorage/pwc.frontier-hve/plugin"` and pick **ARIA Lite** with `/agent`. This is the plugin VS Code renders and updates, so nothing needs exporting again after an update.
+1. In VS Code, set Session Target **Copilot** (or **Local**) and pick **Frontier-HVE Lite** (Plugin: aria). Its own hooks run in both harnesses.
+2. In Copilot CLI, start `copilot --plugin-dir "$env:APPDATA/Code/User/globalStorage/pwc.frontier-hve/plugin"` and pick **Frontier-HVE Lite** with `/agent`. This is the plugin VS Code renders and updates, so nothing needs exporting again after an update.
 3. Without the extension, `export.py copilot --user` installs copies instead. The first thing the agent runs is `lifecycle.py contract ...`; from then on `~/.copilot/hooks/aria.json` acts in that workspace. `lifecycle.py close` stops it; `lifecycle.py open <slug>` reopens an ask.
 
 ### Copilot cloud agent
@@ -112,7 +112,7 @@ Safety rules:
    - `.gitignore` rules `.aria/*`, `!.aria/asks/`, `!.aria/project/`: the ask and project records are committed with the pull request; hook run state in `.aria/runs/` is not. A plain `.aria/` rule is replaced.
    - Hook entries carry a `bash` command (`python3`, run by the cloud's Linux sandbox) and a `powershell` no-op. Local Copilot sessions also load `.github/hooks/`; on Windows they skip these entries and rely on the user-level Copilot hooks. On macOS and Linux they run them as well as the user-level hooks (unverified).
 2. Review and commit `.github/agents`, `.github/skills`, `.github/hooks/aria.json`, `.github/aria/runtime`, the workflow and `.gitignore` to the default branch.
-3. Assign an issue to Copilot and pick an ARIA agent. The job is non-interactive: plan and gate questions are skipped; the pull request carries the work and the ask records.
+3. Assign an issue to Copilot and pick an Frontier-HVE agent. The job is non-interactive: plan and gate questions are skipped; the pull request carries the work and the ask records.
 
 ### Claude Code
 1. Run `claude --agent aria-lite`. The header shows `@aria-lite`.
@@ -127,7 +127,7 @@ Safety rules:
 
 ### Codex CLI
 1. Start `codex` from the project root. Project hooks run in the session directory and use `.aria/runtime/...` relative paths.
-2. Trust the project. Then open `/hooks`, then review and trust the ARIA hooks. Codex skips untrusted hooks.
+2. Trust the project. Then open `/hooks`, then review and trust the Frontier-HVE hooks. Codex skips untrusted hooks.
 3. Type `$aria-lite` or `$aria-azure-devops`, or pick them from `/skills`. These skills are never invoked automatically.
 
 ### Status without Mission Control
@@ -156,7 +156,7 @@ The adapter uses Microsoft's official server, [`@azure-devops/mcp`](https://gith
 
 Microsoft also offers a hosted remote server (`https://mcp.dev.azure.com/<organization>`, type `http`). The exporter does not configure it, because the remote server cannot be limited to tool groups.
 
-**The ARIA azure-devops agent:**
+**The Frontier-HVE azure-devops agent:**
 - **Feature list to work items:** one work item per feature in the project's `.aria/project/feature_list.json` (or `feature_list.json` when no ask is open). The check command becomes the acceptance criterion.
 - **Status sync:** state updates from `tracker.json`, with the check command and its exit code as a comment.
 - **Pull requests:** for feature branches you ticked, linked to their work items. It never pushes.
@@ -206,12 +206,12 @@ A guard that fails (a crash, a missing script, an unexpected payload) never bloc
 | Copilot on Windows: every tool `Denied by preToolUse hook from ".github_hooks_hve.json" (hook errored)`; the session log shows `Python was not found` | A cloud export from before 0.27.6 runs `python3`, which on Windows is the Microsoft Store alias; Copilot fails closed on a crashing `preToolUse` hook | Run the cloud export again (0.27.6 or later): its entries are a no-op in local Windows sessions |
 | Cursor blocks every tool call | Cursor may treat an empty `preToolUse` response as invalid (unverified) | Report under `N27`; meanwhile remove the `preToolUse` entries from `.cursor/hooks.json` |
 | Codex runs no hooks | Hooks not trusted, or Codex was started in a subfolder | `/hooks` → trust; start Codex in the project root |
-| Export stops: `... was not written by ARIA` | You already have your own hooks file | Merge the entries from a scratch export by hand |
-| Export stops: `... is not the ARIA extension folder` | It was run from `.aria/runtime/` | Run the copy in the installed extension, or `extension/runtime/` after `python extension/build.py` |
+| Export stops: `... was not written by Frontier-HVE` | You already have your own hooks file | Merge the entries from a scratch export by hand |
+| Export stops: `... is not the Frontier-HVE extension folder` | It was run from `.aria/runtime/` | Run the copy in the installed extension, or `extension/runtime/` after `python extension/build.py` |
 | No `ado` tools | Server not started, sign-in not completed, or npm cannot reach the registry | Start the server; sign in; check `npm config get registry` |
 | `npm error ... ECONNRESET` | Network or proxy | Fix the registry or network, then start the server again |
 | Every skill listed twice in Cursor | Both the Claude Code and Cursor exports are in one project | Keep one export, or turn off Cursor's third-party imports |
-| Each ARIA agent appears twice in VS Code ("Folder: agents" and "Plugin: aria") | A Copilot install from before 0.28.0 in `~/.copilot/agents`, the old user-wide Codex install in `~/.agents/skills`, a user-scope Claude install, or a cloud export in the open repository | Accept the prompt after the update, or run Install for other harnesses once: it removes the Copilot and Codex copies. Otherwise pick Plugin: aria |
+| Each Frontier-HVE agent appears twice in VS Code ("Folder: agents" and "Plugin: aria") | A Copilot install from before 0.28.0 in `~/.copilot/agents`, the old user-wide Codex install in `~/.agents/skills`, a user-scope Claude install, or a cloud export in the open repository | Accept the prompt after the update, or run Install for other harnesses once: it removes the Copilot and Codex copies. Otherwise pick Plugin: aria |
 | VS Code Copilot harness: every tool `Denied by preToolUse hook from "agent" (hook errored)` once an ask is open | Before 0.28.0 the plugin agent's guards read only the Local payload and crashed on Copilot's | Update to 0.28.0 and reload the window |
 | `hve-*` agents still listed next to `aria-*` | Copies from an export before the brand settings | Run the install again: the export removes them (`removed` in the report) |
 

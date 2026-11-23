@@ -146,6 +146,11 @@ def assemble(target_ext: Path, brand_file: Path) -> list[str]:
     shutil.copytree(REPO / "templates" / "deliverables", runtime_dir / "templates" / "deliverables")
     shutil.copytree(REPO / "templates" / "lifecycles", runtime_dir / "templates" / "lifecycles")
     shutil.copytree(REPO / "templates" / "personas", runtime_dir / "templates" / "personas")
+    if brand_cfg["product"] != "ARIA":
+        for lifecycle_path in [*(runtime_dir / "templates" / "lifecycles").glob("*.json"),
+                               *(runtime_dir / "examples" / "plugins" / "oracle-offering").rglob("lifecycles/*.json")]:
+            lifecycle_path.write_text(rebrand_text(lifecycle_path.read_text(encoding="utf-8"), brand_cfg["product"], brand_cfg["state_dir"]),
+                                      encoding="utf-8")
     sys.path.insert(0, str(REPO / "tools" / "loop"))
     import personas  # noqa: E402
     personas.write(agents_dir, product=brand_cfg["product"])
